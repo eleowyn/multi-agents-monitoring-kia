@@ -1,0 +1,154 @@
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from app.core.database import get_db
+from app.models.visit import Visit, PhaseEnum
+from app.models.patient import Patient, PatientType
+from app.models.report import Report, ReportStatus
+from app.models.user import User, UserRole
+from app.schemas.visit import VisitCreate, VisitResponse
+from app.schemas.report import ReportResponse
+from app.api.v1.endpoints.auth import get_current_user
+from app.multiagent.graph import kia_multiagent_app
+from app.services.eval_logger import log_multiagent_parallel_evaluations
+
+router = APIRouter()
+
+
+@router.post("/", response_model=ReportResponse)
+def create_visit_and_analyze(
+    visit_in: VisitCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    1. Mencatat data kunjungan ke MySQL.
+    2. Menarik data riwayat longitudinal pasien.
+    3. Mengeksekusi orkestrasi Multi-Agent LangGraph secara real-time.
+    4. Menyimpan draf laporan.
+    5. Mendaftarkan background task evaluasi audit biner per-agent secara paralel.
+    """
+    patient = db.query(Patient).filter(Patient.id == visit_in.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
+
+    # Data Scoping: Pastikan kader melayani pasien di wilayah posyandunya
+    if current_user.role == UserRole.KADER and current_user.village_name:
+        if patient.village_name and patient.village_name != current_user.village_name:
+            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+
+    # 1. Simpan Kunjungan
+    visit = Visit(
+        patient_id=visit_in.patient_id,
+        kader_id=current_user.id,
+        visit_date=visit_in.visit_date,
+        phase=visit_in.phase,
+        gestational_age_weeks=visit_in.gestational_age_weeks,
+        trimester=visit_in.trimester,
+        maternal_weight_kg=visit_in.maternal_weight_kg,
+        maternal_height_cm=visit_in.maternal_height_cm,
+        lila_cm=visit_in.lila_cm,
+        hb_level=visit_in.hb_level,
+        systolic_bp=visit_in.systolic_bp,
+        diastolic_bp=visit_in.diastolic_bp,
+        fundal_height_cm=visit_in.fundal_height_cm,
+        kspr_answers=visit_in.kspr_answers,
+        birth_weight_gram=visit_in.birth_weight_gram,
+        birth_length_cm=visit_in.birth_length_cm,
+        head_circumference_cm=visit_in.head_circumference_cm,
+        gestational_age_at_birth_weeks=visit_in.gestational_age_at_birth_weeks,
+        early_initiation_breastfeeding=visit_in.early_initiation_breastfeeding,
+        age_in_months=visit_in.age_in_months,
+        child_weight_kg=visit_in.child_weight_kg,
+        child_length_cm=visit_in.child_length_cm,
+        child_head_circumference_cm=visit_in.child_head_circumference_cm,
+        weight_trend_kms=visit_in.weight_trend_kms,
+        feeding_status=visit_in.feeding_status,
+        vitamin_a=visit_in.vitamin_a,
+        immunization_status=visit_in.immunization_status,
+        clinical_notes=visit_in.clinical_notes
+    )
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+
+    # 2. Persiapkan Context Longitudinal
+    maternal_history = None
+    if patient.patient_type == PatientType.CHILD and patient.mother_id:
+        mother_visits = db.query(Visit).filter(Visit.patient_id == patient.mother_id).all()
+        had_kek = any((v.lila_cm and v.lila_cm < 23.5) for v in mother_visits)
+        maternal_history = {
+            "is_kek": had_kek,
+            "birth_weight_gram": visit.birth_weight_gram or 3000
+        }
+
+    past_visits = db.query(Visit).filter(
+        Visit.patient_id == patient.id,
+        Visit.id != visit.id
+    ).order_by(Visit.visit_date.desc()).all()
+    
+    longitudinal_history = [
+        {"visit_date": str(v.visit_date), "weight": v.child_weight_kg or v.maternal_weight_kg}
+        for v in past_visits
+    ]
+
+    # 3. Eksekusi Multi-Agent LangGraph
+    initial_state = {
+        "patient_id": patient.id,
+        "visit_id": visit.id,
+        "phase": visit.phase.value,
+        "patient_data": {
+            "name": patient.name,
+            "nik": patient.nik,
+            "gender": patient.gender.value if patient.gender else None,
+            "village_name": patient.village_name or current_user.village_name or "Airmadidi"
+        },
+        "visit_data": visit_in.model_dump(),
+        "longitudinal_history": longitudinal_history,
+        "maternal_history": maternal_history,
+        "risk_flags": [],
+        "risk_narrative": "",
+        "deterministic_results": {},
+        "requires_rag": False,
+        "recommendations": [],
+        "retrieved_chunks": [],
+        "verification_details": [],
+        "overall_status": "",
+        "final_report_json": {},
+        "iteration_count": 0,
+        "kader_feedback": None,
+        "is_approved_by_kader": None
+    }
+
+    final_state = kia_multiagent_app.invoke(initial_state)
+
+    # 4. Simpan Hasil ke Tabel Reports
+    report = Report(
+        visit_id=visit.id,
+        patient_id=patient.id,
+        kader_id=current_user.id,
+        risk_flags=final_state.get("risk_flags", []),
+        risk_narrative=final_state.get("risk_narrative", ""),
+        recommendations=final_state.get("recommendations", []),
+        verification_summary=final_state.get("verification_details", []),
+        overall_status=final_state.get("overall_status", "KONDISI_BAIK"),
+        final_report_json=final_state.get("final_report_json", {}),
+        status=ReportStatus.DRAFT,
+        revision_count=0
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+
+    # 5. Background Task: Evaluasi Paralel Per-Agent (Agent 1, Agent 2, Agent 3)
+    background_tasks.add_task(
+        log_multiagent_parallel_evaluations,
+        db=db,
+        report_id=report.id,
+        initial_state=initial_state,
+        final_state=final_state
+    )
+
+    return report
