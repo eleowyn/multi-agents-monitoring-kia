@@ -12,7 +12,7 @@ const Navbar = ({ onToggleSidebar }) => {
       className="bg-card border-b border-line sticky top-0 z-30 shadow-card"
       role="banner"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6">
         <div className="flex justify-between h-16 items-center">
           {/* Left: Hamburger + Logo */}
           <div className="flex items-center gap-3">

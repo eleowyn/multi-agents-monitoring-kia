@@ -308,7 +308,7 @@ const InputKunjungan = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-5 lg:p-6 space-y-5 animate-fade-in">
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -349,7 +349,7 @@ const InputKunjungan = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* ═══ Left Col: Pilih Pasien ═══ */}
         <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-4">
           <h3 className="text-sm font-bold text-heading flex items-center gap-2">
@@ -450,7 +450,7 @@ const InputKunjungan = () => {
         </div>
 
         {/* ═══ Right Col: Tab Input 3 Fase ═══ */}
-        <div className="lg:col-span-2 bg-card p-5 sm:p-6 rounded-2xl border border-line shadow-card space-y-5">
+        <div className="lg:col-span-3 bg-card p-5 sm:p-6 rounded-2xl border border-line shadow-card space-y-5">
           {/* Phase Selector Tabs */}
           <div
             className="flex overflow-x-auto gap-2 pb-3 border-b border-line -mx-1 px-1 scrollbar-none"

@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.multiagent.state import AgentState
 from app.multiagent.rag.retriever import retrieve_clinical_guidelines
 from app.multiagent.prompts.recommender_prompt import RECOMMENDER_SYSTEM_PROMPT
+from app.multiagent.llm_utils import parse_llm_json
 
 
 def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
@@ -87,8 +88,7 @@ Keluarkan HANYA format JSON valid tanpa teks pengantar tambahan.
                 HumanMessage(content=user_prompt)
             ])
             
-            clean_content = response.content.replace("```json", "").replace("```", "").strip()
-            recommendations = json.loads(clean_content)
+            recommendations = parse_llm_json(response.content)
 
         except Exception as e:
             print(f"[RECOMMENDER LLM WARNING] Fallback ke template terstruktur: {e}")

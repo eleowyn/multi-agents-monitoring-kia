@@ -1,6 +1,9 @@
+import logging
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -8,6 +11,8 @@ from app.core.database import engine, Base, get_db, SessionLocal
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.auth import seed_default_users
 import app.models
+
+logger = logging.getLogger("kia.errors")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -17,7 +22,25 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Setup CORS
+
+async def catch_unhandled_errors(request: Request, call_next):
+    """
+    Menangkap exception yang tidak tertangani dan mengembalikan JSON 500.
+    Didaftarkan SEBELUM CORSMiddleware agar berada di dalamnya, sehingga respons
+    error tetap membawa header CORS. Tanpa ini, browser memblokir respons 500
+    dan frontend hanya menampilkan "Network Error".
+    """
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        detail = f"Kesalahan server: {type(exc).__name__}: {exc}" if settings.DEBUG else "Terjadi kesalahan pada server."
+        return JSONResponse(status_code=500, content={"detail": detail})
+
+
+app.add_middleware(BaseHTTPMiddleware, dispatch=catch_unhandled_errors)
+
+# Setup CORS (ditambahkan terakhir = lapisan terluar)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

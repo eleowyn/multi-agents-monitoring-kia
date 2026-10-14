@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.models.audit_log import AuditLog
 from app.multiagent.prompts.evaluator_prompt import EVALUATOR_SYSTEM_PROMPT
 from app.multiagent.rag.retriever import retrieve_kia_guidelines
+from app.multiagent.llm_utils import parse_llm_json
 
 
 def log_agent_evaluation(
@@ -49,8 +50,7 @@ Lakukan evaluasi independen secara biner:
                 SystemMessage(content=EVALUATOR_SYSTEM_PROMPT),
                 HumanMessage(content=prompt)
             ])
-            clean_res = res.content.replace("```json", "").replace("```", "").strip()
-            eval_data = json.loads(clean_res)
+            eval_data = parse_llm_json(res.content)
             is_compliant = bool(eval_data.get("is_compliant", True))
             eval_notes = eval_data.get("notes", eval_notes)
 

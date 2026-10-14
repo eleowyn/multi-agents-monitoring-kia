@@ -3,6 +3,7 @@ from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, L
 from app.schemas.visit import VisitCreate, VisitResponse
 from app.schemas.report import ReportValidationRequest, ReportResponse
 from app.schemas.admin import DashboardSummary, VillageStats, AuditLogResponse
+from app.schemas.revision import RevisionCreate, RevisionValidationRequest, RevisionResponse
 
 __all__ = [
     "Token",
@@ -20,6 +21,9 @@ __all__ = [
     "ReportResponse",
     "DashboardSummary",
     "VillageStats",
-    "AuditLogResponse"
+    "AuditLogResponse",
+    "RevisionCreate",
+    "RevisionValidationRequest",
+    "RevisionResponse"
 ]
 
