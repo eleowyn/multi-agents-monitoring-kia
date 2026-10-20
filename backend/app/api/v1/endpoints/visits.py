@@ -74,54 +74,19 @@ def create_visit_and_analyze(
     db.commit()
     db.refresh(visit)
 
-    # 2. Persiapkan Context Longitudinal
-    maternal_history = None
-    if patient.patient_type == PatientType.CHILD and patient.mother_id:
-        mother_visits = db.query(Visit).filter(Visit.patient_id == patient.mother_id).all()
-        had_kek = any((v.lila_cm and v.lila_cm < 23.5) for v in mother_visits)
-        maternal_history = {
-            "is_kek": had_kek,
-            "birth_weight_gram": visit.birth_weight_gram or 3000
-        }
+    # 2. Persiapkan Context Longitudinal & Shared State melalui state_builder
+    from app.multiagent.state_builder import build_initial_state
 
-    past_visits = db.query(Visit).filter(
-        Visit.patient_id == patient.id,
-        Visit.id != visit.id
-    ).order_by(Visit.visit_date.desc()).all()
-    
-    longitudinal_history = [
-        {"visit_date": str(v.visit_date), "weight": v.child_weight_kg or v.maternal_weight_kg}
-        for v in past_visits
-    ]
+    initial_state = build_initial_state(
+        db=db,
+        visit=visit,
+        patient=patient,
+        village_fallback=current_user.village_name or "Airmadidi",
+        kader_feedback=None,
+        iteration_count=0
+    )
 
     # 3. Eksekusi Multi-Agent LangGraph
-    initial_state = {
-        "patient_id": patient.id,
-        "visit_id": visit.id,
-        "phase": visit.phase.value,
-        "patient_data": {
-            "name": patient.name,
-            "nik": patient.nik,
-            "gender": patient.gender.value if patient.gender else None,
-            "village_name": patient.village_name or current_user.village_name or "Airmadidi"
-        },
-        "visit_data": visit_in.model_dump(),
-        "longitudinal_history": longitudinal_history,
-        "maternal_history": maternal_history,
-        "risk_flags": [],
-        "risk_narrative": "",
-        "deterministic_results": {},
-        "requires_rag": False,
-        "recommendations": [],
-        "retrieved_chunks": [],
-        "verification_details": [],
-        "overall_status": "",
-        "final_report_json": {},
-        "iteration_count": 0,
-        "kader_feedback": None,
-        "is_approved_by_kader": None
-    }
-
     final_state = kia_multiagent_app.invoke(initial_state)
 
     # 4. Simpan Hasil ke Tabel Reports
@@ -145,10 +110,10 @@ def create_visit_and_analyze(
     # 5. Background Task: Evaluasi Paralel Per-Agent (Agent 1, Agent 2, Agent 3)
     background_tasks.add_task(
         log_multiagent_parallel_evaluations,
-        db=db,
         report_id=report.id,
         initial_state=initial_state,
-        final_state=final_state
+        final_state=final_state,
+        db=None
     )
 
     return report

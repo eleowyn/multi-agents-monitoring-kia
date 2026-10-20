@@ -97,40 +97,16 @@ def validate_report_by_kader(
         report.validated_at = datetime.utcnow()
 
         # Eksekusi 1x Loop Revisi Multi-Agent LangGraph
-        initial_state = {
-            "patient_id": patient.id,
-            "visit_id": visit.id,
-            "phase": visit.phase.value,
-            "patient_data": {
-                "name": patient.name,
-                "nik": patient.nik,
-                "gender": patient.gender.value if patient.gender else None,
-                "village_name": patient.village_name or current_user.village_name or "Airmadidi"
-            },
-            "visit_data": {
-                "age_in_months": visit.age_in_months,
-                "child_weight_kg": visit.child_weight_kg,
-                "child_length_cm": visit.child_length_cm,
-                "lila_cm": visit.lila_cm,
-                "hb_level": visit.hb_level,
-                "trimester": visit.trimester,
-                "kspr_answers": visit.kspr_answers or []
-            },
-            "longitudinal_history": [],
-            "maternal_history": None,
-            "risk_flags": [],
-            "risk_narrative": "",
-            "deterministic_results": {},
-            "requires_rag": False,
-            "recommendations": [],
-            "retrieved_chunks": [],
-            "verification_details": [],
-            "overall_status": "",
-            "final_report_json": {},
-            "iteration_count": report.revision_count,
-            "kader_feedback": val_req.rejection_reason,
-            "is_approved_by_kader": False
-        }
+        from app.multiagent.state_builder import build_initial_state
+
+        initial_state = build_initial_state(
+            db=db,
+            visit=visit,
+            patient=patient,
+            village_fallback=current_user.village_name or "Airmadidi",
+            kader_feedback=val_req.rejection_reason,
+            iteration_count=report.revision_count,
+        )
 
         revised_state = kia_multiagent_app.invoke(initial_state)
 

@@ -219,42 +219,16 @@ def validate_revision_by_admin(
         if rev.report_id:
             report = db.query(Report).filter(Report.id == rev.report_id).first()
             if report:
-                # Siapkan context longitudinal terbaru
-                maternal_history = None
-                if patient and patient.patient_type == PatientType.CHILD and patient.mother_id:
-                    mother_visits = db.query(Visit).filter(Visit.patient_id == patient.mother_id).all()
-                    had_kek = any((v.lila_cm and v.lila_cm < 23.5) for v in mother_visits)
-                    maternal_history = {
-                        "is_kek": had_kek,
-                        "birth_weight_gram": visit.birth_weight_gram or 3000
-                    }
+                from app.multiagent.state_builder import build_initial_state
 
-                initial_state = {
-                    "patient_id": patient.id if patient else visit.patient_id,
-                    "visit_id": visit.id,
-                    "phase": visit.phase.value if hasattr(visit.phase, "value") else str(visit.phase),
-                    "patient_data": {
-                        "name": patient.name if patient else "-",
-                        "nik": patient.nik if patient else "-",
-                        "gender": patient.gender.value if (patient and patient.gender) else None,
-                        "village_name": patient.village_name if patient else "Airmadidi"
-                    },
-                    "visit_data": _snapshot_visit_data(visit),
-                    "longitudinal_history": [],
-                    "maternal_history": maternal_history,
-                    "risk_flags": [],
-                    "risk_narrative": "",
-                    "deterministic_results": {},
-                    "requires_rag": False,
-                    "recommendations": [],
-                    "retrieved_chunks": [],
-                    "verification_details": [],
-                    "overall_status": "",
-                    "final_report_json": {},
-                    "iteration_count": 0,
-                    "kader_feedback": f"[DATA DIREVISI & DISETUJUI ADMIN]: {val_req.admin_notes or '-'}",
-                    "is_approved_by_kader": False
-                }
+                initial_state = build_initial_state(
+                    db=db,
+                    visit=visit,
+                    patient=patient,
+                    village_fallback="Airmadidi",
+                    kader_feedback=f"[DATA DIREVISI & DISETUJUI ADMIN]: {val_req.admin_notes or '-'}",
+                    iteration_count=0
+                )
 
                 # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui
                 revised_state = kia_multiagent_app.invoke(initial_state)

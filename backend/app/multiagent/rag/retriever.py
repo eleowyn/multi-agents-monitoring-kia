@@ -1,5 +1,34 @@
 from typing import List, Dict, Any, Optional
-from app.multiagent.rag.vectorstore import get_or_create_collection
+
+from app.multiagent.rag.vectorstore import get_or_create_collection, get_legacy_collection
+from app.multiagent.llm_utils import llm_available
+
+# Mode retrieval yang dicatat di setiap chunk agar transparan di laporan/audit
+RETRIEVAL_GEMINI = "GEMINI_EMBEDDING"
+RETRIEVAL_FALLBACK = "FALLBACK_LOCAL_EMBEDDING"
+
+
+def _to_chunks(results: Dict[str, Any], mode: str) -> List[Dict[str, Any]]:
+    chunks: List[Dict[str, Any]] = []
+    if not results or not results.get("documents"):
+        return chunks
+    docs = results["documents"][0]
+    metas = (results.get("metadatas") or [[{}] * len(docs)])[0]
+    ids = (results.get("ids") or [[""] * len(docs)])[0]
+    distances = (results.get("distances") or [[None] * len(docs)])[0]
+    for i, doc in enumerate(docs):
+        meta = metas[i] or {}
+        chunks.append({
+            "id": ids[i],
+            "content": doc,
+            "source": meta.get("source", "Buku KIA / PNPK"),
+            "section": meta.get("section", "Umum"),
+            "page": meta.get("page", "-"),
+            "category": meta.get("category", "KIA"),
+            "distance": distances[i] if i < len(distances) else None,
+            "retrieval_mode": mode,
+        })
+    return chunks
 
 
 def retrieve_clinical_guidelines(
@@ -8,46 +37,39 @@ def retrieve_clinical_guidelines(
     category_filter: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Melakukan semantic retrieval terhadap dokumen rujukan KIA & PNPK
-    di ChromaDB berdasarkan kemiripan kosinus.
+    Semantic retrieval dokumen rujukan KIA & PNPK di ChromaDB (cosine similarity).
+
+    1. Utama: kueri di-embed dengan Gemini (RETRIEVAL_QUERY) lalu dicari di koleksi v2.
+    2. Cadangan: jika Gemini tidak tersedia/gagal atau koleksi v2 kosong, gunakan
+       koleksi lama berembedding lokal agar layanan Posyandu tidak terhenti.
+
+    Catatan: retrieval TIDAK lagi memicu auto-ingest, karena ingest dengan Gemini
+    memerlukan ratusan panggilan API. Jalankan: python -m app.multiagent.rag.ingest
     """
+    where = {"category": category_filter} if category_filter else None
+
     collection = get_or_create_collection()
-    
-    # Cek jika collection masih kosong, lakukan auto-ingest
-    if collection.count() == 0:
-        from app.multiagent.rag.ingest import ingest_knowledge_base
-        ingest_knowledge_base()
+    if llm_available() and collection.count() > 0:
+        try:
+            from app.multiagent.rag.embeddings import embed_query
+            args = {
+                "query_embeddings": [embed_query(query)],
+                "n_results": min(n_results, collection.count()),
+            }
+            if where:
+                args["where"] = where
+            return _to_chunks(collection.query(**args), RETRIEVAL_GEMINI)
+        except Exception as e:
+            print(f"[RAG WARNING] Retrieval Gemini gagal, beralih ke koleksi lokal: {e}")
 
-    where_clause = {"category": category_filter} if category_filter else None
-    
-    query_args = {
-        "query_texts": [query],
-        "n_results": n_results
-    }
-    if where_clause:
-        query_args["where"] = where_clause
-
-    results = collection.query(**query_args)
-    
-    chunks = []
-    if results and "documents" in results and results["documents"]:
-        docs = results["documents"][0]
-        metas = results["metadatas"][0] if "metadatas" in results else [{}] * len(docs)
-        ids = results["ids"][0] if "ids" in results else [""] * len(docs)
-        distances = results["distances"][0] if "distances" in results else [0.0] * len(docs)
-        
-        for i in range(len(docs)):
-            chunks.append({
-                "id": ids[i],
-                "content": docs[i],
-                "source": metas[i].get("source", "Buku KIA / PNPK"),
-                "section": metas[i].get("section", "Umum"),
-                "page": metas[i].get("page", "-"),
-                "category": metas[i].get("category", "KIA"),
-                "distance": distances[i] if i < len(distances) else None
-            })
-            
-    return chunks
+    legacy = get_legacy_collection()
+    if legacy is None:
+        print("[RAG WARNING] Tidak ada koleksi yang dapat digunakan. Jalankan ingest terlebih dahulu.")
+        return []
+    args = {"query_texts": [query], "n_results": min(n_results, legacy.count())}
+    if where:
+        args["where"] = where
+    return _to_chunks(legacy.query(**args), RETRIEVAL_FALLBACK)
 
 
 # Alias untuk kompatibilitas

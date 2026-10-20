@@ -22,6 +22,7 @@ class AgentState(TypedDict):
     risk_narrative: str                # Narasi deskriptif temuan klinis
     deterministic_results: Dict[str, Any] # Rincian angka baku Z-score, KSPR, dsb.
     requires_rag: bool                 # Flag routing kondisional apakah perlu panggil Agent 2
+    narrative_mode: str                # "LLM" (Stage 2 Gemini) | "MODE_FALLBACK" (narasi berbasis aturan)
     
     # 4. Output dari Agent 2: Rekomendasi Klinis RAG
     recommendations: List[Dict[str, Any]] # Daftar rekomendasi klinis terstruktur & sitasi

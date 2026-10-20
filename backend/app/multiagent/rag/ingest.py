@@ -1,6 +1,6 @@
 import os
-import json
-from typing import List, Dict, Any
+import re
+from typing import List, Dict, Any, Tuple
 from pypdf import PdfReader
 from app.core.config import settings
 from app.multiagent.rag.vectorstore import get_or_create_collection
@@ -96,56 +96,116 @@ DEFAULT_CLINICAL_GUIDELINES = [
 ]
 
 
-def ingest_knowledge_base():
+def chunk_text(text: str, size: int, overlap: int) -> List[str]:
     """
-    Mengindeks dokumen rujukan Buku KIA & PNPK ke dalam ChromaDB.
+    Memecah teks menjadi potongan berukuran `size` karakter dengan tumpang-tindih
+    `overlap` karakter. Batas potongan digeser ke spasi terdekat agar kata tidak terpotong.
     """
-    collection = get_or_create_collection()
-    
-    # 1. Ingest Data Standar Baku
-    documents = []
-    metadatas = []
-    ids = []
-    
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= size:
+        return [text] if text else []
+    chunks: List[str] = []
+    start = 0
+    while start < len(text):
+        end = min(start + size, len(text))
+        if end < len(text):
+            space = text.rfind(" ", start + size // 2, end)
+            if space != -1:
+                end = space
+        chunks.append(text[start:end].strip())
+        if end >= len(text):
+            break
+        start = max(end - overlap, start + 1)
+    return [c for c in chunks if c]
+
+
+def _collect_documents() -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
+    documents: List[str] = []
+    metadatas: List[Dict[str, Any]] = []
+    ids: List[str] = []
+
+    # 1. Ringkasan pedoman terkurasi
     for item in DEFAULT_CLINICAL_GUIDELINES:
         documents.append(item["content"])
         metadatas.append({
             "source": item["source"],
             "section": item["section"],
             "page": item["page"],
-            "category": item["category"]
+            "category": item["category"],
+            "origin": "CURATED_SUMMARY",
         })
         ids.append(item["id"])
-    
-    # 2. Ingest file PDF tambahan jika tersedia di knowledge_base/
-    for filename in os.listdir(KNOWLEDGE_BASE_DIR):
-        if filename.lower().endswith(".pdf"):
-            pdf_path = os.path.join(KNOWLEDGE_BASE_DIR, filename)
-            try:
-                reader = PdfReader(pdf_path)
-                for page_idx, page in enumerate(reader.pages):
-                    text = page.extract_text()
-                    if text and len(text.strip()) > 100:
-                        doc_id = f"pdf_{filename}_{page_idx+1}"
-                        documents.append(text[:1500]) # Batas potongan 1500 char per halaman
-                        metadatas.append({
-                            "source": filename,
-                            "section": f"Halaman {page_idx+1}",
-                            "page": page_idx + 1,
-                            "category": "GENERAL_KIA"
-                        })
-                        ids.append(doc_id)
-            except Exception as e:
-                print(f"[INGEST ERROR] Gagal membaca PDF {filename}: {e}")
 
-    # Simpan ke ChromaDB
-    collection.upsert(
-        documents=documents,
-        metadatas=metadatas,
-        ids=ids
-    )
-    print(f"[RAG INGEST] Berhasil mengindeks {len(ids)} potongan dokumen ke ChromaDB.")
-    return len(ids)
+    # 2. PDF di knowledge_base/ (kecuali file yang dikecualikan, mis. tabel angka WHO)
+    excluded = {f.strip().lower() for f in settings.RAG_EXCLUDED_FILES.split(",") if f.strip()}
+    for filename in sorted(os.listdir(KNOWLEDGE_BASE_DIR)):
+        if not filename.lower().endswith(".pdf") or filename.lower() in excluded:
+            continue
+        pdf_path = os.path.join(KNOWLEDGE_BASE_DIR, filename)
+        try:
+            reader = PdfReader(pdf_path)
+        except Exception as e:
+            print(f"[INGEST ERROR] Gagal membaca PDF {filename}: {e}")
+            continue
+        for page_idx, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            if len(text.strip()) <= 100:
+                continue
+            for chunk_idx, chunk in enumerate(
+                chunk_text(text, settings.RAG_CHUNK_SIZE, settings.RAG_CHUNK_OVERLAP)
+            ):
+                documents.append(chunk)
+                metadatas.append({
+                    "source": filename,
+                    "section": f"Halaman {page_idx + 1}",
+                    "page": page_idx + 1,
+                    "category": "GENERAL_KIA",
+                    "origin": "PDF",
+                })
+                ids.append(f"pdf_{filename}_{page_idx + 1}_{chunk_idx}")
+    return documents, metadatas, ids
+
+
+def ingest_knowledge_base() -> int:
+    """
+    Mengindeks dokumen rujukan Buku KIA & PNPK ke koleksi ChromaDB berembedding Gemini.
+
+    Bersifat idempoten: hanya potongan yang belum tersimpan yang di-embed, sehingga
+    pemanggilan ulang tidak menghabiskan kuota API. Mengembalikan jumlah total
+    potongan yang ada di koleksi setelah ingest.
+    """
+    from app.multiagent.llm_utils import llm_available
+
+    collection = get_or_create_collection()
+    documents, metadatas, ids = _collect_documents()
+
+    existing = set(collection.get(ids=ids, include=[])["ids"]) if ids else set()
+    pending = [i for i, doc_id in enumerate(ids) if doc_id not in existing]
+    if not pending:
+        print(f"[RAG INGEST] Koleksi sudah lengkap ({collection.count()} potongan).")
+        return collection.count()
+
+    if not llm_available():
+        print("[RAG INGEST] GEMINI_API_KEY tidak tersedia; ingest embedding Gemini dilewati.")
+        return collection.count()
+
+    from app.multiagent.rag.embeddings import embed_documents
+
+    print(f"[RAG INGEST] Meng-embed {len(pending)} potongan baru dengan {settings.EMBEDDING_MODEL}...")
+    step = settings.EMBEDDING_BATCH_SIZE
+    for start in range(0, len(pending), step):
+        batch = pending[start:start + step]
+        vectors = embed_documents([documents[i] for i in batch])
+        collection.upsert(
+            ids=[ids[i] for i in batch],
+            documents=[documents[i] for i in batch],
+            metadatas=[metadatas[i] for i in batch],
+            embeddings=vectors,
+        )
+        print(f"[RAG INGEST] {min(start + step, len(pending))}/{len(pending)} potongan tersimpan.")
+
+    print(f"[RAG INGEST] Selesai. Total {collection.count()} potongan di koleksi '{collection.name}'.")
+    return collection.count()
 
 
 if __name__ == "__main__":

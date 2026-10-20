@@ -1,6 +1,5 @@
 import os
 import chromadb
-from chromadb.config import Settings as ChromaSettings
 from app.core.config import settings
 
 # ChromaDB persistence directory
@@ -17,7 +16,8 @@ def get_chroma_client():
 
 def get_or_create_collection(name: str = None):
     """
-    Mengambil atau membuat ChromaDB Collection untuk pedoman KIA/Stunting.
+    Mengambil atau membuat koleksi utama (embedding Gemini, dihitung eksplisit
+    melalui app.multiagent.rag.embeddings).
     """
     client = get_chroma_client()
     collection_name = name or settings.CHROMA_COLLECTION_NAME
@@ -26,3 +26,15 @@ def get_or_create_collection(name: str = None):
         metadata={"hnsw:space": "cosine"}
     )
 
+
+def get_legacy_collection():
+    """
+    Koleksi lama (embedding default Chroma) sebagai cadangan offline.
+    Mengembalikan None jika koleksi tidak ada atau kosong.
+    """
+    client = get_chroma_client()
+    try:
+        col = client.get_collection(name=settings.CHROMA_LEGACY_COLLECTION_NAME)
+    except Exception:
+        return None
+    return col if col.count() > 0 else None

@@ -100,7 +100,7 @@ class AuditLogResponse(BaseModel):
     input_instruction: str
     agent_output: str
     reference_context: Optional[str]
-    is_compliant: bool
+    is_compliant: Optional[bool] = None
     evaluation_notes: Optional[str]
     created_at: Any
 
