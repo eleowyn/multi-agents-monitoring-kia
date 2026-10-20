@@ -30,9 +30,10 @@ class AgentState(TypedDict):
     recommender_mode: Optional[str]        # "LLM_REACT" | "MODE_FALLBACK" | "NO_RISK"
     thought_process: Optional[List[str]]   # Jejak penalaran ReAct loop untuk transparansi auditable
     
-    # 5. Output dari Agent 3: Verifikasi & Laporan
+    # 5. Output dari Agent 3: Verifikasi & Laporan (LLM-Judge Grounding)
     verification_details: List[Dict[str, Any]] # Status validasi grounding per rekomendasi
     overall_status: str                # "KONDISI_BAIK" | "PERLU_PERHATIAN" | "RISIKO_TINGGI"
+    verifier_mode: Optional[str]        # "LLM_JUDGE" | "MODE_FALLBACK" | "SINGLE_PASS_HEALTHY"
     final_report_json: Dict[str, Any]  # Ringkasan laporan terstruktur final
     
     # 6. Human-in-the-loop & Iteration Control
