@@ -24,9 +24,11 @@ class AgentState(TypedDict):
     requires_rag: bool                 # Flag routing kondisional apakah perlu panggil Agent 2
     narrative_mode: str                # "LLM" (Stage 2 Gemini) | "MODE_FALLBACK" (narasi berbasis aturan)
     
-    # 4. Output dari Agent 2: Rekomendasi Klinis RAG
+    # 4. Output dari Agent 2: Rekomendasi Klinis RAG (ReAct)
     recommendations: List[Dict[str, Any]] # Daftar rekomendasi klinis terstruktur & sitasi
     retrieved_chunks: List[Dict[str, Any]] # Potongan dokumen rujukan Buku KIA / PNPK
+    recommender_mode: Optional[str]        # "LLM_REACT" | "MODE_FALLBACK" | "NO_RISK"
+    thought_process: Optional[List[str]]   # Jejak penalaran ReAct loop untuk transparansi auditable
     
     # 5. Output dari Agent 3: Verifikasi & Laporan
     verification_details: List[Dict[str, Any]] # Status validasi grounding per rekomendasi

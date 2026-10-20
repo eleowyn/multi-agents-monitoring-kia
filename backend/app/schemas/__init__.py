@@ -4,6 +4,7 @@ from app.schemas.visit import VisitCreate, VisitResponse
 from app.schemas.report import ReportValidationRequest, ReportResponse
 from app.schemas.admin import DashboardSummary, VillageStats, AuditLogResponse
 from app.schemas.revision import RevisionCreate, RevisionValidationRequest, RevisionResponse
+from app.schemas.recommendation import RecommendationItem, CitationModel
 
 __all__ = [
     "Token",
@@ -24,6 +25,8 @@ __all__ = [
     "AuditLogResponse",
     "RevisionCreate",
     "RevisionValidationRequest",
-    "RevisionResponse"
+    "RevisionResponse",
+    "RecommendationItem",
+    "CitationModel",
 ]
 
