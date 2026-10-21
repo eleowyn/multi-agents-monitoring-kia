@@ -108,7 +108,8 @@ def validate_report_by_kader(
             iteration_count=report.revision_count,
         )
 
-        revised_state = kia_multiagent_app.invoke(initial_state)
+        thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
+        revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
 
         # Perbarui laporan dengan hasil revisi
         report.risk_flags = revised_state.get("risk_flags", [])

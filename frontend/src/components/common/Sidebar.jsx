@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import {
   ClipboardList,
   Users,
-  CheckCircle2,
   LayoutDashboard,
   UserCheck,
   ShieldAlert,
@@ -46,44 +45,32 @@ const Sidebar = ({ isOpen, onClose }) => {
   const links = isKader ? kaderLinks : adminLinks;
 
   const sidebarContent = (
-    <>
-      <div className="space-y-1">
-        <p className="px-3 text-[11px] font-bold text-dim uppercase tracking-wider mb-3">
-          {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
-        </p>
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  isActive
-                    ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-sm border border-sky-200 dark:border-sky-800/50"
-                    : "text-label hover:bg-muted hover:text-heading"
-                }`
-              }
-              aria-label={link.label}
-            >
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
-              <span>{link.label}</span>
-            </NavLink>
-          );
-        })}
-      </div>
-
-      <div className="bg-accent-sky rounded-xl p-3.5 border border-sky-200 dark:border-sky-800/50 text-xs">
-        <p className="font-semibold mb-1 flex items-center gap-1.5 text-sky-800 dark:text-sky-300">
-          <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-          <span>Sistem Aktif</span>
-        </p>
-        <p className="text-sky-600 dark:text-sky-400/80 text-[11px] leading-relaxed">
-          Multi-Agent LangGraph + RAG Buku KIA & PNPK Stunting 2022
-        </p>
-      </div>
-    </>
+    <div className="space-y-1">
+      <p className="px-3 text-[11px] font-bold text-dim uppercase tracking-wider mb-3">
+        {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
+      </p>
+      {links.map((link) => {
+        const Icon = link.icon;
+        return (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                isActive
+                  ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-sm border border-sky-200 dark:border-sky-800/50"
+                  : "text-label hover:bg-muted hover:text-heading"
+              }`
+            }
+            aria-label={link.label}
+          >
+            <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
+            <span>{link.label}</span>
+          </NavLink>
+        );
+      })}
+    </div>
   );
 
   return (

@@ -141,8 +141,8 @@ const ManagePasien = () => {
     "w-full px-3.5 py-2.5 bg-subtle border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200";
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
           <h2 className="text-xl font-bold text-heading">
             Kelola Data Pasien (Admin Puskesmas)
@@ -196,12 +196,12 @@ const ManagePasien = () => {
           <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
-                <th className="p-3.5">ID</th>
-                <th className="p-3.5">Nama & NIK</th>
-                <th className="p-3.5">Tipe</th>
-                <th className="p-3.5">Tanggal Lahir</th>
-                <th className="p-3.5">Desa / Posyandu</th>
-                <th className="p-3.5 text-center">Aksi Administrator</th>
+                <th className="p-3">ID</th>
+                <th className="p-3">Nama & NIK</th>
+                <th className="p-3">Tipe</th>
+                <th className="p-3">Tanggal Lahir</th>
+                <th className="p-3">Desa / Posyandu</th>
+                <th className="p-3 text-center">Aksi Administrator</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
@@ -223,12 +223,12 @@ const ManagePasien = () => {
               ) : (
                 filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-accent-sky transition-colors duration-150">
-                    <td className="p-3.5 text-dim font-bold">#{p.id}</td>
-                    <td className="p-3.5">
+                    <td className="p-3 text-dim font-bold">#{p.id}</td>
+                    <td className="p-3">
                       <p className="font-bold text-heading">{p.name}</p>
                       <p className="text-[11px] text-dim">NIK: {p.nik}</p>
                     </td>
-                    <td className="p-3.5">
+                    <td className="p-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                           p.patient_type === "MOTHER"
@@ -241,8 +241,8 @@ const ManagePasien = () => {
                           : `Anak (${p.gender || "-"})`}
                       </span>
                     </td>
-                    <td className="p-3.5 text-body">{p.birth_date}</td>
-                    <td className="p-3.5 text-body">
+                    <td className="p-3 text-body">{p.birth_date}</td>
+                    <td className="p-3 text-body">
                       <p className="font-semibold text-heading">
                         {p.village_name || "-"}
                       </p>
@@ -250,7 +250,7 @@ const ManagePasien = () => {
                         {p.posyandu_name || "-"}
                       </p>
                     </td>
-                    <td className="p-3.5 text-center">
+                    <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(p)}

@@ -230,8 +230,9 @@ def validate_revision_by_admin(
                     iteration_count=0
                 )
 
-                # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui
-                revised_state = kia_multiagent_app.invoke(initial_state)
+                # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui (Stateful Checkpointer)
+                thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
+                revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
 
                 report.risk_flags = revised_state.get("risk_flags", [])
                 report.risk_narrative = revised_state.get("risk_narrative", "")

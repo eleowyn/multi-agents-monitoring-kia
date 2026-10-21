@@ -23,8 +23,8 @@ const AuditLogs = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
         <div>
           <h2 className="text-xl font-bold text-heading">
             Audit Log Evaluator AI Independen
@@ -48,11 +48,11 @@ const AuditLogs = () => {
           <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
-                <th className="p-3.5">ID & Waktu</th>
-                <th className="p-3.5">Nama Agent</th>
-                <th className="p-3.5">Instruksi Awal</th>
-                <th className="p-3.5">Kepatuhan LLM (Biner)</th>
-                <th className="p-3.5">Catatan Evaluasi</th>
+                <th className="p-3">ID & Waktu</th>
+                <th className="p-3">Nama Agent</th>
+                <th className="p-3">Instruksi Awal</th>
+                <th className="p-3">Kepatuhan LLM (Biner)</th>
+                <th className="p-3">Catatan Evaluasi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
@@ -68,22 +68,22 @@ const AuditLogs = () => {
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="hover:bg-accent-sky transition-colors duration-150">
-                    <td className="p-3.5 text-caption">
+                    <td className="p-3 text-caption">
                       <p className="font-bold text-heading">#{log.id}</p>
                       <p className="text-[10px] text-dim">
                         {log.created_at}
                       </p>
                     </td>
-                    <td className="p-3.5 font-semibold text-heading">
+                    <td className="p-3 font-semibold text-heading">
                       {log.agent_name}
                     </td>
                     <td
-                      className="p-3.5 text-body max-w-xs truncate"
+                      className="p-3 text-body max-w-xs truncate"
                       title={log.input_instruction}
                     >
                       {log.input_instruction}
                     </td>
-                    <td className="p-3.5">
+                    <td className="p-3">
                       {log.is_compliant === true ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-[10px] font-bold">
                           <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -101,7 +101,7 @@ const AuditLogs = () => {
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5 text-caption text-[11px] max-w-sm">
+                    <td className="p-3 text-caption text-[11px] max-w-sm">
                       {log.evaluation_notes}
                     </td>
                   </tr>

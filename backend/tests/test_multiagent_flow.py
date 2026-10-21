@@ -64,7 +64,8 @@ def test_multiagent_flow_risky_baduta(setup_knowledge_base):
         "is_approved_by_kader": None
     }
 
-    final_state = app.invoke(initial_state)
+    config = {"configurable": {"thread_id": f"test_visit_{initial_state['visit_id']}"}}
+    final_state = app.invoke(initial_state, config=config)
 
     # Verifikasi Alur & Luaran Agent
     assert final_state["requires_rag"] is True
@@ -113,7 +114,8 @@ def test_multiagent_flow_healthy_baduta(setup_knowledge_base):
         "is_approved_by_kader": None
     }
 
-    final_state = app.invoke(initial_state)
+    config = {"configurable": {"thread_id": f"test_visit_{initial_state['visit_id']}"}}
+    final_state = app.invoke(initial_state, config=config)
 
     assert final_state["requires_rag"] is False
     assert len(final_state["risk_flags"]) == 0
@@ -158,7 +160,8 @@ def test_multiagent_flow_maternal_kek_anemia(setup_knowledge_base):
         "is_approved_by_kader": None
     }
 
-    final_state = app.invoke(initial_state)
+    config = {"configurable": {"thread_id": f"test_visit_{initial_state['visit_id']}"}}
+    final_state = app.invoke(initial_state, config=config)
 
     assert final_state["requires_rag"] is True
     assert any(f["flag"] == "RISIKO_KEK_MATERNAL" for f in final_state["risk_flags"])

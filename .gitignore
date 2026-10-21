@@ -176,3 +176,4 @@ frontend/.env.*
 backend/chroma_db/
 backend/.venv   
 backend/.env  
+backend/generated_reports/

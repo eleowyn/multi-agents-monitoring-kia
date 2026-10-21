@@ -86,8 +86,9 @@ def create_visit_and_analyze(
         iteration_count=0
     )
 
-    # 3. Eksekusi Multi-Agent LangGraph
-    final_state = kia_multiagent_app.invoke(initial_state)
+    # 3. Eksekusi Multi-Agent LangGraph (Stateful Checkpointer per Visit ID)
+    thread_config = {"configurable": {"thread_id": f"visit_{visit.id}"}}
+    final_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
 
     # 4. Simpan Hasil ke Tabel Reports
     report = Report(

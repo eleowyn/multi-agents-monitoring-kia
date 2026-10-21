@@ -41,10 +41,6 @@ const Login = () => {
     }
   };
 
-  const handleQuickDemo = (userType) => {
-    if (userType === "kader") { setUsername("kader1"); setPassword("kader123"); }
-    else { setUsername("admin"); setPassword("admin123"); }
-  };
 
   const features = [
     { icon: Heart, title: "Monitoring 1.000 HPK", desc: "Deteksi dini risiko stunting, BBLR, dan KEK berbasis data antropometri" },
@@ -98,7 +94,6 @@ const Login = () => {
               })}
             </div>
           </div>
-          <p className="text-sky-300/60 text-xs mt-8">© 2024 — Skripsi Sistem Multi-Agent AI KIA</p>
         </div>
       </div>
 
@@ -179,25 +174,8 @@ const Login = () => {
                 </button>
               </form>
 
-              <div className="mt-7 pt-6 border-t border-line-light">
-                <p className="text-xs font-semibold text-dim uppercase tracking-wider mb-3 text-center">Pintasan Demo Akun</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => handleQuickDemo("kader")} aria-label="Isi otomatis akun demo Kader Posyandu"
-                    className="py-2.5 px-3 bg-subtle hover:bg-accent-sky hover:text-sky-700 dark:hover:text-sky-300 hover:border-sky-200 dark:hover:border-sky-800/50 active:bg-sky-100 dark:active:bg-sky-900/40 border border-line rounded-xl text-xs font-semibold transition-all duration-200 text-label text-center"
-                  >
-                    Kader Posyandu
-                  </button>
-                  <button type="button" onClick={() => handleQuickDemo("admin")} aria-label="Isi otomatis akun demo Admin Puskesmas"
-                    className="py-2.5 px-3 bg-subtle hover:bg-accent-sky hover:text-sky-700 dark:hover:text-sky-300 hover:border-sky-200 dark:hover:border-sky-800/50 active:bg-sky-100 dark:active:bg-sky-900/40 border border-line rounded-xl text-xs font-semibold transition-all duration-200 text-label text-center"
-                  >
-                    Admin Puskesmas
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
-
-          <p className="lg:hidden text-center text-xs text-dim mt-6">© 2024 — Sistem Multi-Agent AI KIA</p>
         </div>
       </div>
     </div>

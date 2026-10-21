@@ -57,8 +57,8 @@ const ManageKader = () => {
     "w-full px-3.5 py-2.5 bg-subtle border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200";
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
         <div>
           <h2 className="text-xl font-bold text-heading">
             Kelola Kader Posyandu
@@ -82,30 +82,30 @@ const ManageKader = () => {
           <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
-                <th className="p-3.5">Nama Kader</th>
-                <th className="p-3.5">Username & Email</th>
-                <th className="p-3.5">Posyandu</th>
-                <th className="p-3.5">Desa / Kelurahan</th>
-                <th className="p-3.5 text-center">Status</th>
+                <th className="p-3">Nama Kader</th>
+                <th className="p-3">Username & Email</th>
+                <th className="p-3">Posyandu</th>
+                <th className="p-3">Desa / Kelurahan</th>
+                <th className="p-3 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {kaders.map((k) => (
                 <tr key={k.id} className="hover:bg-accent-sky transition-colors duration-150">
-                  <td className="p-3.5 font-bold text-heading">
+                  <td className="p-3 font-bold text-heading">
                     {k.full_name}
                   </td>
-                  <td className="p-3.5 text-body">
+                  <td className="p-3 text-body">
                     <p className="font-semibold text-heading">{k.username}</p>
                     <p className="text-[11px] text-caption">{k.email}</p>
                   </td>
-                  <td className="p-3.5 text-body">
+                  <td className="p-3 text-body">
                     {k.posyandu_name || "-"}
                   </td>
-                  <td className="p-3.5 text-body">
+                  <td className="p-3 text-body">
                     {k.village_name || "-"}
                   </td>
-                  <td className="p-3.5 text-center">
+                  <td className="p-3 text-center">
                     <span className="px-2.5 py-0.5 bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-full text-[10px] font-bold">
                       Aktif
                     </span>
