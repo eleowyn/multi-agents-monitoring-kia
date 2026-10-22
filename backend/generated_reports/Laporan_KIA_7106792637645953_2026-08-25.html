@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lembar Hasil Pemantauan KIA - Posyandu Airmadidi</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: #2d3748;
+        line-height: 1.5;
+        font-size: 12pt;
+      }
+      .header {
+        text-align: center;
+        border-bottom: 2px solid #3182ce;
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+      }
+      .header h2 {
+        margin: 0;
+        color: #2b6cb0;
+        font-size: 16pt;
+        text-transform: uppercase;
+      }
+      .header p {
+        margin: 4px 0 0 0;
+        font-size: 10pt;
+        color: #718096;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 10pt;
+        text-transform: uppercase;
+      }
+      .badge-green {
+        background-color: #c6f6d5;
+        color: #22543d;
+      }
+      .badge-yellow {
+        background-color: #fefcbf;
+        color: #744210;
+      }
+      .badge-red {
+        background-color: #fed7d7;
+        color: #742a2a;
+      }
+      .section-title {
+        font-size: 13pt;
+        font-weight: bold;
+        color: #2c5282;
+        border-left: 4px solid #3182ce;
+        padding-left: 8px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+      }
+      th,
+      td {
+        border: 1px solid #e2e8f0;
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 10.5pt;
+      }
+      th {
+        background-color: #f7fafc;
+        color: #4a5568;
+        font-weight: 600;
+      }
+      .recommendation-box {
+        background-color: #ebf8ff;
+        border: 1px solid #bee3f8;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .recommendation-title {
+        font-weight: bold;
+        color: #2b6cb0;
+        margin-bottom: 4px;
+      }
+      .citation-tag {
+        font-size: 9pt;
+        color: #4a5568;
+        font-style: italic;
+        margin-top: 6px;
+      }
+      .footer {
+        margin-top: 30px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .signature-box {
+        width: 45%;
+        text-align: center;
+        font-size: 10pt;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h2>Pemerintah Kabupaten Minahasa Utara</h2>
+      <p>
+        Puskesmas Kecamatan Airmadidi &bull; Pos Pelayanan Terpadu (Posyandu)
+      </p>
+      <p>
+        <strong
+          >LEMBAR REKOMENDASI PEMANTAUAN KESEHATAN IBU DAN ANAK (1.000
+          HPK)</strong
+        >
+      </p>
+    </div>
+
+    <div class="section-title">I. Identitas Pasien & Kunjungan</div>
+    <table>
+      <tr>
+        <th width="30%">Nama Pasien</th>
+        <td>Ibu Uji Endpoints</td>
+        <th width="20%">Fase 1.000 HPK</th>
+        <td>IBU_HAMIL</td>
+      </tr>
+      <tr>
+        <th>NIK</th>
+        <td>7106792637645953</td>
+        <th>Tanggal Kunjungan</th>
+        <td>2026-08-25</td>
+      </tr>
+      <tr>
+        <th>Desa / Kelurahan</th>
+        <td>Airmadidi Atas</td>
+        <th>Status Pemantauan</th>
+        <td>
+          
+          <span class="badge badge-yellow">Perlu Perhatian</span>
+          
+        </td>
+      </tr>
+    </table>
+
+    <div class="section-title">II. Hasil Analisis Klinis & Deteksi Risiko</div>
+    <p><strong>Ringkasan:</strong> Terdeteksi 2 indikator risiko klinis pada pemeriksaan IBU_HAMIL. Status keseluruhan: PERLU_PERHATIAN. Laporan telah diverifikasi tingkat keterhubungan (grounding) terhadap Buku KIA dan PNPK Tata Laksana Stunting.</p>
+    <p>
+      <strong>Temuan Pengukuran:</strong> Pada pemeriksaan trimester 1, ibu hamil teridentifikasi mengalami Kekurangan Energi Kronis (KEK) dengan ukuran LiLA 22,0 cm dan Anemia Sedang berdasarkan kadar Hb 9,5 g/dL. Penilaian penapisan KSPR menunjukkan skor 2 yang tergolong Kehamilan Risiko Rendah (KRR). Belum terdapat data riwayat kunjungan sebelumnya yang tercatat pada sistem untuk pasien ini. Kombinasi risiko KEK dan Anemia Sedang ini menjadi fokus perhatian utama yang memerlukan pendampingan serta pemantauan ketat pada kunjungan Posyandu berikutnya.
+    </p>
+
+    
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Indikator</th>
+          <th>Tingkat Risiko</th>
+          <th>Rincian Temuan</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td>1</td>
+          <td>LILA_KEK</td>
+          <td><strong>RISIKO_KEK_MATERNAL</strong></td>
+          <td>Lingkar Lengan Atas (LiLA) 22.0 cm (< 23.5 cm) mengindikasikan ibu hamil mengalami Kekurangan Energi Kronis (KEK).</td>
+        </tr>
+        
+        <tr>
+          <td>2</td>
+          <td>HEMOGLOBIN</td>
+          <td><strong>RISIKO_ANEMIA_SEDANG</strong></td>
+          <td>Kadar Hb 9.5 g/dL pada Trimester 1 (ambang normal 11.0 g/dL) tergolong Anemia Sedang.</td>
+        </tr>
+        
+      </tbody>
+    </table>
+    
+
+    <div class="section-title">
+      III. Rekomendasi Klinis & Tindakan Kader (Berbasis Rujukan)
+    </div>
+    
+    <div class="recommendation-box">
+      <div class="recommendation-title">
+        1. Rujukan ke Puskesmas Airmadidi untuk Evaluasi Medis KEK dan Anemia Sedang [RUJUKAN]
+      </div>
+      <div>Dampingi ibu hamil untuk melakukan pemeriksaan Antenatal Care (ANC) terintegrasi di Puskesmas Airmadidi guna penanganan medis terhadap kondisi Anemia Sedang (Hb 9,5 g/dL) dan Kekurangan Energi Kronis (LiLA 22,0 cm). Dokter akan menentukan dosis terapi suplemen besi dan evaluasi kondisi janin.</div>
+      
+      <ul style="margin: 6px 0 0 0; padding-left: 20px">
+        
+        <li>Mendampingi ibu berkunjung ke Puskesmas Airmadidi untuk mendapatkan pemeriksaan dokter dan peresepan suplemen/obat penambah darah sesuai dosis medis.</li>
+        
+        <li>Melakukan koordinasi dengan petugas kesga/gizi Puskesmas untuk pendaftaran program Pemantauan Ibu Hamil Risiko KEK dan Anemia.</li>
+        
+      </ul>
+      
+      <div class="citation-tag">
+        &bull; Rujukan: Buku KIA Kesehatan Ibu Hamil (Kemenkes RI 2020) - Pelayanan Pemeriksaan Kehamilan dan Penanganan Anemia pada Kehamilan
+        (Hal. 16)
+      </div>
+    </div>
+    
+    <div class="recommendation-box">
+      <div class="recommendation-title">
+        2. Pemberian Makanan Tambahan (PMT) Pemulihan dan Edukasi Gizi Ibu Hamil KEK [GIZI_MATERNAL]
+      </div>
+      <div>Fasilitasi ibu hamil untuk mendapatkan PMT Pemulihan Ibu Hamil KEK berbasis bahan pangan lokal padat gizi dan energi tinggi, serta edukasi asupan gizi seimbang harian.</div>
+      
+      <ul style="margin: 6px 0 0 0; padding-left: 20px">
+        
+        <li>Mengusulkan ibu hamil masuk dalam daftar penerima PMT Pemulihan Posyandu/Puskesmas.</li>
+        
+        <li>Menganjurkan ibu mengonsumsi sumber protein hewani (telur, ikan, daging merah, hati ayam) serta makanan kaya zat besi dan asam folat setiap hari.</li>
+        
+        <li>Memantau pertambahan berat badan ibu dan lingkar lengan atas (LiLA) secara berkala setiap bulan di Posyandu.</li>
+        
+      </ul>
+      
+      <div class="citation-tag">
+        &bull; Rujukan: Buku_KIA_2024 (1).pdf - Pengukuran & Pencatatan Oleh Tenaga Kesehatan
+        (Hal. 50)
+      </div>
+    </div>
+    
+    <div class="recommendation-box">
+      <div class="recommendation-title">
+        3. Pendampingan dan Pemantauan Kepatuhan Konsumsi Tablet Tambah Darah (TTD) [MEDIS]
+      </div>
+      <div>Pastikan ibu hamil meminum Tablet Tambah Darah secara rutin minimal 90 tablet selama masa kehamilan untuk mengatasi anemia sedang dan mencegah komplikasi pada ibu dan janin.</div>
+      
+      <ul style="margin: 6px 0 0 0; padding-left: 20px">
+        
+        <li>Memastikan ibu meminum TTD sesuai regulasi dan tata laksana dokter Puskesmas.</li>
+        
+        <li>Mengingatkan ibu untuk meminum TTD pada malam hari sebelum tidur menggunakan air putih atau jus buah tinggi vitamin C (seperti jeruk) guna mengoptimalkan penyerapan zat besi.</li>
+        
+        <li>Mengedukasi ibu agar menghindari minum TTD bersamaan dengan teh, kopi, atau susu yang dapat menghambat penyerapan zat besi.</li>
+        
+      </ul>
+      
+      <div class="citation-tag">
+        &bull; Rujukan: PNPK 2022 - Tata Laksana Stunting.pdf - Halaman 24
+        (Hal. 24)
+      </div>
+    </div>
+    
+    <div class="recommendation-box">
+      <div class="recommendation-title">
+        4. Edukasi Tanda Bahaya Kehamilan dan Persiapan Perencanaan Persalinan (P4K) [EDUKASI]
+      </div>
+      <div>Berikan edukasi kesehatan reproduksi dan kewaspadaan terhadap tanda bahaya kehamilan trimester 1 serta mulai menyusun rencana persalinan aman.</div>
+      
+      <ul style="margin: 6px 0 0 0; padding-left: 20px">
+        
+        <li>Mengedukasi ibu dan keluarga mengenai tanda bahaya kehamilan (perdarahan jalan lahir, mual-muntah berlebihan, sakit kepala hebat, atau badan lemas berlebih).</li>
+        
+        <li>Membantu keluarga mengisi stiker P4K (Perencanaan Persalinan dan Pencegahan Komplikasi) termasuk persiapan calon donor darah dan moda transportasi emergensi ke Puskesmas/RS.</li>
+        
+      </ul>
+      
+      <div class="citation-tag">
+        &bull; Rujukan: Pedoman Skrining Antenatal Poedji Rochjati (Kemenkes RI) - Rujukan dan Tata Laksana Ibu Hamil Risiko Tinggi (KRT/KRST)
+        (Hal. 9)
+      </div>
+    </div>
+    
+
+    <table style="border: none; margin-top: 30px">
+      <tr style="border: none">
+        <td style="border: none; width: 50%; text-align: center">
+          <p>Mengetahui / Menyetujui,<br /><strong>Kader Posyandu</strong></p>
+          <br /><br /><br />
+          <p>( Elshera Kader Posyandu )</p>
+        </td>
+        <td style="border: none; width: 50%; text-align: center">
+          <p>
+            Airmadidi, 22 October 2026<br /><strong
+              >Tenaga Kesehatan / Bidan Desa</strong
+            >
+          </p>
+          <br /><br /><br />
+          <p>( ..................................................... )</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
