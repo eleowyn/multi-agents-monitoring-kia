@@ -10,12 +10,72 @@ from app.models.report import Report, ReportStatus
 from app.models.visit import Visit
 from app.models.patient import Patient
 from app.models.user import User, UserRole
-from app.schemas.report import ReportResponse, ReportValidationRequest
+from app.schemas.report import ReportResponse, ReportValidationRequest, ReportListItemResponse
 from app.api.v1.endpoints.auth import get_current_user
 from app.services.pdf_service import generate_visit_report_pdf
 from app.multiagent.graph import kia_multiagent_app
 
 router = APIRouter()
+
+
+@router.get("/", response_model=List[ReportListItemResponse])
+def list_reports(
+    status: Optional[ReportStatus] = None,
+    overall_status: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Mengambil daftar laporan KIA untuk arsip kader dan rekapitulasi.
+    Data disesuaikan wilayah Posyandu jika diakses oleh Kader.
+    """
+    query = (
+        db.query(Report)
+        .join(Patient, Report.patient_id == Patient.id)
+        .join(Visit, Report.visit_id == Visit.id)
+    )
+
+    if current_user.role == UserRole.KADER and current_user.village_name:
+        query = query.filter(Patient.village_name == current_user.village_name)
+
+    if status:
+        query = query.filter(Report.status == status)
+
+    if overall_status:
+        query = query.filter(Report.overall_status == overall_status)
+
+    if search:
+        s = f"%{search.strip()}%"
+        query = query.filter((Patient.name.ilike(s)) | (Patient.nik.like(s)))
+
+    reports = query.order_by(Report.id.desc()).all()
+
+    results = []
+    for r in reports:
+        p = r.patient
+        v = r.visit
+        results.append(
+            ReportListItemResponse(
+                id=r.id,
+                visit_id=r.visit_id,
+                patient_id=r.patient_id,
+                patient_name=p.name if p else None,
+                patient_nik=p.nik if p else None,
+                patient_type=p.patient_type.value if (p and hasattr(p.patient_type, "value")) else (str(p.patient_type) if p else None),
+                village_name=p.village_name if p else None,
+                posyandu_name=p.posyandu_name if p else None,
+                phase=v.phase.value if (v and hasattr(v.phase, "value")) else (str(v.phase) if v else None),
+                visit_date=str(v.visit_date) if v else None,
+                overall_status=r.overall_status,
+                status=r.status,
+                risk_count=len(r.risk_flags) if r.risk_flags else 0,
+                revision_count=r.revision_count,
+                validated_at=r.validated_at,
+                has_pdf=bool(r.pdf_path and os.path.exists(r.pdf_path))
+            )
+        )
+    return results
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
@@ -64,7 +124,7 @@ def validate_report_by_kader(
 
     # Data Scoping: Pastikan kader melayani pasien di wilayah posyandunya
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name != current_user.village_name:
+        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Laporan ini milik Posyandu desa lain.")
 
     if val_req.status == ReportStatus.APPROVED:

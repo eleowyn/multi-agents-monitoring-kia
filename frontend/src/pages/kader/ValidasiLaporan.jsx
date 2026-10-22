@@ -248,9 +248,9 @@ const ValidasiLaporan = () => {
   const currentStatus = statusConfig[report.overall_status];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       {/* Back Button & Title */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
         <button
           onClick={() => navigate("/kader/input-kunjungan")}
           aria-label="Kembali ke halaman input kunjungan"
@@ -599,7 +599,7 @@ const ValidasiLaporan = () => {
       {/* ═══ Modal Rejection / Loopback ═══ */}
       {showRejectModal && (
         <div
-          className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center p-4 z-50 animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowRejectModal(false);
           }}

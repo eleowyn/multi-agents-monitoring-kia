@@ -36,7 +36,7 @@ def create_visit_and_analyze(
 
     # Data Scoping: Pastikan kader melayani pasien di wilayah posyandunya
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name != current_user.village_name:
+        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     # 1. Simpan Kunjungan

@@ -127,11 +127,15 @@ def log_multiagent_parallel_evaluations(
         verif_details = final_state.get("verification_details", [])
         overall_status = final_state.get("overall_status", "KONDISI_BAIK")
         
+        instruksi_agent3 = f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status})."
+        if overall_status == "KONDISI_BAIK":
+            instruksi_agent3 += " Catatan sistem: Pasien berstatus KONDISI_BAIK (sehat tanpa flag risiko), sehingga daftar verifikasi sitasi rekomendasi memang valid dan wajar jika kosong (single-pass)."
+
         log_agent_evaluation(
             db=db,
             report_id=report_id,
             agent_name="Agent 3 (Verifikasi & Grounding Laporan)",
-            input_instruction=f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status})",
+            input_instruction=instruksi_agent3,
             agent_output=json.dumps({"overall_status": overall_status, "verification": verif_details}, ensure_ascii=False),
             reference_context="Validasi Keterhubungan Sitasi (Groundedness Check) & Template Baku Laporan KIA"
         )

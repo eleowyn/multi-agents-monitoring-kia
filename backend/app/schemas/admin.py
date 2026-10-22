@@ -108,3 +108,7 @@ class AuditLogResponse(BaseModel):
         from_attributes = True
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
+
+

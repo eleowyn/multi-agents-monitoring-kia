@@ -86,10 +86,10 @@ const DataPasien = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-lg sm:text-xl font-bold text-heading">Direktori & Riwayat Pasien KIA</h2>
-        <p className="text-sm text-caption mt-1">Pelacakan rekam medis longitudinal ibu dan anak lintas fase 1.000 HPK</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+      <div className="pb-3 border-b border-line-light">
+        <h2 className="text-xl font-bold text-heading">Direktori & Riwayat Pasien KIA</h2>
+        <p className="text-xs text-caption mt-0.5">Pelacakan rekam medis longitudinal ibu dan anak lintas fase 1.000 HPK</p>
       </div>
 
       {error && (
@@ -105,18 +105,18 @@ const DataPasien = () => {
       )}
 
       {/* Filter & Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1" role="search">
           <input type="text" placeholder="Cari berdasarkan nama atau 16 digit NIK..." value={search} onChange={(e) => setSearch(e.target.value)}
             aria-label="Cari pasien berdasarkan nama atau NIK"
-            className="w-full pl-10 pr-4 py-3 bg-card border border-line rounded-xl text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-200"
+            className="w-full pl-9 pr-4 py-2.5 bg-card border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-200"
           />
-          <Search className="w-[18px] h-[18px] text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+          <Search className="w-4 h-4 text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
         </div>
         <div className="flex gap-2" role="group" aria-label="Filter tipe pasien">
           {filterButtons.map((btn) => (
             <button key={btn.value} onClick={() => setFilterType(btn.value)} aria-pressed={filterType === btn.value}
-              className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border ${
                 filterType === btn.value ? btn.activeClass : "bg-card border-line text-label hover:bg-muted hover:border-line"
               }`}
             >{btn.label}</button>
@@ -133,14 +133,14 @@ const DataPasien = () => {
       {/* Desktop Table */}
       <div className="hidden md:block bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         {loading ? (
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
-                <th className="p-4 font-semibold">NIK & Nama Pasien</th>
-                <th className="p-4 font-semibold">Tipe & Jenis Kelamin</th>
-                <th className="p-4 font-semibold">Tanggal Lahir</th>
-                <th className="p-4 font-semibold">Desa / Posyandu</th>
-                <th className="p-4 font-semibold text-center">Aksi</th>
+                <th className="p-3 font-semibold">NIK & Nama Pasien</th>
+                <th className="p-3 font-semibold">Tipe & Jenis Kelamin</th>
+                <th className="p-3 font-semibold">Tanggal Lahir</th>
+                <th className="p-3 font-semibold">Desa / Posyandu</th>
+                <th className="p-3 font-semibold text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
@@ -152,25 +152,25 @@ const DataPasien = () => {
             <p className="text-xs text-dim mt-1">{search ? "Coba ubah kata kunci pencarian atau filter" : "Data pasien akan muncul setelah didaftarkan oleh kader"}</p>
           </div>
         ) : (
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
-                <th className="p-4 font-semibold">NIK & Nama Pasien</th>
-                <th className="p-4 font-semibold">Tipe & Jenis Kelamin</th>
-                <th className="p-4 font-semibold">Tanggal Lahir</th>
-                <th className="p-4 font-semibold">Desa / Posyandu</th>
-                <th className="p-4 font-semibold text-center">Aksi</th>
+                <th className="p-3 font-semibold">NIK & Nama Pasien</th>
+                <th className="p-3 font-semibold">Tipe & Jenis Kelamin</th>
+                <th className="p-3 font-semibold">Tanggal Lahir</th>
+                <th className="p-3 font-semibold">Desa / Posyandu</th>
+                <th className="p-3 font-semibold text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-accent-sky transition-colors duration-150">
-                  <td className="p-4">
+                  <td className="p-3">
                     <p className="font-semibold text-heading">{p.name}</p>
-                    <p className="text-xs text-dim mt-0.5">NIK: {p.nik}</p>
+                    <p className="text-[11px] text-dim mt-0.5">NIK: {p.nik}</p>
                   </td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  <td className="p-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                       p.patient_type === "MOTHER"
                         ? "bg-accent-pink text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/50"
                         : "bg-accent-blue text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
@@ -178,11 +178,11 @@ const DataPasien = () => {
                       {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
                     </span>
                   </td>
-                  <td className="p-4 text-label">{p.birth_date}</td>
-                  <td className="p-4 text-label">{p.village_name || "Airmadidi"}</td>
-                  <td className="p-4 text-center">
+                  <td className="p-3 text-label">{p.birth_date}</td>
+                  <td className="p-3 text-label">{p.village_name || "Airmadidi"}</td>
+                  <td className="p-3 text-center">
                     <button onClick={() => handleViewLongitudinal(p.id)} aria-label={`Lihat riwayat longitudinal ${p.name}`}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-accent-sky hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-xl font-semibold text-xs transition-colors duration-200 border border-sky-200 dark:border-sky-800/50"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-sky hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-lg font-semibold text-xs transition-colors duration-200 border border-sky-200 dark:border-sky-800/50"
                     >
                       <GitFork className="w-3.5 h-3.5" aria-hidden="true" />Riwayat
                     </button>
@@ -236,7 +236,7 @@ const DataPasien = () => {
 
       {/* Modal */}
       {selectedLongitudinal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" style={{ backgroundColor: "var(--c-overlay)" }}
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50 animate-fade-in" style={{ backgroundColor: "var(--c-overlay)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedLongitudinal(null); }}
           role="dialog" aria-modal="true" aria-labelledby="modal-longitudinal-title"
         >

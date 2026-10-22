@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import InputKunjungan from "./pages/kader/InputKunjungan";
 import ValidasiLaporan from "./pages/kader/ValidasiLaporan";
 import DataPasien from "./pages/kader/DataPasien";
+import ArsipLaporan from "./pages/kader/ArsipLaporan";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManagePasien from "./pages/admin/ManagePasien";
 import ManageKader from "./pages/admin/ManageKader";
@@ -63,6 +64,7 @@ function App() {
           <Route path="/kader/input-kunjungan" element={<ProtectedLayout allowedRole="KADER"><InputKunjungan /></ProtectedLayout>} />
           <Route path="/kader/validasi-laporan/:reportId" element={<ProtectedLayout allowedRole="KADER"><ValidasiLaporan /></ProtectedLayout>} />
           <Route path="/kader/data-pasien" element={<ProtectedLayout allowedRole="KADER"><DataPasien /></ProtectedLayout>} />
+          <Route path="/kader/laporan-kia" element={<ProtectedLayout allowedRole="KADER"><ArsipLaporan /></ProtectedLayout>} />
           <Route path="/admin/dashboard" element={<ProtectedLayout allowedRole="ADMIN"><AdminDashboard /></ProtectedLayout>} />
           <Route path="/admin/manage-pasien" element={<ProtectedLayout allowedRole="ADMIN"><ManagePasien /></ProtectedLayout>} />
           <Route path="/admin/manage-kader" element={<ProtectedLayout allowedRole="ADMIN"><ManageKader /></ProtectedLayout>} />

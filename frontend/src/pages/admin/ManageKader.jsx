@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api, { getErrorMessage } from "../../services/api";
-import { UserCheck, Plus, Search, Shield, X } from "lucide-react";
+import { UserCheck, Plus, Search, Shield, X, Trash2 } from "lucide-react";
 
 const ManageKader = () => {
   const [kaders, setKaders] = useState([]);
@@ -12,6 +12,9 @@ const ManageKader = () => {
   const [posyanduName, setPosyanduName] = useState("");
   const [villageName, setVillageName] = useState("Airmadidi Atas");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   useEffect(() => {
     fetchKaders();
@@ -53,6 +56,64 @@ const ManageKader = () => {
     }
   };
 
+  const filtered = kaders.filter(
+    (k) =>
+      k.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      k.username?.toLowerCase().includes(search.toLowerCase()) ||
+      k.village_name?.toLowerCase().includes(search.toLowerCase()) ||
+      k.posyandu_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleToggleAll = () => {
+    if (selectedIds.length === filtered.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map((k) => k.id));
+    }
+  };
+
+  const handleToggleRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSingle = async (id, name) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus akun kader ${name}?`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/admin/kaders/${id}`);
+      alert(res.data.message || `Kader ${name} berhasil dihapus.`);
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+      fetchKaders();
+    } catch (err) {
+      alert(getErrorMessage(err, "Gagal menghapus kader."));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin menghapus ${selectedIds.length} akun kader terpilih? Kader yang memiliki data kunjungan pasien akan dilindungi demi integritas data.`
+      )
+    ) {
+      return;
+    }
+    try {
+      setDeletingBulk(true);
+      const res = await api.post("/admin/kaders/bulk-delete", { ids: selectedIds });
+      alert(res.data.message || `${res.data.deleted_count} kader berhasil dihapus.`);
+      setSelectedIds([]);
+      fetchKaders();
+    } catch (err) {
+      alert(getErrorMessage(err, "Gagal menghapus kader terpilih."));
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
+
   const INPUT_CLASS =
     "w-full px-3.5 py-2.5 bg-subtle border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200";
 
@@ -77,41 +138,129 @@ const ManageKader = () => {
         </button>
       </div>
 
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Cari nama, username, posyandu, atau desa kader..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 bg-card border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-200"
+        />
+        <Search className="w-4 h-4 text-dim absolute left-3 top-3" />
+      </div>
+
+      {selectedIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-2xl animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-sky-800 dark:text-sky-200">
+            <span className="px-2.5 py-1 bg-sky-600 text-white rounded-lg text-xs font-bold shadow-sm">
+              {selectedIds.length}
+            </span>
+            <span>Kader terpilih untuk dihapus</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-caption hover:bg-muted hover:text-heading transition-colors"
+            >
+              Batal Pilihan
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={deletingBulk}
+              className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Kader Terpilih`}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-muted text-label border-b border-line">
               <tr>
+                <th className="p-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    onChange={handleToggleAll}
+                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
+                    aria-label="Pilih semua kader"
+                  />
+                </th>
                 <th className="p-3">Nama Kader</th>
                 <th className="p-3">Username & Email</th>
                 <th className="p-3">Posyandu</th>
                 <th className="p-3">Desa / Kelurahan</th>
                 <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
-              {kaders.map((k) => (
-                <tr key={k.id} className="hover:bg-accent-sky transition-colors duration-150">
-                  <td className="p-3 font-bold text-heading">
-                    {k.full_name}
-                  </td>
-                  <td className="p-3 text-body">
-                    <p className="font-semibold text-heading">{k.username}</p>
-                    <p className="text-[11px] text-caption">{k.email}</p>
-                  </td>
-                  <td className="p-3 text-body">
-                    {k.posyandu_name || "-"}
-                  </td>
-                  <td className="p-3 text-body">
-                    {k.village_name || "-"}
-                  </td>
-                  <td className="p-3 text-center">
-                    <span className="px-2.5 py-0.5 bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-full text-[10px] font-bold">
-                      Aktif
-                    </span>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="p-6 text-center text-dim">
+                    Memuat data kader...
                   </td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="p-6 text-center text-dim italic">
+                    Tidak ada data kader ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((k) => (
+                  <tr
+                    key={k.id}
+                    className={`hover:bg-accent-sky transition-colors duration-150 ${
+                      selectedIds.includes(k.id) ? "bg-sky-50/60 dark:bg-sky-950/20" : ""
+                    }`}
+                  >
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(k.id)}
+                        onChange={() => handleToggleRow(k.id)}
+                        className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
+                        aria-label={`Pilih kader ${k.full_name}`}
+                      />
+                    </td>
+                    <td className="p-3 font-bold text-heading">
+                      {k.full_name}
+                    </td>
+                    <td className="p-3 text-body">
+                      <p className="font-semibold text-heading">{k.username}</p>
+                      <p className="text-[11px] text-caption">{k.email}</p>
+                    </td>
+                    <td className="p-3 text-body">
+                      {k.posyandu_name || "-"}
+                    </td>
+                    <td className="p-3 text-body">
+                      {k.village_name || "-"}
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className="px-2.5 py-0.5 bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-full text-[10px] font-bold">
+                        Aktif
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleDeleteSingle(k.id, k.full_name)}
+                        className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-accent-red rounded-lg transition-colors duration-150"
+                        title="Hapus Kader"
+                        aria-label={`Hapus kader ${k.full_name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -119,7 +268,7 @@ const ManageKader = () => {
 
       {showAddModal && (
         <div
-          className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center p-4 z-50 animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowAddModal(false);
           }}

@@ -34,3 +34,24 @@ class ReportResponse(BaseModel):
 class ReportValidationRequest(BaseModel):
     status: ReportStatus
     rejection_reason: Optional[str] = None
+
+
+class ReportListItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    visit_id: int
+    patient_id: int
+    patient_name: Optional[str] = None
+    patient_nik: Optional[str] = None
+    patient_type: Optional[str] = None
+    village_name: Optional[str] = None
+    posyandu_name: Optional[str] = None
+    phase: Optional[str] = None
+    visit_date: Optional[str] = None
+    overall_status: str
+    status: ReportStatus
+    risk_count: int = 0
+    revision_count: int = 0
+    validated_at: Optional[datetime] = None
+    has_pdf: bool = False

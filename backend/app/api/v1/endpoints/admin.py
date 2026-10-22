@@ -19,6 +19,7 @@ from app.schemas.admin import (
     MonthlyTrendPoint,
     PatientTrendPoint,
     PatientTrendResponse,
+    BulkDeleteRequest,
 )
 from datetime import date
 from app.multiagent.rag.vectorstore import get_or_create_collection
@@ -342,4 +343,102 @@ def create_kader(
     db.commit()
     db.refresh(kader)
     return kader
+
+
+@router.delete("/kaders/{kader_id}")
+def delete_kader(
+    kader_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Menghapus 1 akun kader jika belum memiliki rekam kunjungan."""
+    if kader_id == admin.id:
+        raise HTTPException(status_code=400, detail="Tidak dapat menghapus akun admin yang sedang aktif.")
+
+    kader = db.query(User).filter(User.id == kader_id, User.role == UserRole.KADER).first()
+    if not kader:
+        raise HTTPException(status_code=404, detail="Data kader tidak ditemukan.")
+
+    v_count = db.query(Visit).filter(Visit.kader_id == kader_id).count()
+    if v_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Kader '{kader.full_name}' telah mencatat {v_count} data kunjungan pasien. Untuk menjaga integritas data rekam medis, kader ini tidak dapat dihapus."
+        )
+
+    db.delete(kader)
+    db.commit()
+    return {"message": f"Kader {kader.full_name} berhasil dihapus."}
+
+
+@router.post("/kaders/bulk-delete")
+def bulk_delete_kaders(
+    req: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Menghapus massal akun kader yang belum memiliki rekam kunjungan."""
+    if not req.ids:
+        return {"deleted_count": 0, "message": "Tidak ada kader yang dipilih."}
+
+    blocked = []
+    to_delete = []
+
+    for kid in req.ids:
+        if kid == admin.id:
+            blocked.append(f"ID {kid} (Akun Administrator aktif)")
+            continue
+        kader = db.query(User).filter(User.id == kid, User.role == UserRole.KADER).first()
+        if not kader:
+            continue
+        v_count = db.query(Visit).filter(Visit.kader_id == kid).count()
+        if v_count > 0:
+            blocked.append(f"{kader.full_name} ({v_count} kunjungan)")
+        else:
+            to_delete.append(kader)
+
+    if blocked and not to_delete:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Kader berikut tidak dapat dihapus karena memiliki rekam medis kunjungan: {', '.join(blocked)}."
+        )
+
+    for k in to_delete:
+        db.delete(k)
+    db.commit()
+
+    msg = f"{len(to_delete)} kader berhasil dihapus."
+    if blocked:
+        msg += f" (Catatan: {len(blocked)} kader dilewati karena memiliki rekam kunjungan: {', '.join(blocked)})"
+
+    return {
+        "deleted_count": len(to_delete),
+        "blocked_count": len(blocked),
+        "message": msg
+    }
+
+
+@router.post("/audit-logs/bulk-delete")
+def bulk_delete_audit_logs(
+    req: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Menghapus massal log audit terpilih."""
+    if not req.ids:
+        return {"deleted_count": 0, "message": "Tidak ada log yang dipilih."}
+    deleted_count = db.query(AuditLog).filter(AuditLog.id.in_(req.ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted_count": deleted_count, "message": f"{deleted_count} log evaluasi audit berhasil dihapus."}
+
+
+@router.delete("/audit-logs/clear-all")
+def clear_all_audit_logs(
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Membersihkan seluruh rekam audit log evaluator AI."""
+    deleted_count = db.query(AuditLog).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted_count": deleted_count, "message": "Seluruh log audit berhasil dibersihkan."}
 

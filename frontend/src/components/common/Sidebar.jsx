@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import {
   ClipboardList,
   Users,
+  FileText,
   LayoutDashboard,
   UserCheck,
   ShieldAlert,
@@ -33,6 +34,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const kaderLinks = [
     { to: "/kader/input-kunjungan", label: "Input Kunjungan", icon: ClipboardList },
     { to: "/kader/data-pasien", label: "Data & Riwayat Pasien", icon: Users },
+    { to: "/kader/laporan-kia", label: "Arsip Laporan KIA", icon: FileText },
   ];
 
   const adminLinks = [
@@ -77,7 +79,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 z-40 lg:hidden animate-fade-in"
           onClick={onClose}
           aria-hidden="true"
         />

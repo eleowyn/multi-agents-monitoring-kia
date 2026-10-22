@@ -41,7 +41,6 @@ const Login = () => {
     }
   };
 
-
   const features = [
     { icon: Heart, title: "Monitoring 1.000 HPK", desc: "Deteksi dini risiko stunting, BBLR, dan KEK berbasis data antropometri" },
     { icon: BarChart3, title: "Analisis Multi-Agent AI", desc: "3 agen cerdas (Deterministic + RAG + Verifier) untuk rekomendasi akurat" },

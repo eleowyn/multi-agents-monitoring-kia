@@ -12,9 +12,18 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "mysql+pymysql://root:@localhost:3306/multiagent_kia_db"
     
-    # Gemini
+    # LLM Provider ("google" atau "koboillm")
+    LLM_PROVIDER: str = "google"
+    
+    # Google Gemini
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
+    
+    # KoboiLLM Gateway (OpenAI-compatible)
+    KOBOILLM_API_KEY: Optional[str] = None
+    KOBOILLM_BASE_URL: str = "https://api.koboillm.com/v1"
+    KOBOILLM_MODEL: str = "gemini-3.1-flash-lite"
+    
     # text-embedding-004 sudah tidak tersedia (404) -> gunakan gemini-embedding-001
     EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIM: int = 768

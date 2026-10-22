@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getErrorMessage } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import {
   Baby,
   HeartPulse,
@@ -94,6 +95,7 @@ const InputKunjungan = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const modalRef = useRef(null);
+  const { user, isKader } = useAuth();
 
   // Form State Kunjungan
   const [visitDate, setVisitDate] = useState(
@@ -134,8 +136,14 @@ const InputKunjungan = () => {
   const [newType, setNewType] = useState("CHILD");
   const [newBirthDate, setNewBirthDate] = useState("");
   const [newGender, setNewGender] = useState("L");
-  const [newVillage, setNewVillage] = useState("Airmadidi Atas");
+  const [newVillage, setNewVillage] = useState(user?.village_name || "Airmadidi Atas");
   const [newMotherId, setNewMotherId] = useState("");
+
+  useEffect(() => {
+    if (user?.village_name) {
+      setNewVillage(user.village_name);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchPatients();
@@ -190,7 +198,7 @@ const InputKunjungan = () => {
         patient_type: newType,
         birth_date: newBirthDate,
         gender: newType === "CHILD" ? newGender : null,
-        village_name: newVillage,
+        village_name: isKader ? (user?.village_name || newVillage) : newVillage,
         mother_id: newMotherId ? parseInt(newMotherId) : null,
       };
       const res = await api.post("/patients/", payload);
@@ -308,9 +316,9 @@ const InputKunjungan = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-5 lg:p-6 space-y-5 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-heading">
             Formulir Kunjungan Posyandu
@@ -800,7 +808,7 @@ const InputKunjungan = () => {
       {/* ═══ Modal Registrasi Pasien Baru ═══ */}
       {showNewPatientModal && (
         <div
-          className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center p-4 z-50 animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowNewPatientModal(false);
           }}
@@ -899,12 +907,13 @@ const InputKunjungan = () => {
                 )}
               </div>
 
-              <FormField id="new-village" label="Desa / Kelurahan (Airmadidi)">
+              <FormField id="new-village" label="Desa / Kelurahan (Wilayah Posyandu)">
                 <select
                   id="new-village"
                   value={newVillage}
                   onChange={(e) => setNewVillage(e.target.value)}
-                  className={INPUT_CLASS}
+                  disabled={isKader}
+                  className={`${INPUT_CLASS} ${isKader ? "opacity-75 cursor-not-allowed bg-subtle" : ""}`}
                 >
                   <option value="Airmadidi Atas">Airmadidi Atas</option>
                   <option value="Airmadidi Bawah">Airmadidi Bawah</option>
@@ -916,6 +925,11 @@ const InputKunjungan = () => {
                   <option value="Sampiri">Sampiri</option>
                   <option value="Tanggari">Tanggari</option>
                 </select>
+                {isKader && (
+                  <p className="text-[11px] text-caption mt-1">
+                    * Otomatis diselaraskan dengan wilayah kerja Posyandu Anda ({user?.posyandu_name || "Posyandu"} - {user?.village_name || "Airmadidi Atas"}).
+                  </p>
+                )}
               </FormField>
 
               {newType === "CHILD" && (

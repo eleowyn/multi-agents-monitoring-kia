@@ -7,6 +7,7 @@ from app.models.patient import Patient, PatientType
 from app.models.visit import Visit
 from app.models.report import Report
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, LongitudinalHistoryResponse
+from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
 from app.models.user import User, UserRole
 
@@ -61,9 +62,9 @@ def create_patient(
     
     patient_data = patient_in.model_dump()
     if current_user.role == UserRole.KADER:
-        if not patient_data.get("village_name"):
+        if current_user.village_name:
             patient_data["village_name"] = current_user.village_name
-        if not patient_data.get("posyandu_name"):
+        if current_user.posyandu_name:
             patient_data["posyandu_name"] = current_user.posyandu_name
 
     patient = Patient(**patient_data)
@@ -85,7 +86,7 @@ def get_patient(
     
     # Cek jangkauan akses kader
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name != current_user.village_name:
+        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
             
     return patient
@@ -155,6 +156,40 @@ def delete_patient(
     return {"message": f"Data pasien {patient.name} beserta rekam kunjungannya berhasil dihapus."}
 
 
+@router.post("/bulk-delete")
+def bulk_delete_patients(
+    req: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Menghapus massal data pasien dan seluruh riwayat terkait (Wewenang Penuh Administrator Puskesmas).
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Hanya Administrator Puskesmas yang berwenang menghapus data pasien.")
+
+    if not req.ids:
+        return {"deleted_count": 0, "message": "Tidak ada pasien yang dipilih."}
+
+    # 1. Cari seluruh report_id dari pasien-pasien ini
+    report_ids = [r[0] for r in db.query(Report.id).filter(Report.patient_id.in_(req.ids)).all()]
+    if report_ids:
+        db.query(AuditLog).filter(AuditLog.report_id.in_(report_ids)).delete(synchronize_session=False)
+
+    # 2. Hapus reports dan visits
+    db.query(Report).filter(Report.patient_id.in_(req.ids)).delete(synchronize_session=False)
+    db.query(Visit).filter(Visit.patient_id.in_(req.ids)).delete(synchronize_session=False)
+
+    # 3. Hapus pasien-pasien
+    deleted_count = db.query(Patient).filter(Patient.id.in_(req.ids)).delete(synchronize_session=False)
+    db.commit()
+
+    return {
+        "deleted_count": deleted_count,
+        "message": f"{deleted_count} data pasien beserta rekam kunjungannya berhasil dihapus."
+    }
+
+
 @router.get("/{patient_id}/longitudinal", response_model=LongitudinalHistoryResponse)
 def get_longitudinal_history(
     patient_id: int,
@@ -172,7 +207,7 @@ def get_longitudinal_history(
 
     # Cek jangkauan akses kader
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name != current_user.village_name:
+        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     mother = None
