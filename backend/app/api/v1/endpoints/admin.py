@@ -20,6 +20,7 @@ from app.schemas.admin import (
     PatientTrendPoint,
     PatientTrendResponse,
     BulkDeleteRequest,
+    BulkStatusRequest,
 )
 from datetime import date
 from app.multiagent.rag.vectorstore import get_or_create_collection
@@ -343,6 +344,53 @@ def create_kader(
     db.commit()
     db.refresh(kader)
     return kader
+
+
+@router.put("/kaders/{kader_id}/toggle-status", response_model=UserResponse)
+def toggle_kader_status(
+    kader_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Mengubah status aktif/nonaktif akun kader (Bab 4 Tabel 20)."""
+    if kader_id == admin.id:
+        raise HTTPException(status_code=400, detail="Tidak dapat menonaktifkan akun admin yang sedang aktif.")
+
+    kader = db.query(User).filter(User.id == kader_id, User.role == UserRole.KADER).first()
+    if not kader:
+        raise HTTPException(status_code=404, detail="Data kader tidak ditemukan.")
+
+    kader.is_active = not kader.is_active
+    db.commit()
+    db.refresh(kader)
+    return kader
+
+
+@router.post("/kaders/bulk-status")
+def bulk_update_kader_status(
+    req: BulkStatusRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin)
+):
+    """Mengubah status aktif/nonaktif massal untuk akun kader terpilih."""
+    if not req.ids:
+        return {"updated_count": 0, "message": "Tidak ada kader yang dipilih."}
+
+    target_ids = [kid for kid in req.ids if kid != admin.id]
+    if not target_ids:
+        raise HTTPException(status_code=400, detail="Tidak ada akun kader valid yang dipilih.")
+
+    updated_count = db.query(User).filter(
+        User.id.in_(target_ids),
+        User.role == UserRole.KADER
+    ).update({"is_active": req.is_active}, synchronize_session=False)
+
+    db.commit()
+    action_text = "diaktifkan" if req.is_active else "dinonaktifkan"
+    return {
+        "updated_count": updated_count,
+        "message": f"{updated_count} akun kader berhasil {action_text}."
+    }
 
 
 @router.delete("/kaders/{kader_id}")

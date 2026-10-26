@@ -95,20 +95,16 @@ const AuditLogs = () => {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
         <div>
-          <h2 className="text-xl font-bold text-heading">
+          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
             Audit Log Evaluator AI Independen
-          </h2>
-          <p className="text-xs text-caption mt-0.5">
-            Log evaluasi kepatuhan biner (Ya/Tidak) terhadap output
-            masing-masing agent secara paralel
-          </p>
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           {logs.length > 0 && (
             <button
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 rounded-xl text-xs font-semibold transition-colors duration-200 disabled:opacity-50"
+              className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 rounded-xl text-xs font-semibold transition-colors duration-200 disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               {clearingAll ? "Membersihkan..." : "Bersihkan Seluruh Log"}
@@ -116,7 +112,7 @@ const AuditLogs = () => {
           )}
           <button
             onClick={fetchLogs}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200"
+            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200"
           >
             <RefreshCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
             Segarkan
@@ -136,7 +132,7 @@ const AuditLogs = () => {
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-caption hover:bg-muted hover:text-heading transition-colors"
+              className="btn-interactive px-3.5 py-1.5 rounded-xl text-xs font-medium text-caption hover:bg-muted hover:text-heading transition-colors cursor-pointer"
             >
               Batal Pilihan
             </button>
@@ -144,7 +140,7 @@ const AuditLogs = () => {
               type="button"
               onClick={handleBulkDelete}
               disabled={deletingBulk}
-              className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+              className="btn-interactive flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log Terpilih`}
@@ -194,7 +190,7 @@ const AuditLogs = () => {
                 logs.map((log) => (
                   <tr
                     key={log.id}
-                    className={`hover:bg-accent-sky transition-colors duration-150 ${
+                    className={`table-row-interactive hover:bg-accent-sky transition-colors duration-150 ${
                       selectedIds.includes(log.id) ? "bg-sky-50/60 dark:bg-sky-950/20" : ""
                     }`}
                   >

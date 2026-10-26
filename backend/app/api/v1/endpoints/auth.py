@@ -41,7 +41,7 @@ def seed_default_users(db: Session):
             username="kader1",
             email="kader1@posyandu-airmadidi.go.id",
             hashed_password=get_password_hash("kader123"),
-            full_name="Elshera Kader Posyandu",
+            full_name="Kader Posyandu",
             role=UserRole.KADER,
             posyandu_name="Posyandu Mawar",
             village_name="Airmadidi Atas"
@@ -70,6 +70,12 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
             detail="Username atau password salah"
         )
     
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akun Anda telah dinonaktifkan oleh Administrator Puskesmas. Silakan hubungi admin Puskesmas Airmadidi."
+        )
+    
     access_token = create_access_token(subject=user.username)
     return {
         "access_token": access_token,
@@ -86,6 +92,12 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username atau password salah"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akun Anda telah dinonaktifkan oleh Administrator Puskesmas. Silakan hubungi admin Puskesmas Airmadidi."
         )
     
     access_token = create_access_token(subject=user.username)

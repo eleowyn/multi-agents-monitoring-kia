@@ -2,220 +2,578 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <title>Lembar Hasil Pemantauan KIA - Posyandu Airmadidi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lembar Hasil Pemantauan KIA - Puskesmas Airmadidi</title>
     <style>
       @page {
         size: A4;
-        margin: 20mm;
+        margin: 14mm 16mm 14mm 16mm;
+        @bottom-right {
+          content: "Hal. " counter(page) " dari " counter(pages);
+          font-size: 8pt;
+          color: #64748b;
+          font-family: Arial, sans-serif;
+        }
       }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-        color: #2d3748;
-        line-height: 1.5;
-        font-size: 12pt;
-      }
-      .header {
-        text-align: center;
-        border-bottom: 2px solid #3182ce;
-        padding-bottom: 12px;
-        margin-bottom: 20px;
-      }
-      .header h2 {
+        color: #1e293b;
+        background-color: #ffffff;
+        line-height: 1.45;
+        font-size: 9.5pt;
         margin: 0;
-        color: #2b6cb0;
-        font-size: 16pt;
-        text-transform: uppercase;
+        padding: 0;
       }
-      .header p {
-        margin: 4px 0 0 0;
-        font-size: 10pt;
-        color: #718096;
+
+      /* Floating Print Bar (Hidden in Print) */
+      .print-bar {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: #0f172a;
+        color: #ffffff;
+        padding: 10px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin-bottom: 20px;
+        font-size: 9.5pt;
       }
-      .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 10pt;
-        text-transform: uppercase;
+
+      .print-bar-btn {
+        background-color: #0284c7;
+        color: #ffffff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 9.5pt;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background-color 0.15s ease;
       }
-      .badge-green {
-        background-color: #c6f6d5;
-        color: #22543d;
+
+      .print-bar-btn:hover {
+        background-color: #0369a1;
       }
-      .badge-yellow {
-        background-color: #fefcbf;
-        color: #744210;
+
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+        body {
+          font-size: 9pt;
+        }
       }
-      .badge-red {
-        background-color: #fed7d7;
-        color: #742a2a;
+
+      /* Container */
+      .document-container {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 4px 6px;
       }
-      .section-title {
-        font-size: 13pt;
-        font-weight: bold;
-        color: #2c5282;
-        border-left: 4px solid #3182ce;
-        padding-left: 8px;
-        margin-top: 20px;
-        margin-bottom: 10px;
+
+      /* Kop Surat Resmi Kedinasan */
+      .kop-surat {
+        margin-bottom: 14px;
       }
-      table {
+
+      .kop-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 15px;
+        border: none;
+        margin-bottom: 6px;
       }
-      th,
-      td {
-        border: 1px solid #e2e8f0;
-        padding: 8px 10px;
-        text-align: left;
-        font-size: 10.5pt;
+
+      .kop-table td {
+        border: none;
+        padding: 0;
+        vertical-align: middle;
       }
-      th {
-        background-color: #f7fafc;
-        color: #4a5568;
+
+      .kop-logo {
+        width: 65px;
+        text-align: center;
+      }
+
+      .kop-logo svg {
+        width: 58px;
+        height: 58px;
+      }
+
+      .kop-text {
+        text-align: center;
+        padding: 0 12px;
+      }
+
+      .kop-line-1 {
+        margin: 0;
+        font-size: 11pt;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      .kop-line-2 {
+        margin: 2px 0;
+        font-size: 13pt;
+        font-weight: 800;
+        color: #0369a1;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      .kop-line-3 {
+        margin: 1px 0;
+        font-size: 8.5pt;
+        color: #334155;
+      }
+
+      .kop-line-4 {
+        margin: 1px 0;
+        font-size: 8.5pt;
+        color: #0369a1;
         font-weight: 600;
       }
-      .recommendation-box {
-        background-color: #ebf8ff;
-        border: 1px solid #bee3f8;
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 12px;
-      }
-      .recommendation-title {
-        font-weight: bold;
-        color: #2b6cb0;
-        margin-bottom: 4px;
-      }
-      .citation-tag {
-        font-size: 9pt;
-        color: #4a5568;
-        font-style: italic;
+
+      .kop-divider {
         margin-top: 6px;
       }
-      .footer {
-        margin-top: 30px;
+
+      .line-thick {
+        height: 2.5px;
+        background-color: #0f172a;
+      }
+
+      .line-thin {
+        height: 0.8px;
+        background-color: #0f172a;
+        margin-top: 1.5px;
+      }
+
+      /* Document Title */
+      .doc-header-box {
+        text-align: center;
+        margin: 10px 0 14px 0;
+      }
+
+      .doc-title {
+        margin: 0;
+        font-size: 12.5pt;
+        font-weight: 800;
+        color: #0c4a6e;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+      }
+
+      .doc-subtitle {
+        margin: 3px 0 0 0;
+        font-size: 8.5pt;
+        color: #64748b;
+        font-style: italic;
+      }
+
+      /* Badges */
+      .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 8.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        border: 1px solid transparent;
+      }
+
+      .badge-green {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
+      }
+
+      .badge-yellow {
+        background-color: #fffbeb;
+        color: #92400e;
+        border-color: #fde68a;
+      }
+
+      .badge-red {
+        background-color: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
+      }
+
+      .badge-category {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 7.5pt;
+        font-weight: 700;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+        text-transform: uppercase;
+      }
+
+      /* Section Title */
+      .section-title {
+        font-size: 10.5pt;
+        font-weight: 700;
+        color: #0f172a;
+        border-left: 3.5px solid #0284c7;
+        padding-left: 8px;
+        margin-top: 14px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+      }
+
+      /* Tables */
+      table.data-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+      }
+
+      table.data-table th,
+      table.data-table td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 9px;
+        text-align: left;
+        font-size: 9pt;
+        word-wrap: break-word;
+      }
+
+      table.data-table th {
+        background-color: #f8fafc;
+        color: #334155;
+        font-weight: 600;
+      }
+
+      table.data-table th.label-cell {
+        background-color: #f1f5f9;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      .text-center {
+        text-align: center !important;
+      }
+
+      .text-right {
+        text-align: right !important;
+      }
+
+      .font-bold {
+        font-weight: 700 !important;
+      }
+
+      .font-mono {
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      /* Justified Paragraphs */
+      .text-justified {
+        text-align: justify;
+        text-justify: inter-word;
+        hyphens: auto;
+        line-height: 1.5;
+        margin: 5px 0 8px 0;
+      }
+
+      .narrative-box {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 5px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        text-align: justify;
+        text-justify: inter-word;
+        line-height: 1.5;
+      }
+
+      /* Recommendation Box */
+      .recommendation-box {
+        background-color: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 5px;
+        padding: 9px 12px;
+        margin-bottom: 8px;
+        page-break-inside: avoid;
+      }
+
+      .recommendation-title {
+        font-weight: 700;
+        color: #0369a1;
+        font-size: 9.5pt;
+        margin-bottom: 4px;
         display: flex;
         justify-content: space-between;
+        align-items: center;
       }
-      .signature-box {
-        width: 45%;
-        text-align: center;
-        font-size: 10pt;
+
+      .recommendation-text {
+        text-align: justify;
+        text-justify: inter-word;
+        line-height: 1.5;
+        margin-bottom: 6px;
+      }
+
+      .action-steps-list {
+        margin: 4px 0 6px 0;
+        padding-left: 18px;
+        font-size: 8.5pt;
+        color: #334155;
+      }
+
+      .action-steps-list li {
+        margin-bottom: 2px;
+      }
+
+      .citation-tag {
+        font-size: 8pt;
+        color: #0369a1;
+        background-color: #e0f2fe;
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-style: normal;
+        font-weight: 600;
+        margin-top: 4px;
+        border: 1px solid #bae6fd;
+      }
+
+      /* Signature Table */
+      .signature-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: none;
+        margin-top: 24px;
+        page-break-inside: avoid;
+      }
+
+      .signature-table td {
+        border: none;
+        padding: 0 10px;
+        vertical-align: top;
+      }
+
+      .sig-space {
+        height: 55px;
+      }
+
+      .sig-name {
+        font-weight: 700;
+        font-size: 9.5pt;
+        color: #0f172a;
+        margin: 0;
+      }
+
+      .sig-role {
+        font-size: 8.5pt;
+        color: #64748b;
+        margin-top: 2px;
       }
     </style>
   </head>
   <body>
-    <div class="header">
-      <h2>Pemerintah Kabupaten Minahasa Utara</h2>
-      <p>
-        Puskesmas Kecamatan Airmadidi &bull; Pos Pelayanan Terpadu (Posyandu)
-      </p>
-      <p>
-        <strong
-          >LEMBAR REKOMENDASI PEMANTAUAN KESEHATAN IBU DAN ANAK (1.000
-          HPK)</strong
-        >
-      </p>
-    </div>
-
-    <div class="section-title">I. Identitas Pasien & Kunjungan</div>
-    <table>
-      <tr>
-        <th width="30%">Nama Pasien</th>
-        <td>Anak Uji PDF</td>
-        <th width="20%">Fase 1.000 HPK</th>
-        <td>BADUTA</td>
-      </tr>
-      <tr>
-        <th>NIK</th>
-        <td>7106012345670099</td>
-        <th>Tanggal Kunjungan</th>
-        <td>2026-08-25</td>
-      </tr>
-      <tr>
-        <th>Desa / Kelurahan</th>
-        <td>Airmadidi</td>
-        <th>Status Pemantauan</th>
-        <td>
-          
-          <span class="badge badge-yellow">Perlu Perhatian</span>
-          
-        </td>
-      </tr>
-    </table>
-
-    <div class="section-title">II. Hasil Analisis Klinis & Deteksi Risiko</div>
-    <p><strong>Ringkasan:</strong> Pasien membutuhkan pemantauan gizi tambahan.</p>
-    <p>
-      <strong>Temuan Pengukuran:</strong> Terdapat penurunan berat badan.
-    </p>
-
-    
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Indikator</th>
-          <th>Tingkat Risiko</th>
-          <th>Rincian Temuan</th>
-        </tr>
-      </thead>
-      <tbody>
-        
-        <tr>
-          <td>1</td>
-          <td>BB_U</td>
-          <td><strong>RISIKO_UNDERWEIGHT</strong></td>
-          <td>Berat badan kurang dari median.</td>
-        </tr>
-        
-      </tbody>
-    </table>
-    
-
-    <div class="section-title">
-      III. Rekomendasi Klinis & Tindakan Kader (Berbasis Rujukan)
-    </div>
-    
-    <div class="recommendation-box">
-      <div class="recommendation-title">
-        1. Pemberian PMT [GIZI]
+    <!-- Floating Toolbar for Browser Preview (Hidden on Print) -->
+    <div class="print-bar no-print">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="font-weight: bold; font-size: 11pt">📄 Pratinjau Dokumen Resmi KIA</span>
+        <span style="font-size: 8.5pt; opacity: 0.8">| Format Cetak Standar A4 &bull; UPTD Puskesmas Airmadidi</span>
       </div>
-      <div>Berikan makanan tambahan kaya protein.</div>
-      
-      <ul style="margin: 6px 0 0 0; padding-left: 20px">
-        
-        <li>Telur 1 butir/hari</li>
-        
-      </ul>
-      
-      <div class="citation-tag">
-        &bull; Rujukan: Buku KIA RI - Gizi Balita
-        (Hal. 32)
+      <div style="display: flex; gap: 8px">
+        <button onclick="window.print()" class="print-bar-btn" title="Cetak Dokumen atau Simpan PDF (Ctrl+P)">
+          🖨️ Cetak / Simpan PDF
+        </button>
+        <button onclick="window.close()" style="background: transparent; color: #94a3b8; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 9pt;">
+          Tutup
+        </button>
       </div>
     </div>
-    
 
-    <table style="border: none; margin-top: 30px">
-      <tr style="border: none">
-        <td style="border: none; width: 50%; text-align: center">
-          <p>Mengetahui / Menyetujui,<br /><strong>Kader Posyandu</strong></p>
-          <br /><br /><br />
-          <p>( Kader Siti )</p>
-        </td>
-        <td style="border: none; width: 50%; text-align: center">
-          <p>
-            Airmadidi, 2026-08-25<br /><strong
-              >Tenaga Kesehatan / Bidan Desa</strong
-            >
-          </p>
-          <br /><br /><br />
-          <p>( ..................................................... )</p>
-        </td>
-      </tr>
-    </table>
+    <div class="document-container">
+      <!-- Kop Surat Resmi Kedinasan -->
+      <div class="kop-surat">
+        <table class="kop-table">
+          <tr>
+            <td class="kop-logo">
+              <!-- Emblem Puskesmas Minahasa Utara -->
+              <svg viewBox="0 0 100 100">
+                <polygon points="50,4 95,28 95,74 50,96 5,74 5,28" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
+                <circle cx="50" cy="50" r="28" fill="#ffffff"/>
+                <path d="M50,28 L50,72 M28,50 L72,50" stroke="#0284c7" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </td>
+            <td class="kop-text">
+              <h3 class="kop-line-1">Pemerintah Kabupaten Minahasa Utara</h3>
+              <h2 class="kop-line-2">Dinas Kesehatan &bull; UPTD Puskesmas Airmadidi</h2>
+              <p class="kop-line-3">Jl. Arnold Mononutu, Airmadidi, Kabupaten Minahasa Utara, Sulawesi Utara 95371</p>
+              <p class="kop-line-4">Pelayanan Terpadu KIA &bull; Pemantauan 1.000 Hari Pertama Kehidupan (HPK)</p>
+            </td>
+            <td class="kop-logo">
+              <!-- Emblem Posyandu ILP -->
+              <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+                <path d="M50 25 C34 25 24 35 24 50 C24 68 50 85 50 85 C50 85 76 68 76 50 C76 35 66 25 50 25 Z" fill="#16a34a"/>
+                <circle cx="50" cy="46" r="10" fill="#ffffff"/>
+              </svg>
+            </td>
+          </tr>
+        </table>
+        <div class="kop-divider">
+          <div class="line-thick"></div>
+          <div class="line-thin"></div>
+        </div>
+      </div>
+
+      <!-- Judul Dokumen -->
+      <div class="doc-header-box">
+        <h1 class="doc-title">Lembar Rekomendasi Pemantauan Kesehatan Ibu & Anak</h1>
+        <p class="doc-subtitle">Evaluasi Berbasis Multi-Agent Artificial Intelligence & Standar Pelayanan Posyandu</p>
+      </div>
+
+      <!-- I. Identitas Pasien & Informasi Kunjungan -->
+      <div class="section-title">I. Identitas Pasien & Data Kunjungan</div>
+      <table class="data-table">
+        <colgroup>
+          <col style="width: 20%;" />
+          <col style="width: 30%;" />
+          <col style="width: 20%;" />
+          <col style="width: 30%;" />
+        </colgroup>
+        <tr>
+          <th class="label-cell">Nama Pasien</th>
+          <td class="font-bold">Anak Uji PDF</td>
+          <th class="label-cell">Fase 1.000 HPK</th>
+          <td><strong>Baduta (6 - 24 Bulan)</strong></td>
+        </tr>
+        <tr>
+          <th class="label-cell">Nomor Induk (NIK)</th>
+          <td class="font-mono">7106012345670099</td>
+          <th class="label-cell">Tanggal Kunjungan</th>
+          <td>2026-08-25</td>
+        </tr>
+        <tr>
+          <th class="label-cell">Desa / Kelurahan</th>
+          <td>Airmadidi</td>
+          <th class="label-cell">Status Keseluruhan</th>
+          <td>
+            
+            <span class="badge badge-yellow">PERLU PERHATIAN</span>
+            
+          </td>
+        </tr>
+      </table>
+
+      <!-- II. Parameter Pengukuran Fisik & Antropometri Kunjungan -->
+      
+
+      <!-- III. Hasil Analisis Klinis & Deteksi Risiko (Agent 1) -->
+      <div class="section-title">II. Hasil Analisis Klinis & Deteksi Indikator Risiko (Agent 1)</div>
+      <div class="narrative-box">
+        <strong>Ringkasan Eksekutif Analisis:</strong>
+        <p class="text-justified" style="margin-top: 4px; margin-bottom: 6px;">Pasien membutuhkan pemantauan gizi tambahan.</p>
+        <strong>Temuan Pengukuran Antropometri:</strong>
+        <p class="text-justified" style="margin-top: 4px; margin-bottom: 0;">Terdapat penurunan berat badan.</p>
+      </div>
+
+      
+      <table class="data-table">
+        <colgroup>
+          <col style="width: 6%;" />
+          <col style="width: 22%;" />
+          <col style="width: 26%;" />
+          <col style="width: 46%;" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="text-center">No</th>
+            <th>Indikator Parameter</th>
+            <th>Tingkat Risiko Terdeteksi</th>
+            <th>Rincian Temuan Klinis</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td class="text-center font-bold">1</td>
+            <td class="font-bold">BB_U</td>
+            <td>
+              <span class="badge badge-yellow">
+                Risiko Underweight
+              </span>
+            </td>
+            <td class="text-justified">Berat badan kurang dari median.</td>
+          </tr>
+          
+        </tbody>
+      </table>
+      
+
+      <!-- IV. Rekomendasi Tindakan Klinis Kader & Edukasi (Agent 2) -->
+      <div class="section-title">III. Rekomendasi Tindakan Kader & Konseling Berbasis Rujukan (Agent 2)</div>
+      
+        
+        <div class="recommendation-box">
+          <div class="recommendation-title">
+            <span>1. Pemberian PMT</span>
+            <span class="badge-category">GIZI</span>
+          </div>
+          <div class="recommendation-text">Berikan makanan tambahan kaya protein.</div>
+          
+          <div style="font-weight: 600; font-size: 8.5pt; color: #1e293b; margin-top: 4px;">Langkah Tindakan Kader:</div>
+          <ul class="action-steps-list">
+            
+            <li>Telur 1 butir/hari</li>
+            
+          </ul>
+          
+          
+          <div class="citation-tag">
+            &bull; Rujukan Resmi: <strong>Buku Kia Ri</strong> &bull; Gizi Balita (Hal. 32)
+          </div>
+          
+        </div>
+        
+      
+
+      <!-- V. Verifikasi Grounding Sitasi Ilmiah (Agent 3) -->
+      
+
+      <!-- VI. Lembar Tanda Tangan Resmi Pengesahan -->
+      <table class="signature-table">
+        <tr>
+          <td style="width: 50%; text-align: center;">
+            <p style="margin: 0;">Mengetahui / Memeriksa,<br /><strong>Kader Posyandu Pelaksana</strong></p>
+            <div class="sig-space"></div>
+            <p class="sig-name">( Kader Siti )</p>
+            <p class="sig-role">Kader Posyandu Wilayah Airmadidi</p>
+          </td>
+          <td style="width: 50%; text-align: center;">
+            <p style="margin: 0;">
+              Airmadidi, 2026-08-25<br /><strong
+                >Tenaga Kesehatan / Bidan Desa</strong
+              >
+            </p>
+            <div class="sig-space"></div>
+            <p class="sig-name">( ..................................................... )</p>
+            <p class="sig-role">NIP. .....................................................</p>
+          </td>
+        </tr>
+      </table>
+    </div>
   </body>
 </html>

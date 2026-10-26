@@ -61,7 +61,7 @@ const OverallTrendChart = ({ data = [], loading }) => {
   const isEmpty = data.every((d) => d.stunting + d.kek + d.anemia === 0);
 
   return (
-    <section className="bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
+    <section className="card-interactive bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
       <header className="mb-3">
         <h2 className="text-sm font-bold text-heading">Tren Kasus Risiko Keseluruhan</h2>
         <p className="text-[11px] text-caption">Jumlah pasien berisiko per bulan &bull; 6 bulan terakhir</p>

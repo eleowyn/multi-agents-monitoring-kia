@@ -23,8 +23,11 @@ def _require_admin(user: User = Depends(get_current_user)):
     return user
 
 
-def _snapshot_visit_data(visit: Visit) -> Dict[str, Any]:
+def _snapshot_visit_data(visit: Visit, patient: Optional[Patient] = None) -> Dict[str, Any]:
     return {
+        "patient_name": patient.name if patient else (visit.patient.name if (visit and visit.patient) else None),
+        "patient_nik": patient.nik if patient else (visit.patient.nik if (visit and visit.patient) else None),
+        "village_name": patient.village_name if patient else (visit.patient.village_name if (visit and visit.patient) else None),
         "visit_date": str(visit.visit_date),
         "phase": visit.phase.value if hasattr(visit.phase, "value") else str(visit.phase),
         "gestational_age_weeks": visit.gestational_age_weeks,
@@ -55,10 +58,17 @@ def _snapshot_visit_data(visit: Visit) -> Dict[str, Any]:
 
 
 def _enrich_revision_response(rev: RevisionRequest, db: Session) -> RevisionResponse:
-    visit = db.query(Visit).filter(Visit.id == rev.visit_id).first()
+    visit = db.query(Visit).filter(Visit.id == rev.visit_id).first() if rev.visit_id else None
     patient = db.query(Patient).filter(Patient.id == visit.patient_id).first() if visit else None
     kader = db.query(User).filter(User.id == rev.kader_id).first()
     admin = db.query(User).filter(User.id == rev.admin_id).first() if rev.admin_id else None
+
+    prev = rev.previous_data or {}
+    p_name = patient.name if patient else prev.get("patient_name")
+    p_nik = patient.nik if patient else prev.get("patient_nik")
+    v_date = str(visit.visit_date) if visit else prev.get("visit_date")
+    phase = (visit.phase.value if (visit and hasattr(visit.phase, "value")) else str(visit.phase)) if visit else prev.get("phase")
+    v_village = patient.village_name if patient else (prev.get("village_name") or (kader.village_name if kader else None))
 
     return RevisionResponse(
         id=rev.id,
@@ -75,11 +85,11 @@ def _enrich_revision_response(rev: RevisionRequest, db: Session) -> RevisionResp
         resolved_at=rev.resolved_at,
         kader_name=kader.full_name if kader else None,
         admin_name=admin.full_name if admin else None,
-        patient_name=patient.name if patient else None,
-        patient_nik=patient.nik if patient else None,
-        village_name=patient.village_name if patient else (kader.village_name if kader else None),
-        visit_date=str(visit.visit_date) if visit else None,
-        phase=visit.phase.value if (visit and hasattr(visit.phase, "value")) else None
+        patient_name=p_name,
+        patient_nik=p_nik,
+        village_name=v_village,
+        visit_date=v_date,
+        phase=phase
     )
 
 
@@ -90,7 +100,7 @@ def submit_revision_request(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Kader mengajukan revisi data kunjungan yang telah tersimpan (Bab 4 Tabel 16).
+    Kader mengajukan revisi atau penghapusan data kunjungan yang telah tersimpan (Bab 4 Tabel 16).
     Data kunjungan yang ada di-snapshot dan pengajuan disimpan dengan status PENDING.
     """
     visit = db.query(Visit).filter(Visit.id == rev_in.visit_id).first()
@@ -126,7 +136,7 @@ def submit_revision_request(
         kader_id=current_user.id,
         reason=rev_in.reason,
         proposed_data=rev_in.proposed_data,
-        previous_data=_snapshot_visit_data(visit),
+        previous_data=_snapshot_visit_data(visit, patient),
         status=RevisionStatus.PENDING
     )
     db.add(new_rev)
@@ -134,6 +144,7 @@ def submit_revision_request(
     db.refresh(new_rev)
 
     return _enrich_revision_response(new_rev, db)
+
 
 
 @router.get("/", response_model=List[RevisionResponse])
@@ -207,57 +218,75 @@ def validate_revision_by_admin(
     patient = db.query(Patient).filter(Patient.id == visit.patient_id).first()
 
     if val_req.status == RevisionStatus.APPROVED:
-        # 1. Update data kunjungan asli dengan proposed_data
         proposed = rev.proposed_data or {}
-        for field, value in proposed.items():
-            if hasattr(visit, field) and field not in ["id", "patient_id", "kader_id", "created_at"]:
-                setattr(visit, field, value)
 
-        visit.updated_at = datetime.utcnow()
+        # 1. Penanganan Pengajuan Hapus Kunjungan (Use Case 8 & 9)
+        if proposed.get("_action") == "DELETE":
+            from app.models.audit_log import AuditLog
 
-        # 2. Re-evaluasi laporan jika laporan sudah ada
-        if rev.report_id:
-            report = db.query(Report).filter(Report.id == rev.report_id).first()
-            if report:
-                from app.multiagent.state_builder import build_initial_state
+            if rev.report_id:
+                db.query(AuditLog).filter(AuditLog.report_id == rev.report_id).delete(synchronize_session=False)
+                db.query(Report).filter(Report.id == rev.report_id).delete(synchronize_session=False)
 
-                initial_state = build_initial_state(
-                    db=db,
-                    visit=visit,
-                    patient=patient,
-                    village_fallback="Airmadidi",
-                    kader_feedback=f"[DATA DIREVISI & DISETUJUI ADMIN]: {val_req.admin_notes or '-'}",
-                    iteration_count=0
-                )
+            # Lepaskan foreign key agar riwayat pengajuan revisi tetap tersimpan untuk audit trail
+            rev.visit_id = None
+            rev.report_id = None
+            db.delete(visit)
+            rev.status = RevisionStatus.APPROVED
+        else:
+            # 2. Penanganan Koreksi / Modifikasi Data Kunjungan
+            for field, value in proposed.items():
+                if hasattr(visit, field) and field not in ["id", "patient_id", "kader_id", "created_at", "_action"]:
+                    setattr(visit, field, value)
 
-                # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui (Stateful Checkpointer)
-                thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
-                revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
+            visit.updated_at = datetime.utcnow()
 
-                report.risk_flags = revised_state.get("risk_flags", [])
-                report.risk_narrative = revised_state.get("risk_narrative", "")
-                report.recommendations = revised_state.get("recommendations", [])
-                report.verification_summary = revised_state.get("verification_details", [])
-                report.overall_status = revised_state.get("overall_status", report.overall_status)
-                report.final_report_json = revised_state.get("final_report_json", {})
-                report.updated_at = datetime.utcnow()
+            # Re-evaluasi laporan jika laporan sudah ada
+            if rev.report_id:
+                report = db.query(Report).filter(Report.id == rev.report_id).first()
+                if report:
+                    from app.multiagent.state_builder import build_initial_state
 
-                # Jika sebelumnya sudah berstatus APPROVED, generate ulang PDF resminya
-                if report.status == ReportStatus.APPROVED and patient:
-                    filename = f"Laporan_KIA_{patient.nik}_{visit.visit_date}_revised.pdf"
-                    pdf_path = generate_visit_report_pdf(
-                        report_data=report.final_report_json,
-                        visit_date=str(visit.visit_date),
-                        kader_name=admin.full_name,
-                        validated_date=datetime.now().strftime("%d %B %Y"),
-                        filename=filename
+                    initial_state = build_initial_state(
+                        db=db,
+                        visit=visit,
+                        patient=patient,
+                        village_fallback="Airmadidi",
+                        kader_feedback=f"[DATA DIREVISI & DISETUJUI ADMIN]: {val_req.admin_notes or '-'}",
+                        iteration_count=0
                     )
-                    report.pdf_path = pdf_path
 
-        rev.status = RevisionStatus.APPROVED
+                    # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui (Stateful Checkpointer)
+                    thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
+                    revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
+
+                    report.risk_flags = revised_state.get("risk_flags", [])
+                    report.risk_narrative = revised_state.get("risk_narrative", "")
+                    report.recommendations = revised_state.get("recommendations", [])
+                    report.verification_summary = revised_state.get("verification_details", [])
+                    report.overall_status = revised_state.get("overall_status", report.overall_status)
+                    report.final_report_json = revised_state.get("final_report_json", {})
+                    report.updated_at = datetime.utcnow()
+
+                    # Jika sebelumnya sudah berstatus APPROVED, generate ulang PDF resminya
+                    if report.status == ReportStatus.APPROVED and patient:
+                        from app.api.v1.endpoints.reports import _extract_visit_data
+                        filename = f"Laporan_KIA_{patient.nik}_{visit.visit_date}_revised.pdf"
+                        pdf_path = generate_visit_report_pdf(
+                            report_data=report.final_report_json,
+                            visit_date=str(visit.visit_date),
+                            kader_name=admin.full_name,
+                            validated_date=datetime.now().strftime("%d %B %Y"),
+                            filename=filename,
+                            visit_data=_extract_visit_data(visit)
+                        )
+                        report.pdf_path = pdf_path
+
+            rev.status = RevisionStatus.APPROVED
 
     elif val_req.status == RevisionStatus.REJECTED:
         rev.status = RevisionStatus.REJECTED
+
 
     rev.admin_id = admin.id
     rev.admin_notes = val_req.admin_notes

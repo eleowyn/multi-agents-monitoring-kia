@@ -8,11 +8,22 @@ import {
   LayoutDashboard,
   UserCheck,
   ShieldAlert,
+  FileEdit,
   X,
 } from "lucide-react";
+import api from "../../services/api";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { isKader, isAdmin } = useAuth();
+  const [pendingRevisions, setPendingRevisions] = React.useState(0);
+
+  useEffect(() => {
+    if (isAdmin) {
+      api.get("/revisions/", { params: { status: "PENDING" } })
+        .then((res) => setPendingRevisions(res.data?.length || 0))
+        .catch(() => {});
+    }
+  }, [isAdmin, isOpen]);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -32,6 +43,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const kaderLinks = [
+    { to: "/kader/dashboard", label: "Dashboard Posyandu", icon: LayoutDashboard },
     { to: "/kader/input-kunjungan", label: "Input Kunjungan", icon: ClipboardList },
     { to: "/kader/data-pasien", label: "Data & Riwayat Pasien", icon: Users },
     { to: "/kader/laporan-kia", label: "Arsip Laporan KIA", icon: FileText },
@@ -39,8 +51,10 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const adminLinks = [
     { to: "/admin/dashboard", label: "Dashboard Agregat", icon: LayoutDashboard },
+    { to: "/admin/reports", label: "Kelola Laporan Kunjungan", icon: FileText },
     { to: "/admin/manage-pasien", label: "Kelola Data Pasien", icon: Users },
     { to: "/admin/manage-kader", label: "Kelola Kader & Posyandu", icon: UserCheck },
+    { to: "/admin/revisions", label: "Validasi Revisi Data", icon: FileEdit, count: pendingRevisions },
     { to: "/admin/audit-logs", label: "Audit Log Evaluator AI", icon: ShieldAlert },
   ];
 
@@ -59,16 +73,21 @@ const Sidebar = ({ isOpen, onClose }) => {
             to={link.to}
             onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+              `flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-150 active:scale-[0.98] ${
                 isActive
-                  ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-sm border border-sky-200 dark:border-sky-800/50"
-                  : "text-label hover:bg-muted hover:text-heading"
+                  ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-xs border border-sky-200 dark:border-sky-800/50 translate-x-1"
+                  : "text-label hover:bg-muted hover:text-heading hover:translate-x-1"
               }`
             }
             aria-label={link.label}
           >
-            <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
-            <span>{link.label}</span>
+            <Icon className="w-[18px] h-[18px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110" aria-hidden="true" />
+            <span className="flex-1">{link.label}</span>
+            {link.count > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                {link.count}
+              </span>
+            )}
           </NavLink>
         );
       })}
@@ -107,7 +126,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <button
             onClick={onClose}
             aria-label="Tutup menu navigasi"
-            className="p-2 text-dim hover:text-label hover:bg-muted rounded-xl transition-colors duration-200"
+            className="btn-interactive p-2 text-dim hover:text-label hover:bg-muted rounded-xl transition-colors duration-200 cursor-pointer"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>

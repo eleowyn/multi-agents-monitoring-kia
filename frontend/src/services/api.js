@@ -50,4 +50,40 @@ export const getErrorMessage = (err, fallback = 'Terjadi kesalahan pada sistem.'
   return fallback;
 };
 
+/**
+ * Unduh dokumen PDF laporan (WeasyPrint) dengan token JWT.
+ * Backend otomatis me-render ulang PDF jika file lama belum tersedia.
+ */
+export const downloadReportPdf = async (reportId, patientName, visitDate) => {
+  try {
+    const res = await api.get(`/reports/${reportId}/download-pdf`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = String(patientName || 'Pasien').replace(/\s+/g, '_');
+    link.href = url;
+    link.download = `Laporan_KIA_${safeName}_${visitDate || reportId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    let message = 'Gagal mengunduh dokumen PDF laporan.';
+    const data = err?.response?.data;
+    if (data instanceof Blob) {
+      try {
+        const parsed = JSON.parse(await data.text());
+        if (parsed?.detail) message = parsed.detail;
+      } catch {
+        /* abaikan: respons bukan JSON */
+      }
+    } else {
+      message = getErrorMessage(err, message);
+    }
+    alert(message);
+  }
+};
+
 export default api;

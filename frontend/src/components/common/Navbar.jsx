@@ -46,7 +46,7 @@ const Navbar = ({ onToggleSidebar }) => {
               onClick={toggleTheme}
               aria-label={isDark ? "Beralih ke mode terang" : "Beralih ke mode gelap"}
               title={isDark ? "Mode Terang" : "Mode Gelap"}
-              className="p-2.5 text-caption hover:text-heading hover:bg-muted rounded-xl transition-colors duration-200"
+              className="btn-interactive p-2.5 text-caption hover:text-heading hover:bg-muted rounded-xl transition-colors duration-200 cursor-pointer"
             >
               {isDark ? (
                 <Sun className="w-[18px] h-[18px]" aria-hidden="true" />
@@ -57,18 +57,21 @@ const Navbar = ({ onToggleSidebar }) => {
 
             {/* User info */}
             <div className="flex items-center gap-2.5 bg-subtle px-3 py-1.5 rounded-xl border border-line">
-              <div className="w-8 h-8 rounded-full bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400">
-                <UserIcon className="w-4 h-4" aria-hidden="true" />
+              <div className="w-7 h-7 rounded-full bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+                <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-semibold text-body leading-tight">
-                  {user?.full_name}
-                </p>
-                <p className="text-[11px] text-caption font-medium leading-tight">
-                  {isKader
-                    ? `Kader • ${user?.posyandu_name}`
-                    : "Admin Puskesmas"}
-                </p>
+              <div className="items-center gap-2 hidden sm:flex">
+                <span className="text-sm font-semibold text-heading">
+                  {isKader ? "Kader" : "Admin"}
+                </span>
+                {isKader && (
+                  <>
+                    <span className="text-dim text-xs">&bull;</span>
+                    <span className="text-xs text-caption font-medium">
+                      {user?.posyandu_name || "Posyandu"} &bull; Kec. Airmadidi
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -77,7 +80,7 @@ const Navbar = ({ onToggleSidebar }) => {
               onClick={logout}
               aria-label="Keluar dari sistem"
               title="Keluar"
-              className="p-2.5 text-dim hover:text-red-500 hover:bg-accent-red rounded-xl transition-colors duration-200"
+              className="btn-interactive p-2.5 text-dim hover:text-red-500 hover:bg-accent-red rounded-xl transition-colors duration-200 cursor-pointer"
             >
               <LogOut className="w-[18px] h-[18px]" aria-hidden="true" />
             </button>

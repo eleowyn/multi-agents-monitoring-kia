@@ -209,7 +209,7 @@ button:focus-visible {
 .skeleton-text.medium { width: 80%; }
 
 /* ============================================================
-   ANIMATIONS
+   ANIMATIONS & MICRO-INTERACTIONS
    ============================================================ */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -217,23 +217,50 @@ button:focus-visible {
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes slideInUp {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slideInLeft {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn var(--transition-base) ease-out; }
-.animate-scale-in { animation: scaleIn var(--transition-base) ease-out; }
-.animate-slide-in-up { animation: slideInUp var(--transition-base) ease-out; }
+.animate-fade-in { animation: fadeIn 250ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in { animation: scaleIn 250ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-up { animation: slideInUp 280ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-down { animation: slideInDown 280ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Micro-interaction Utility Classes */
+.card-interactive {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.btn-interactive {
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-interactive:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.table-row-interactive {
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
 
 /* ============================================================
    FORM ELEMENTS

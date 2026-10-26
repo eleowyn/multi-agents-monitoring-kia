@@ -17,7 +17,7 @@ class RevisionValidationRequest(BaseModel):
 
 class RevisionResponse(BaseModel):
     id: int
-    visit_id: int
+    visit_id: Optional[int] = None
     report_id: Optional[int] = None
     kader_id: int
     admin_id: Optional[int] = None

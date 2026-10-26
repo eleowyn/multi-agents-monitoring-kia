@@ -112,3 +112,9 @@ class BulkDeleteRequest(BaseModel):
     ids: List[int]
 
 
+class BulkStatusRequest(BaseModel):
+    ids: List[int]
+    is_active: bool
+
+
+

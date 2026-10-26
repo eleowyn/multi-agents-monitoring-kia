@@ -8,7 +8,9 @@ import {
   X,
   RefreshCw,
   FileSearch,
+  FileEdit,
 } from "lucide-react";
+import RevisionRequestModal from "../../components/kader/RevisionRequestModal";
 
 const SkeletonRow = () => (
   <tr>
@@ -36,6 +38,7 @@ const DataPasien = () => {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [selectedLongitudinal, setSelectedLongitudinal] = useState(null);
+  const [selectedRevisionVisit, setSelectedRevisionVisit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const modalRef = useRef(null);
@@ -88,8 +91,8 @@ const DataPasien = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="pb-3 border-b border-line-light">
-        <h2 className="text-xl font-bold text-heading">Direktori & Riwayat Pasien KIA</h2>
-        <p className="text-xs text-caption mt-0.5">Pelacakan rekam medis longitudinal ibu dan anak lintas fase 1.000 HPK</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">Direktori & Riwayat Pasien KIA</h1>
+        <p className="text-xs sm:text-sm text-caption mt-1">Pelacakan rekam medis longitudinal ibu dan anak lintas fase 1.000 HPK</p>
       </div>
 
       {error && (
@@ -107,25 +110,36 @@ const DataPasien = () => {
       {/* Filter & Search */}
       <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1" role="search">
-          <input type="text" placeholder="Cari berdasarkan nama atau 16 digit NIK..." value={search} onChange={(e) => setSearch(e.target.value)}
+          <Search className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+          <input
+            type="text"
+            placeholder="Cari berdasarkan nama atau 16 digit NIK..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             aria-label="Cari pasien berdasarkan nama atau NIK"
-            className="w-full pl-9 pr-4 py-2.5 bg-card border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-200"
+            className="w-full pl-10 pr-4 h-10 bg-card border border-line rounded-xl text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all"
           />
-          <Search className="w-4 h-4 text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
         </div>
         <div className="flex gap-2" role="group" aria-label="Filter tipe pasien">
           {filterButtons.map((btn) => (
-            <button key={btn.value} onClick={() => setFilterType(btn.value)} aria-pressed={filterType === btn.value}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border ${
-                filterType === btn.value ? btn.activeClass : "bg-card border-line text-label hover:bg-muted hover:border-line"
+            <button
+              key={btn.value}
+              onClick={() => setFilterType(btn.value)}
+              aria-pressed={filterType === btn.value}
+              className={`btn-interactive px-4 h-10 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 border cursor-pointer ${
+                filterType === btn.value
+                  ? btn.activeClass
+                  : "bg-card border-line text-label hover:bg-muted hover:border-line"
               }`}
-            >{btn.label}</button>
+            >
+              {btn.label}
+            </button>
           ))}
         </div>
       </div>
 
       {!loading && (
-        <p className="text-xs text-dim font-medium" aria-live="polite">
+        <p className="text-xs text-caption font-medium" aria-live="polite">
           Menampilkan {filtered.length} dari {patients.length} pasien
         </p>
       )}
@@ -133,14 +147,14 @@ const DataPasien = () => {
       {/* Desktop Table */}
       <div className="hidden md:block bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         {loading ? (
-          <table className="w-full text-xs text-left">
-            <thead className="bg-muted text-label border-b border-line">
+          <table className="w-full text-xs sm:text-sm text-left">
+            <thead className="bg-muted text-caption border-b border-line text-xs font-semibold uppercase tracking-wider">
               <tr>
-                <th className="p-3 font-semibold">NIK & Nama Pasien</th>
-                <th className="p-3 font-semibold">Tipe & Jenis Kelamin</th>
-                <th className="p-3 font-semibold">Tanggal Lahir</th>
-                <th className="p-3 font-semibold">Desa / Posyandu</th>
-                <th className="p-3 font-semibold text-center">Aksi</th>
+                <th className="px-4 py-3.5">Nama & NIK Pasien</th>
+                <th className="px-4 py-3.5">Tipe & Jenis Kelamin</th>
+                <th className="px-4 py-3.5">Tanggal Lahir</th>
+                <th className="px-4 py-3.5">Desa / Posyandu</th>
+                <th className="px-4 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</tbody>
@@ -152,39 +166,45 @@ const DataPasien = () => {
             <p className="text-xs text-dim mt-1">{search ? "Coba ubah kata kunci pencarian atau filter" : "Data pasien akan muncul setelah didaftarkan oleh kader"}</p>
           </div>
         ) : (
-          <table className="w-full text-xs text-left">
-            <thead className="bg-muted text-label border-b border-line">
+          <table className="w-full text-xs sm:text-sm text-left">
+            <thead className="bg-muted text-caption border-b border-line text-xs font-semibold uppercase tracking-wider">
               <tr>
-                <th className="p-3 font-semibold">NIK & Nama Pasien</th>
-                <th className="p-3 font-semibold">Tipe & Jenis Kelamin</th>
-                <th className="p-3 font-semibold">Tanggal Lahir</th>
-                <th className="p-3 font-semibold">Desa / Posyandu</th>
-                <th className="p-3 font-semibold text-center">Aksi</th>
+                <th className="px-4 py-3.5">Nama & NIK Pasien</th>
+                <th className="px-4 py-3.5">Tipe & Jenis Kelamin</th>
+                <th className="px-4 py-3.5">Tanggal Lahir</th>
+                <th className="px-4 py-3.5">Desa / Posyandu</th>
+                <th className="px-4 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-accent-sky transition-colors duration-150">
-                  <td className="p-3">
-                    <p className="font-semibold text-heading">{p.name}</p>
-                    <p className="text-[11px] text-dim mt-0.5">NIK: {p.nik}</p>
+                <tr key={p.id} className="table-row-interactive hover:bg-muted/50 transition-colors duration-150">
+                  <td className="px-4 py-3.5">
+                    <p className="font-semibold text-sm text-heading">{p.name}</p>
+                    <p className="text-xs text-caption font-mono mt-0.5">NIK: {p.nik}</p>
                   </td>
-                  <td className="p-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                       p.patient_type === "MOTHER"
-                        ? "bg-accent-pink text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/50"
-                        : "bg-accent-blue text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
+                        ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
+                        : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
                     }`}>
                       {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
                     </span>
                   </td>
-                  <td className="p-3 text-label">{p.birth_date}</td>
-                  <td className="p-3 text-label">{p.village_name || "Airmadidi"}</td>
-                  <td className="p-3 text-center">
-                    <button onClick={() => handleViewLongitudinal(p.id)} aria-label={`Lihat riwayat longitudinal ${p.name}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-sky hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-lg font-semibold text-xs transition-colors duration-200 border border-sky-200 dark:border-sky-800/50"
+                  <td className="px-4 py-3.5 text-body text-sm">{p.birth_date}</td>
+                  <td className="px-4 py-3.5 text-body">
+                    <p className="font-medium text-heading text-sm">{p.village_name || "Airmadidi"}</p>
+                    {p.posyandu_name && <p className="text-xs text-caption mt-0.5">{p.posyandu_name}</p>}
+                  </td>
+                  <td className="px-4 py-3.5 text-center">
+                    <button
+                      onClick={() => handleViewLongitudinal(p.id)}
+                      aria-label={`Lihat riwayat longitudinal ${p.name}`}
+                      className="btn-interactive inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-card text-heading rounded-lg font-medium text-xs transition-colors border border-line cursor-pointer"
                     >
-                      <GitFork className="w-3.5 h-3.5" aria-hidden="true" />Riwayat
+                      <GitFork className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                      <span>Riwayat</span>
                     </button>
                   </td>
                 </tr>
@@ -206,28 +226,31 @@ const DataPasien = () => {
           </div>
         ) : (
           filtered.map((p) => (
-            <div key={p.id} className="p-4 bg-card rounded-xl border border-line shadow-card space-y-3 hover:border-sky-300 dark:hover:border-sky-700 transition-colors duration-200">
+            <div key={p.id} className="card-interactive p-4 bg-card rounded-xl border border-line shadow-card space-y-3 hover:border-sky-300 dark:hover:border-sky-700 transition-colors duration-200">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-semibold text-heading text-sm">{p.name}</p>
-                  <p className="text-xs text-dim mt-0.5">NIK: {p.nik}</p>
+                  <p className="font-bold text-heading text-base">{p.name}</p>
+                  <p className="text-xs text-caption font-mono mt-0.5">NIK: {p.nik}</p>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                   p.patient_type === "MOTHER"
-                    ? "bg-accent-pink text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/50"
-                    : "bg-accent-blue text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
+                    ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
+                    : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
                 }`}>
                   {p.patient_type === "MOTHER" ? "Ibu" : `Anak (${p.gender || "-"})`}
                 </span>
               </div>
-              <div className="flex gap-4 text-xs text-caption">
+              <div className="flex gap-4 text-xs sm:text-sm text-caption">
                 <span>Lahir: {p.birth_date}</span>
                 <span>Desa: {p.village_name || "Airmadidi"}</span>
               </div>
-              <button onClick={() => handleViewLongitudinal(p.id)} aria-label={`Lihat riwayat longitudinal ${p.name}`}
-                className="w-full flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-accent-sky hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-xl font-semibold text-xs transition-colors duration-200 border border-sky-200 dark:border-sky-800/50"
+              <button
+                onClick={() => handleViewLongitudinal(p.id)}
+                aria-label={`Lihat riwayat longitudinal ${p.name}`}
+                className="btn-interactive w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-muted hover:bg-card text-heading rounded-xl font-semibold text-xs sm:text-sm transition-colors border border-line cursor-pointer"
               >
-                <GitFork className="w-3.5 h-3.5" aria-hidden="true" />Riwayat Longitudinal
+                <GitFork className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                <span>Riwayat Longitudinal</span>
               </button>
             </div>
           ))
@@ -243,47 +266,62 @@ const DataPasien = () => {
           <div ref={modalRef} tabIndex={-1} className="bg-card rounded-2xl max-w-2xl w-full p-6 shadow-prominent space-y-4 max-h-[85vh] overflow-y-auto animate-scale-in border border-line">
             <div className="flex justify-between items-start border-b border-line-light pb-4">
               <div>
-                <h3 id="modal-longitudinal-title" className="text-base font-bold text-heading">Riwayat Longitudinal: {selectedLongitudinal.patient.name}</h3>
-                <p className="text-xs text-caption mt-0.5">NIK: {selectedLongitudinal.patient.nik}</p>
+                <h3 id="modal-longitudinal-title" className="text-lg font-bold text-heading">Riwayat Longitudinal: {selectedLongitudinal.patient.name}</h3>
+                <p className="text-xs sm:text-sm text-caption font-mono mt-0.5">NIK: {selectedLongitudinal.patient.nik}</p>
               </div>
               <button onClick={() => setSelectedLongitudinal(null)} aria-label="Tutup modal riwayat longitudinal"
-                className="p-2 text-dim hover:text-label hover:bg-muted rounded-xl transition-colors duration-200"
+                className="p-1.5 text-dim hover:text-label hover:bg-muted rounded-xl transition-colors duration-200"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             {selectedLongitudinal.mother && (
-              <div className="p-4 bg-accent-pink border border-pink-200 dark:border-pink-800/50 rounded-xl text-xs space-y-1.5">
-                <p className="font-semibold text-pink-900 dark:text-pink-200 flex items-center gap-1.5">
+              <div className="p-4 bg-accent-pink border border-pink-200 dark:border-pink-800/50 rounded-xl space-y-1.5">
+                <p className="font-semibold text-sm text-pink-900 dark:text-pink-200 flex items-center gap-1.5">
                   <span>Data Ibu Kandung:</span>
                   <strong>{selectedLongitudinal.mother.name}</strong> (NIK: {selectedLongitudinal.mother.nik})
                 </p>
-                <p className="text-pink-700 dark:text-pink-300 text-xs">
+                <p className="text-pink-700 dark:text-pink-300 text-xs sm:text-sm">
                   Terekam {selectedLongitudinal.maternal_visits.length} riwayat kunjungan kehamilan ibu.
                 </p>
               </div>
             )}
 
             <div className="space-y-3">
-              <h4 className="text-sm font-bold text-body">Daftar Kunjungan Pasien</h4>
+              <h4 className="text-sm font-bold text-heading">Daftar Kunjungan Pasien</h4>
               {selectedLongitudinal.child_visits.length === 0 ? (
                 <div className="text-center py-8 bg-subtle rounded-xl border border-line">
                   <FileSearch className="w-8 h-8 text-dim mx-auto mb-2" aria-hidden="true" />
-                  <p className="text-xs text-caption">Belum ada catatan kunjungan.</p>
+                  <p className="text-sm text-caption">Belum ada catatan kunjungan.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {selectedLongitudinal.child_visits.map((cv, i) => (
-                    <div key={i} className="p-3.5 bg-subtle border border-line rounded-xl text-xs flex justify-between items-center hover:bg-muted transition-colors duration-150">
+                    <div key={i} className="p-3.5 bg-subtle border border-line rounded-xl flex justify-between items-center hover:bg-muted transition-colors duration-150">
                       <div>
-                        <p className="font-semibold text-heading">{cv.phase} — {cv.visit_date}</p>
-                        <p className="text-xs text-caption mt-0.5">
+                        <p className="font-semibold text-sm text-heading">{cv.phase} — {cv.visit_date}</p>
+                        <p className="text-xs sm:text-sm text-caption mt-1">
                           {cv.age_in_months !== null && `Usia: ${cv.age_in_months} bln • `}
                           {cv.child_weight_kg && `BB: ${cv.child_weight_kg} kg • `}
                           {cv.child_length_cm && `TB: ${cv.child_length_cm} cm`}
                         </p>
                       </div>
+                      <button
+                        onClick={() =>
+                          setSelectedRevisionVisit({
+                            visitId: cv.id,
+                            name: selectedLongitudinal.patient.name,
+                            nik: selectedLongitudinal.patient.nik,
+                            phase: cv.phase,
+                          })
+                        }
+                        className="btn-interactive inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-card text-heading rounded-lg text-xs font-semibold border border-line transition-colors cursor-pointer"
+                        title="Ajukan perbaikan data kunjungan ini"
+                      >
+                        <FileEdit className="w-3.5 h-3.5 text-caption" />
+                        <span>Revisi</span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -291,6 +329,21 @@ const DataPasien = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Revision Request Modal */}
+      {selectedRevisionVisit && (
+        <RevisionRequestModal
+          isOpen={Boolean(selectedRevisionVisit)}
+          visitId={selectedRevisionVisit.visitId}
+          patientInfo={selectedRevisionVisit}
+          onClose={() => setSelectedRevisionVisit(null)}
+          onSuccess={() => {
+            if (selectedLongitudinal) {
+              handleViewLongitudinal(selectedLongitudinal.patient.id);
+            }
+          }}
+        />
       )}
     </div>
   );

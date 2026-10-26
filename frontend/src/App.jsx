@@ -5,6 +5,7 @@ import Navbar from "./components/common/Navbar";
 import Sidebar from "./components/common/Sidebar";
 
 import Login from "./pages/Login";
+import KaderDashboard from "./pages/kader/KaderDashboard";
 import InputKunjungan from "./pages/kader/InputKunjungan";
 import ValidasiLaporan from "./pages/kader/ValidasiLaporan";
 import DataPasien from "./pages/kader/DataPasien";
@@ -13,8 +14,10 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManagePasien from "./pages/admin/ManagePasien";
 import ManageKader from "./pages/admin/ManageKader";
 import AuditLogs from "./pages/admin/AuditLogs";
+import AdminRevisions from "./pages/admin/AdminRevisions";
+import ManageReports from "./pages/admin/ManageReports";
 
-const ProtectedLayout = ({ children, allowedRole }) => {
+const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -33,10 +36,16 @@ const ProtectedLayout = ({ children, allowedRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRole && user.role !== allowedRole) {
+  const isAllowed = allowedRoles
+    ? allowedRoles.includes(user.role)
+    : allowedRole
+    ? user.role === allowedRole
+    : true;
+
+  if (!isAllowed) {
     return (
       <Navigate
-        to={user.role === "KADER" ? "/kader/input-kunjungan" : "/admin/dashboard"}
+        to={user.role === "KADER" ? "/kader/dashboard" : "/admin/dashboard"}
         replace
       />
     );
@@ -61,14 +70,17 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/kader/dashboard" element={<ProtectedLayout allowedRole="KADER"><KaderDashboard /></ProtectedLayout>} />
           <Route path="/kader/input-kunjungan" element={<ProtectedLayout allowedRole="KADER"><InputKunjungan /></ProtectedLayout>} />
-          <Route path="/kader/validasi-laporan/:reportId" element={<ProtectedLayout allowedRole="KADER"><ValidasiLaporan /></ProtectedLayout>} />
+          <Route path="/kader/validasi-laporan/:reportId" element={<ProtectedLayout allowedRoles={["KADER", "ADMIN"]}><ValidasiLaporan /></ProtectedLayout>} />
           <Route path="/kader/data-pasien" element={<ProtectedLayout allowedRole="KADER"><DataPasien /></ProtectedLayout>} />
           <Route path="/kader/laporan-kia" element={<ProtectedLayout allowedRole="KADER"><ArsipLaporan /></ProtectedLayout>} />
           <Route path="/admin/dashboard" element={<ProtectedLayout allowedRole="ADMIN"><AdminDashboard /></ProtectedLayout>} />
           <Route path="/admin/manage-pasien" element={<ProtectedLayout allowedRole="ADMIN"><ManagePasien /></ProtectedLayout>} />
           <Route path="/admin/manage-kader" element={<ProtectedLayout allowedRole="ADMIN"><ManageKader /></ProtectedLayout>} />
           <Route path="/admin/audit-logs" element={<ProtectedLayout allowedRole="ADMIN"><AuditLogs /></ProtectedLayout>} />
+          <Route path="/admin/revisions" element={<ProtectedLayout allowedRole="ADMIN"><AdminRevisions /></ProtectedLayout>} />
+          <Route path="/admin/reports" element={<ProtectedLayout allowedRole="ADMIN"><ManageReports /></ProtectedLayout>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

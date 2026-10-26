@@ -33,7 +33,7 @@ const Login = () => {
     setLoading(true);
     try {
       const user = await login(username, password);
-      navigate(user.role === "KADER" ? "/kader/input-kunjungan" : "/admin/dashboard");
+      navigate(user.role === "KADER" ? "/kader/dashboard" : "/admin/dashboard");
     } catch (err) {
       setError(err.response?.data?.detail || "Gagal login. Periksa username dan password Anda.");
     } finally {
@@ -102,7 +102,7 @@ const Login = () => {
         <button
           onClick={toggleTheme}
           aria-label={isDark ? "Beralih ke mode terang" : "Beralih ke mode gelap"}
-          className="absolute top-5 right-5 p-2.5 text-caption hover:text-heading hover:bg-muted rounded-xl transition-colors duration-200"
+          className="btn-interactive absolute top-5 right-5 p-2.5 text-caption hover:text-heading hover:bg-muted rounded-xl transition-colors duration-200 cursor-pointer"
         >
           {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
@@ -120,7 +120,7 @@ const Login = () => {
           </div>
 
           {/* Form Card */}
-          <div className="bg-card rounded-2xl shadow-elevated border border-line overflow-hidden">
+          <div className="card-interactive bg-card rounded-2xl shadow-elevated border border-line overflow-hidden">
             <div className="px-6 pt-8 pb-2 sm:px-8">
               <h2 className="text-xl font-bold text-heading">Masuk ke Sistem</h2>
               <p className="text-sm text-caption mt-1">Silakan masukkan kredensial akun Anda</p>
@@ -163,7 +163,7 @@ const Login = () => {
 
                 <button type="submit" disabled={loading}
                   aria-label={loading ? "Sedang memproses login" : "Masuk ke sistem"}
-                  className="w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold rounded-xl text-sm shadow-md hover:shadow-lg disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-sky-600 transition-all duration-200 flex items-center justify-center gap-2.5"
+                  className="btn-interactive w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold rounded-xl text-sm shadow-md hover:shadow-lg disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-sky-600 transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
                 >
                   {loading ? (
                     <><span className="spinner border-white/30 border-t-white" /><span>Memproses Masuk...</span></>

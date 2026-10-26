@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     RAG_CHUNK_OVERLAP: int = 150
     RAG_EXCLUDED_FILES: str = "TABEL_WHO.pdf"
 
+    # WeasyPrint (Windows): folder DLL Pango/GTK dari MSYS2, mis. C:\msys64\mingw64\bin
+    WEASYPRINT_DLL_DIRECTORIES: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

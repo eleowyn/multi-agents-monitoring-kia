@@ -89,7 +89,7 @@ const PatientTrendChart = () => {
     diff > 0 ? "text-emerald-600 dark:text-emerald-400" : diff < 0 ? "text-rose-600 dark:text-rose-400" : "text-dim";
 
   return (
-    <section className="bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
+    <section className="card-interactive bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div>
           <h2 className="text-sm font-bold text-heading">Tren Per Pasien</h2>

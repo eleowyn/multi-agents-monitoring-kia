@@ -18,7 +18,13 @@ def setup_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     seed_default_users(db)
+    from app.models.user import User
+    kader = db.query(User).filter(User.username == "kader1").first()
+    if kader and not kader.is_active:
+        kader.is_active = True
+        db.commit()
     db.close()
+
 
 
 def test_auth_login_kader():
@@ -185,3 +191,64 @@ def test_admin_dashboard_stats():
     data = res.json()
     assert data["total_patients"] >= 1
     assert len(data["village_breakdown"]) == 9
+
+
+def test_admin_toggle_kader_status_and_deactivated_login():
+    """Menguji fitur toggle nonaktifkan akun kader dan penolakan login saat nonaktif (Bab 4 Tabel 20)."""
+    # 1. Login Admin
+    admin_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    admin_token = admin_login.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # 2. Buat kader baru untuk pengujian
+    test_username = f"kader_test_{int(time.time())}"
+    create_res = client.post("/api/v1/admin/kaders", headers=admin_headers, json={
+        "username": test_username,
+        "email": f"{test_username}@test.com",
+        "password": "password123",
+        "full_name": "Kader Uji Status",
+        "posyandu_name": "Posyandu Cempaka",
+        "village_name": "Sukur"
+    })
+    assert create_res.status_code == 200
+    kader_data = create_res.json()
+    kader_id = kader_data["id"]
+    assert kader_data["is_active"] is True
+
+    # 3. Nonaktifkan kader via toggle endpoint
+    toggle_off_res = client.put(f"/api/v1/admin/kaders/{kader_id}/toggle-status", headers=admin_headers)
+    assert toggle_off_res.status_code == 200
+    assert toggle_off_res.json()["is_active"] is False
+
+    # 4. Coba login sebagai kader yang dinonaktifkan -> Harus ditolak 403 Forbidden
+    inactive_login = client.post("/api/v1/auth/login", json={
+        "username": test_username,
+        "password": "password123"
+    })
+    assert inactive_login.status_code == 403
+    assert "telah dinonaktifkan" in inactive_login.json()["detail"]
+
+    # 5. Aktifkan kembali via toggle endpoint
+    toggle_on_res = client.put(f"/api/v1/admin/kaders/{kader_id}/toggle-status", headers=admin_headers)
+    assert toggle_on_res.status_code == 200
+    assert toggle_on_res.json()["is_active"] is True
+
+    # 6. Login kembali setelah aktif -> Harus berhasil 200 OK
+    active_login = client.post("/api/v1/auth/login", json={
+        "username": test_username,
+        "password": "password123"
+    })
+    assert active_login.status_code == 200
+
+    # 7. Uji bulk status update
+    bulk_res = client.post("/api/v1/admin/kaders/bulk-status", headers=admin_headers, json={
+        "ids": [kader_id],
+        "is_active": False
+    })
+    assert bulk_res.status_code == 200
+    assert bulk_res.json()["updated_count"] == 1
+
+    # 8. Bersihkan data uji
+    del_res = client.delete(f"/api/v1/admin/kaders/{kader_id}", headers=admin_headers)
+    assert del_res.status_code == 200
+

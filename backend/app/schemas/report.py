@@ -29,6 +29,7 @@ class ReportResponse(BaseModel):
     validated_at: Optional[datetime] = None
     pdf_path: Optional[str] = None
     created_at: Optional[datetime] = None
+    visit_data: Optional[Dict[str, Any]] = None
 
 
 class ReportValidationRequest(BaseModel):
@@ -55,3 +56,4 @@ class ReportListItemResponse(BaseModel):
     revision_count: int = 0
     validated_at: Optional[datetime] = None
     has_pdf: bool = False
+    latest_revision_status: Optional[str] = None

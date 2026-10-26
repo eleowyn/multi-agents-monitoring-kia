@@ -118,3 +118,17 @@ def create_visit_and_analyze(
     )
 
     return report
+
+
+@router.get("/{visit_id}", response_model=VisitResponse)
+def get_visit(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mengambil rincian data kunjungan berdasarkan ID."""
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Data kunjungan tidak ditemukan.")
+    return visit
+

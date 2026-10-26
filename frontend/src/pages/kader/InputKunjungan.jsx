@@ -320,18 +320,17 @@ const InputKunjungan = () => {
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-heading">
+          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
             Formulir Kunjungan Posyandu
-          </h2>
-          <p className="text-sm text-caption mt-1">
-            Pencatatan data antropometri & deteksi risiko 1.000 HPK berbasis
-            Multi-Agent AI
+          </h1>
+          <p className="text-xs sm:text-sm text-caption mt-1">
+            Pencatatan data antropometri & deteksi risiko 1.000 HPK berbasis Multi-Agent AI
           </p>
         </div>
         <button
           onClick={() => setShowNewPatientModal(true)}
           aria-label="Registrasi pasien baru"
-          className="flex items-center gap-2 px-4 py-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+          className="btn-interactive flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200"
         >
           <PlusCircle className="w-4 h-4" aria-hidden="true" />
           Registrasi Pasien Baru
@@ -423,7 +422,7 @@ const InputKunjungan = () => {
                         {p.name}
                       </p>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                           p.patient_type === "MOTHER"
                             ? "bg-accent-pink text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/50"
                             : "bg-accent-blue text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
@@ -787,7 +786,7 @@ const InputKunjungan = () => {
                   ? "Sedang menganalisis data"
                   : "Jalankan analisis multi-agent AI"
               }
-              className="w-full py-3.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-sky-600 disabled:hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2.5"
+              className="btn-interactive w-full py-3.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-sky-600 disabled:hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -959,13 +958,13 @@ const InputKunjungan = () => {
                 <button
                   type="button"
                   onClick={() => setShowNewPatientModal(false)}
-                  className="px-4 py-2.5 border border-line rounded-xl text-sm font-medium text-caption hover:bg-muted hover:text-heading transition-all duration-200"
+                  className="btn-interactive px-4 py-2.5 border border-line rounded-xl text-sm font-medium text-caption hover:bg-muted hover:text-heading transition-all duration-200 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all duration-200"
+                  className="btn-interactive px-5 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
                   Simpan Pasien
                 </button>

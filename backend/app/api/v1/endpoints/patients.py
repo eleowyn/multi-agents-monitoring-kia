@@ -219,6 +219,7 @@ def get_longitudinal_history(
             m_visits = db.query(Visit).filter(Visit.patient_id == mother.id).order_by(Visit.visit_date.asc()).all()
             maternal_visits = [
                 {
+                    "id": v.id,
                     "visit_date": str(v.visit_date),
                     "trimester": v.trimester,
                     "lila_cm": v.lila_cm,
