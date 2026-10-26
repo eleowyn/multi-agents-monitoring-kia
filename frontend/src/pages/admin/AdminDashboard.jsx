@@ -148,7 +148,7 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Pasien Terdaftar */}
           <div
-            className="group relative bg-card p-5 rounded-2xl border border-line border-t-2 border-t-sky-500 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
+            className="group relative bg-card p-5 rounded-2xl border border-line hover:border-sky-300 dark:hover:border-sky-800/60 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
             style={{ animationDelay: "0ms" }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -159,20 +159,19 @@ const AdminDashboard = () => {
                 <p className="text-2xl sm:text-3xl font-extrabold text-heading mt-1 tracking-tight tabular-nums">
                   {summary?.total_patients || 0}
                 </p>
+                <p className="text-xs text-caption mt-1">
+                  Wilayah Kerja Puskesmas Airmadidi
+                </p>
               </div>
-              <div className="p-3 bg-accent-sky text-sky-600 dark:text-sky-400 rounded-xl border border-sky-200/80 dark:border-sky-800/50 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
+              <div className="p-3 bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 rounded-xl border border-sky-100 dark:border-sky-900/30 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
                 <Users className="w-5 h-5" aria-hidden="true" />
               </div>
-            </div>
-            <div className="mt-3 pt-2.5 border-t border-line-light flex items-center justify-between text-[11px] text-caption">
-              <span>Kohort 1.000 HPK</span>
-              <span className="font-semibold text-sky-600 dark:text-sky-400">9 Desa Aktif</span>
             </div>
           </div>
 
           {/* Card 2: Kasus Stunting Terdeteksi */}
           <div
-            className="group relative bg-card p-5 rounded-2xl border border-line border-t-2 border-t-rose-500 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
+            className="group relative bg-card p-5 rounded-2xl border border-line hover:border-rose-300 dark:hover:border-rose-800/60 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
             style={{ animationDelay: "60ms" }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -180,31 +179,22 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Kasus Stunting Terdeteksi
                 </p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 mt-1 tracking-tight tabular-nums">
+                <p className={`text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight tabular-nums ${(summary?.total_stunting || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
                   {summary?.total_stunting || 0}
                 </p>
+                <p className="text-xs text-caption mt-1">
+                  Status antropometri balita
+                </p>
               </div>
-              <div className="p-3 bg-accent-rose text-rose-600 dark:text-rose-400 rounded-xl border border-rose-200/80 dark:border-rose-800/50 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/30 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
                 <Baby className="w-5 h-5" aria-hidden="true" />
               </div>
-            </div>
-            <div className="mt-3 pt-2.5 border-t border-line-light flex items-center justify-between text-[11px]">
-              <span className="text-caption">Status Gizi Balita</span>
-              <span
-                className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                  (summary?.total_stunting || 0) > 0
-                    ? "text-rose-700 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300"
-                    : "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300"
-                }`}
-              >
-                {(summary?.total_stunting || 0) > 0 ? "Perlu Intervensi" : "Nol Kasus"}
-              </span>
             </div>
           </div>
 
           {/* Card 3: Ibu Hamil KEK / Anemia */}
           <div
-            className="group relative bg-card p-5 rounded-2xl border border-line border-t-2 border-t-amber-500 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
+            className="group relative bg-card p-5 rounded-2xl border border-line hover:border-amber-300 dark:hover:border-amber-800/60 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
             style={{ animationDelay: "120ms" }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -212,24 +202,22 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Ibu Hamil KEK / Anemia
                 </p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 tracking-tight tabular-nums">
+                <p className={`text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight tabular-nums ${((summary?.total_kek || 0) + (summary?.total_anemia || 0)) > 0 ? "text-amber-600 dark:text-amber-400" : "text-heading"}`}>
                   {(summary?.total_kek || 0) + (summary?.total_anemia || 0)}
                 </p>
+                <p className="text-xs text-caption mt-1">
+                  KEK: {summary?.total_kek || 0} &bull; Anemia: {summary?.total_anemia || 0}
+                </p>
               </div>
-              <div className="p-3 bg-accent-amber text-amber-600 dark:text-amber-400 rounded-xl border border-amber-200/80 dark:border-amber-800/50 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-xl border border-amber-100 dark:border-amber-900/30 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
                 <HeartPulse className="w-5 h-5" aria-hidden="true" />
               </div>
-            </div>
-            <div className="mt-3 pt-2.5 border-t border-line-light flex items-center justify-between text-[11px] text-caption tabular-nums">
-              <span>KEK: <strong className="text-heading font-bold">{summary?.total_kek || 0}</strong></span>
-              <span>&bull;</span>
-              <span>Anemia: <strong className="text-heading font-bold">{summary?.total_anemia || 0}</strong></span>
             </div>
           </div>
 
           {/* Card 4: Laporan Tervalidasi Kader */}
           <div
-            className="group relative bg-card p-5 rounded-2xl border border-line border-t-2 border-t-emerald-500 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
+            className="group relative bg-card p-5 rounded-2xl border border-line hover:border-emerald-300 dark:hover:border-emerald-800/60 shadow-card hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between animate-fade-in"
             style={{ animationDelay: "180ms" }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -237,20 +225,16 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Laporan Tervalidasi Kader
                 </p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 tracking-tight tabular-nums">
+                <p className="text-2xl sm:text-3xl font-extrabold text-heading mt-1 tracking-tight tabular-nums">
                   {summary?.total_reports_approved || 0}
                 </p>
+                <p className="text-xs text-caption mt-1">
+                  Dokumen rekam medis siap cetak
+                </p>
               </div>
-              <div className="p-3 bg-accent-emerald text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-900/30 group-hover:scale-105 transition-transform duration-200 shrink-0 shadow-xs">
                 <CheckCircle className="w-5 h-5" aria-hidden="true" />
               </div>
-            </div>
-            <div className="mt-3 pt-2.5 border-t border-line-light flex items-center justify-between text-[11px]">
-              <span className="text-caption">Human-in-the-Loop</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                Valid Siap Cetak
-              </span>
             </div>
           </div>
         </div>

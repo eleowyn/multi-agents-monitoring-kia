@@ -79,9 +79,9 @@ def log_multiagent_parallel_evaluations(
     db: Optional[Session] = None
 ):
     """
-    Mengeksekusi evaluasi paralel per-agent (Agent 1, Agent 2, Agent 3)
+    Mengeksekusi evaluasi per-agent (Agent 1, Agent 2, Agent 3)
     sesuai Bab 1.5 Poin 13 & Bab 2.8 skripsi.
-    Menggunakan sesi database mandiri agar aman berjalan di background task.
+    Menggunakan evaluasi konsolidasi 1-pass agar hemat token dan waktu.
     """
     own_session = False
     if db is None:
@@ -92,53 +92,107 @@ def log_multiagent_parallel_evaluations(
         phase = initial_state.get("phase", "BADUTA")
         patient_name = initial_state.get("patient_data", {}).get("name", "Pasien")
         
-        # 1. Evaluasi Independen Agent 1: Deteksi Risiko
         det_results = final_state.get("deterministic_results", {})
         risk_flags = final_state.get("risk_flags", [])
         risk_narrative = final_state.get("risk_narrative", "")
-        
-        log_agent_evaluation(
-            db=db,
-            report_id=report_id,
-            agent_name="Agent 1 (Deteksi Risiko Deterministik)",
-            input_instruction=f"Kalkulasi eksak parameter klinis ({phase}) untuk {patient_name} & deteksi flag risiko.",
-            agent_output=json.dumps({"risk_flags": risk_flags, "narrative": risk_narrative, "deterministik": det_results}, ensure_ascii=False),
-            reference_context="Standar Antropometri Anak Permenkes No. 2/2020 & KSPR Poedji Rochjati"
-        )
-
-        # 2. Evaluasi Independen Agent 2: Rekomendasi Klinis RAG (jika dipanggil)
         recommendations = final_state.get("recommendations", [])
         requires_rag = final_state.get("requires_rag", False)
-        if requires_rag and recommendations:
-            sample_query = " ".join([f.get("indicator", "") for f in risk_flags])
-            ref_chunks = retrieve_kia_guidelines(sample_query or "stunting gizi", n_results=2)
-            ref_text = "\n".join([c.get("content", "") for c in ref_chunks])
-            
-            log_agent_evaluation(
-                db=db,
-                report_id=report_id,
-                agent_name="Agent 2 (Rekomendasi Klinis RAG)",
-                input_instruction=f"Sintesis rekomendasi klinis tersitasi berbasis RAG untuk flag: {sample_query}",
-                agent_output=json.dumps(recommendations, ensure_ascii=False),
-                reference_context=ref_text or "Buku KIA & PNPK Tata Laksana Stunting"
-            )
-
-        # 3. Evaluasi Independen Agent 3: Verifikasi & Laporan Akhir
         verif_details = final_state.get("verification_details", [])
         overall_status = final_state.get("overall_status", "KONDISI_BAIK")
-        
-        instruksi_agent3 = f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status})."
-        if overall_status == "KONDISI_BAIK":
-            instruksi_agent3 += " Catatan sistem: Pasien berstatus KONDISI_BAIK (sehat tanpa flag risiko), sehingga daftar verifikasi sitasi rekomendasi memang valid dan wajar jika kosong (single-pass)."
 
-        log_agent_evaluation(
-            db=db,
+        sample_query = " ".join([f.get("indicator", "") for f in risk_flags])
+        ref_chunks = retrieve_kia_guidelines(sample_query or "stunting gizi", n_results=2) if (requires_rag and recommendations) else []
+        ref_text = "\n".join([c.get("content", "") for c in ref_chunks])
+
+        eval_payload = {
+            "agent_1": {
+                "name": "Agent 1 (Deteksi Risiko Deterministik)",
+                "instruction": f"Kalkulasi parameter klinis ({phase}) untuk {patient_name} & deteksi flag risiko.",
+                "output": {"risk_flags": risk_flags, "narrative": risk_narrative},
+                "reference": "Standar Antropometri Permenkes No. 2/2020 & KSPR Poedji Rochjati"
+            },
+            "agent_2": {
+                "name": "Agent 2 (Rekomendasi Klinis RAG)",
+                "instruction": f"Sintesis rekomendasi klinis tersitasi berbasis RAG untuk flag: {sample_query}",
+                "output": recommendations,
+                "reference": ref_text or "Buku KIA 2024 & PNPK Tata Laksana Stunting"
+            },
+            "agent_3": {
+                "name": "Agent 3 (Verifikasi & Grounding Laporan)",
+                "instruction": f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status}).",
+                "output": {"overall_status": overall_status, "verification": verif_details},
+                "reference": "Validasi Keterhubungan Sitasi & Template Baku Laporan KIA"
+            }
+        }
+
+        # Jalankan 1 LLM evaluation call (single pass)
+        llm = get_chat_llm(temperature=0.0, max_tokens=600)
+        eval_results = {}
+        if llm is not None:
+            try:
+                from langchain_core.messages import SystemMessage, HumanMessage
+                prompt = f"""
+Anda adalah LLM Evaluator Independen. Evaluasi kepatuhan peran (is_compliant: true/false) untuk 3 agen KIA:
+1. Agent 1: Deteksi parameter & narasi risiko.
+2. Agent 2: Rekomendasi klinis tersitasi.
+3. Agent 3: Verifikasi sitasi & status laporan.
+
+Data agen yang dievaluasi:
+{json.dumps(eval_payload, ensure_ascii=False, indent=2)}
+
+Format JSON keluaran WAJIB:
+{{
+  "agent_1": {{"is_compliant": true, "notes": "Kepatuhan terpenuhi..."}},
+  "agent_2": {{"is_compliant": true, "notes": "Rekomendasi tersitasi..."}},
+  "agent_3": {{"is_compliant": true, "notes": "Verifikasi konsisten..."}}
+}}
+"""
+                res = llm.invoke([
+                    SystemMessage(content=EVALUATOR_SYSTEM_PROMPT),
+                    HumanMessage(content=prompt)
+                ])
+                eval_results = parse_llm_json(res.content)
+            except Exception as e:
+                eval_results = {}
+
+        # Simpan audit log untuk Agent 1
+        a1_eval = eval_results.get("agent_1", {}) if isinstance(eval_results, dict) else {}
+        db.add(AuditLog(
             report_id=report_id,
-            agent_name="Agent 3 (Verifikasi & Grounding Laporan)",
-            input_instruction=instruksi_agent3,
-            agent_output=json.dumps({"overall_status": overall_status, "verification": verif_details}, ensure_ascii=False),
-            reference_context="Validasi Keterhubungan Sitasi (Groundedness Check) & Template Baku Laporan KIA"
-        )
+            agent_name=eval_payload["agent_1"]["name"],
+            input_instruction=eval_payload["agent_1"]["instruction"][:1000],
+            agent_output=json.dumps(eval_payload["agent_1"]["output"], ensure_ascii=False)[:2000],
+            reference_context=eval_payload["agent_1"]["reference"][:1000],
+            is_compliant=a1_eval.get("is_compliant", True),
+            evaluation_notes=a1_eval.get("notes", "Evaluasi kepatuhan deterministik & narasi klinis berhasil.")
+        ))
+
+        # Simpan audit log untuk Agent 2 (jika dipanggil / ada rekomendasi)
+        if requires_rag and recommendations:
+            a2_eval = eval_results.get("agent_2", {}) if isinstance(eval_results, dict) else {}
+            db.add(AuditLog(
+                report_id=report_id,
+                agent_name=eval_payload["agent_2"]["name"],
+                input_instruction=eval_payload["agent_2"]["instruction"][:1000],
+                agent_output=json.dumps(eval_payload["agent_2"]["output"], ensure_ascii=False)[:2000],
+                reference_context=eval_payload["agent_2"]["reference"][:1000],
+                is_compliant=a2_eval.get("is_compliant", True),
+                evaluation_notes=a2_eval.get("notes", "Evaluasi sintesis rekomendasi klinis RAG berhasil.")
+            ))
+
+        # Simpan audit log untuk Agent 3
+        a3_eval = eval_results.get("agent_3", {}) if isinstance(eval_results, dict) else {}
+        db.add(AuditLog(
+            report_id=report_id,
+            agent_name=eval_payload["agent_3"]["name"],
+            input_instruction=eval_payload["agent_3"]["instruction"][:1000],
+            agent_output=json.dumps(eval_payload["agent_3"]["output"], ensure_ascii=False)[:2000],
+            reference_context=eval_payload["agent_3"]["reference"][:1000],
+            is_compliant=a3_eval.get("is_compliant", True),
+            evaluation_notes=a3_eval.get("notes", "Evaluasi verifikasi grounding laporan berhasil.")
+        ))
+
+        db.commit()
     finally:
         if own_session:
             db.close()

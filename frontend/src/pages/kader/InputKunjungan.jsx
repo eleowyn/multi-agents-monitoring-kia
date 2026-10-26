@@ -12,6 +12,7 @@ import {
   Info,
   X,
   Users,
+  CheckCircle2,
 } from "lucide-react";
 
 const KSPR_OPTIONS = [
@@ -91,11 +92,20 @@ const InputKunjungan = () => {
   const [phase, setPhase] = useState("BADUTA");
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(1);
+  const [loadingProgress, setLoadingProgress] = useState(15);
+  const timerRef = useRef(null);
   const [patientsLoading, setPatientsLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const modalRef = useRef(null);
   const { user, isKader } = useAuth();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   // Form State Kunjungan
   const [visitDate, setVisitDate] = useState(
@@ -222,7 +232,25 @@ const InputKunjungan = () => {
     }
 
     setLoading(true);
+    setLoadingStep(1);
+    setLoadingProgress(15);
     setError("");
+
+    const startTime = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      if (elapsed < 6) {
+        setLoadingStep(1);
+        setLoadingProgress(Math.min(32, 15 + Math.floor(elapsed * 2.8)));
+      } else if (elapsed < 18) {
+        setLoadingStep(2);
+        setLoadingProgress(Math.min(74, 32 + Math.floor((elapsed - 6) * 3.5)));
+      } else {
+        setLoadingStep(3);
+        setLoadingProgress(Math.min(94, 74 + Math.floor((elapsed - 18) * 1.2)));
+      }
+    }, 400);
 
     try {
       const payload = {
@@ -260,8 +288,11 @@ const InputKunjungan = () => {
       };
 
       const res = await api.post("/visits/", payload);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setLoadingProgress(100);
       navigate(`/kader/validasi-laporan/${res.data.id}`);
     } catch (err) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setError(getErrorMessage(err, "Gagal memproses analisis kunjungan."));
     } finally {
       setLoading(false);
@@ -970,6 +1001,138 @@ const InputKunjungan = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Modal Loading Progress Multi-Agent AI ═══ */}
+      {loading && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-loading-title"
+        >
+          <div className="bg-card rounded-2xl max-w-lg w-full p-6 sm:p-8 border border-line shadow-prominent space-y-6 text-center animate-scale-in">
+            {/* Header Icon */}
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 relative">
+              <Sparkles className="w-8 h-8 animate-pulse" />
+              <div className="absolute inset-0 rounded-2xl border-2 border-sky-500/40 animate-ping opacity-25" />
+            </div>
+
+            <div>
+              <h3 id="modal-loading-title" className="text-lg font-bold text-heading">
+                Multi-Agent AI Sedang Menganalisis
+              </h3>
+              <p className="text-xs sm:text-sm text-caption mt-1">
+                Sistem 3 agen otonom sedang memproses data klinis pasien berdasarkan standar Kemenkes RI.
+              </p>
+            </div>
+
+            {/* Stepper */}
+            <div className="space-y-3 text-left">
+              {/* Step 1 */}
+              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+                loadingStep === 1
+                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
+                  : loadingStep > 1
+                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
+                  : "bg-subtle/50 border-line/60 opacity-60"
+              }`}>
+                <div className="mt-0.5">
+                  {loadingStep > 1 ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  ) : loadingStep === 1 ? (
+                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
+                    <span>Agen 1: Deteksi Risiko & Parameter Antropometri</span>
+                    {loadingStep === 1 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                  </div>
+                  <p className="text-[11px] text-caption mt-0.5">
+                    Kalkulasi Z-score WHO, skor KSPR, LiLA, dan evaluasi riwayat longitudinal.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+                loadingStep === 2
+                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
+                  : loadingStep > 2
+                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
+                  : "bg-subtle/50 border-line/60 opacity-60"
+              }`}>
+                <div className="mt-0.5">
+                  {loadingStep > 2 ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  ) : loadingStep === 2 ? (
+                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
+                    <span>Agen 2: Penalaran ReAct & RAG Pedoman KIA</span>
+                    {loadingStep === 2 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                  </div>
+                  <p className="text-[11px] text-caption mt-0.5">
+                    Penelusuran semantik Buku KIA 2024 & KMK Stunting untuk sintesis rekomendasi klinis tersitasi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+                loadingStep === 3
+                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
+                  : loadingStep > 3
+                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
+                  : "bg-subtle/50 border-line/60 opacity-60"
+              }`}>
+                <div className="mt-0.5">
+                  {loadingStep > 3 ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  ) : loadingStep === 3 ? (
+                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
+                    <span>Agen 3: Verifikasi Grounding Sitasi & Laporan</span>
+                    {loadingStep === 3 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                  </div>
+                  <p className="text-[11px] text-caption mt-0.5">
+                    Audit integritas bukti (LLM-Judge) dan penerbitan draf laporan resmi Posyandu.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] text-caption font-medium">
+                <span>Memproses pipeline klinis...</span>
+                <span>{loadingProgress}%</span>
+              </div>
+              <div className="w-full bg-subtle rounded-full h-2 overflow-hidden border border-line">
+                <div
+                  className="bg-sky-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-caption italic">
+              * Harap tidak menyegarkan (refresh) atau menutup browser agar proses pembuatan laporan tidak terputus.
+            </p>
           </div>
         </div>
       )}

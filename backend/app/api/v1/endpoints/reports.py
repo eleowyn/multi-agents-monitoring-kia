@@ -11,6 +11,7 @@ from app.models.visit import Visit
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.models.audit_log import AuditLog
+from app.models.revision import RevisionRequest
 from app.schemas.report import ReportResponse, ReportValidationRequest, ReportListItemResponse
 from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
@@ -316,17 +317,20 @@ def delete_report(
     if not report:
         raise HTTPException(status_code=404, detail="Laporan tidak ditemukan.")
 
-    # 1. Hapus audit log terkait
+    # 1. Hapus pengajuan revisi terkait laporan ini
+    db.query(RevisionRequest).filter(RevisionRequest.report_id == report_id).delete(synchronize_session=False)
+
+    # 2. Hapus audit log terkait
     db.query(AuditLog).filter(AuditLog.report_id == report_id).delete(synchronize_session=False)
 
-    # 2. Hapus berkas PDF fisik jika ada
+    # 3. Hapus berkas PDF fisik jika ada
     if report.pdf_path and os.path.exists(report.pdf_path):
         try:
             os.remove(report.pdf_path)
         except Exception:
             pass
 
-    # 3. Hapus rekam laporan
+    # 4. Hapus rekam laporan
     db.delete(report)
     db.commit()
     return {"message": f"Laporan #{report_id} berhasil dihapus."}
@@ -347,10 +351,13 @@ def bulk_delete_reports(
     if not req.ids:
         return {"deleted_count": 0, "message": "Tidak ada laporan yang dipilih."}
 
-    # 1. Hapus audit log terkait
+    # 1. Hapus pengajuan revisi terkait laporan-laporan ini
+    db.query(RevisionRequest).filter(RevisionRequest.report_id.in_(req.ids)).delete(synchronize_session=False)
+
+    # 2. Hapus audit log terkait
     db.query(AuditLog).filter(AuditLog.report_id.in_(req.ids)).delete(synchronize_session=False)
 
-    # 2. Hapus berkas PDF fisik
+    # 3. Hapus berkas PDF fisik
     reports = db.query(Report).filter(Report.id.in_(req.ids)).all()
     for r in reports:
         if r.pdf_path and os.path.exists(r.pdf_path):
@@ -359,7 +366,7 @@ def bulk_delete_reports(
             except Exception:
                 pass
 
-    # 3. Hapus rekam laporan
+    # 4. Hapus rekam laporan
     deleted_count = db.query(Report).filter(Report.id.in_(req.ids)).delete(synchronize_session=False)
     db.commit()
     return {"deleted_count": deleted_count, "message": f"{deleted_count} laporan berhasil dihapus."}

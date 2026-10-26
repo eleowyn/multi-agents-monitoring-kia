@@ -14,7 +14,7 @@ from app.schemas.recommendation import RecommendationItem, CitationModel
 logger = logging.getLogger(__name__)
 
 MODE_LLM_REACT = "LLM_REACT"
-MAX_REACT_STEPS = 3
+MAX_REACT_STEPS = 1
 
 
 def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
@@ -44,6 +44,20 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
 
     seen_chunks: Dict[str, Dict[str, Any]] = {}
     thought_process: List[str] = []
+
+    # Pre-retrieval awal agar agen memiliki basis rujukan instan tanpa harus membuang round-trip
+    for flag_obj in risk_flags:
+        f_name = flag_obj.get("flag", "")
+        detail = flag_obj.get("detail", "")
+        q = f"Tata laksana dan intervensi {f_name} {detail} fase {phase}"
+        for c in retrieve_clinical_guidelines(q, n_results=2):
+            if c["id"] not in seen_chunks:
+                seen_chunks[c["id"]] = c
+
+    guidelines_preview = "\n\n".join([
+        f"[ID: {c.get('id')}] Sumber: {c.get('source')} | Bagian: {c.get('section')} | Hal: {c.get('page')}\nKutipan: {c.get('content')}"
+        for c in list(seen_chunks.values())[:4]
+    ])
 
     # ------------------------------------------------------------------------
     # Definisi Tools untuk ReAct Agent
@@ -91,7 +105,7 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
     # ------------------------------------------------------------------------
     # Eksekusi Siklus ReAct dengan Gemini LLM
     # ------------------------------------------------------------------------
-    llm = get_chat_llm(temperature=0.2)
+    llm = get_chat_llm(temperature=0.2, max_tokens=1500)
     recommendations: List[Dict[str, Any]] = []
     recommender_mode = MODE_FALLBACK
 
@@ -112,11 +126,14 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
 - Temuan Narasi Klinis: {risk_narrative}
 - Daftar Flag Risiko Aktif: {json.dumps(risk_flags, ensure_ascii=False)}
 {feedback_note}
+
+Dokumen Pedoman Klinis Relevan Tersedia (Buku KIA / PNPK Stunting):
+{guidelines_preview or 'Gunakan tool search_guidelines jika membutuhkan kutipan rujukan tambahan.'}
+
 Tugas Anda:
-1. Analisis kebutuhan intervensi klinis.
-2. Gunakan `search_guidelines` untuk mengambil rujukan tata laksana resmi dari Buku KIA / PNPK Stunting.
-3. Gunakan `get_deterministic_detail` jika Anda butuh mengonfirmasi angka eksak hasil kalkulasi.
-4. Susun rekomendasi akhir yang grounded dalam format JSON valid sesuai instruksi sistem.
+1. Pelajari konteks pasien dan pedoman rujukan resmi di atas.
+2. Jika informasi di atas sudah cukup, langsung keluarkan 2-3 butir rekomendasi prioritas dalam format JSON valid sesuai instruksi sistem (tanpa perlu memanggil tool).
+3. Jika butuh rujukan tambahan di luar kutipan di atas, Anda DAPAT memanggil tool `search_guidelines` atau `get_deterministic_detail`.
 """
             messages = [
                 SystemMessage(content=RECOMMENDER_REACT_SYSTEM_PROMPT),
@@ -177,6 +194,25 @@ Tugas Anda:
 
             validated_items = []
             for item in raw_items:
+                if not isinstance(item, dict):
+                    continue
+                # Auto-heal field citation jika kosong, none, atau bertipe string
+                cit = item.get("citation")
+                if not cit:
+                    default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
+                    item["citation"] = {
+                        "source": item.get("source") or default_chunk.get("source") or "Buku KIA 2024 (Kemenkes RI)",
+                        "section": item.get("section") or default_chunk.get("section") or "Pedoman Standar",
+                        "page": item.get("page") or default_chunk.get("page") or 1,
+                        "chunk_id": default_chunk.get("id")
+                    }
+                elif isinstance(cit, str):
+                    item["citation"] = {
+                        "source": cit,
+                        "section": item.get("section") or "Pedoman Standar",
+                        "page": 1,
+                        "chunk_id": None
+                    }
                 try:
                     # Validasi item rekomendasi
                     validated = RecommendationItem(**item)

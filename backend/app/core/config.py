@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # KoboiLLM Gateway (OpenAI-compatible)
     KOBOILLM_API_KEY: Optional[str] = None
     KOBOILLM_BASE_URL: str = "https://api.koboillm.com/v1"
-    KOBOILLM_MODEL: str = "gemini-3.1-flash-lite"
+    KOBOILLM_MODEL: str = "gemini/gemini-3.1-pro-preview"
     
     # text-embedding-004 sudah tidak tersedia (404) -> gunakan gemini-embedding-001
     EMBEDDING_MODEL: str = "gemini-embedding-001"

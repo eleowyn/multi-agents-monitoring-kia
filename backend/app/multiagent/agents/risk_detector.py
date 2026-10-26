@@ -256,7 +256,7 @@ def _stage2_llm_narrative(
 ) -> Tuple[str, str]:
     rule_narrative = " ".join(rule_points) or "Tidak ada parameter klinis yang dapat dievaluasi."
 
-    llm = get_chat_llm(temperature=0.1)
+    llm = get_chat_llm(temperature=0.1, max_tokens=500)
     if llm is None:
         return rule_narrative, MODE_FALLBACK
 
@@ -274,8 +274,8 @@ def _stage2_llm_narrative(
     user_prompt = (
         "Berikut hasil Stage 1 (kalkulasi deterministik) dan konteks longitudinal pasien:\n"
         f"{context_str}\n\n"
-        "Susun narasi klinis 3-5 kalimat dalam Bahasa Indonesia untuk kader Posyandu:\n"
-        "1. Ringkas temuan utama beserta angka yang ADA pada data di atas.\n"
+        "Susun narasi klinis ringkas 2-3 kalimat dalam Bahasa Indonesia untuk kader Posyandu:\n"
+        "1. Ringkas temuan utama beserta angka yang ADA pada data di atas secara padat.\n"
         "2. Hubungkan dengan riwayat kunjungan sebelumnya dan riwayat ibu bila relevan.\n"
         "3. Jangan menambah diagnosis, flag, atau angka yang tidak ada pada data.\n"
         "Keluarkan HANYA teks narasi tanpa judul, poin, atau format markdown."

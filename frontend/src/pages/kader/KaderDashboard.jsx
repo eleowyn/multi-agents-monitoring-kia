@@ -159,20 +159,20 @@ const KaderDashboard = () => {
             {/* Kartu 1: Total Sasaran Pasien */}
             <div
               onClick={() => navigate("/kader/data-pasien")}
-              className="group bg-card p-5 rounded-2xl border border-line hover:border-sky-500/50 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
+              className="group bg-card p-5 rounded-2xl border border-line hover:border-sky-300 dark:hover:border-sky-800/60 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-caption uppercase tracking-wider">
                   Total Sasaran Pasien
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold text-heading group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                <p className="text-2xl sm:text-3xl font-bold text-heading transition-colors">
                   {summary?.total_patients || 0}
                 </p>
                 <p className="text-xs text-caption">
                   {summary?.total_mothers || 0} Ibu Hamil &bull; {summary?.total_children || 0} Anak
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-100 dark:border-sky-900/30 shrink-0">
                 <Users className="w-6 h-6" />
               </div>
             </div>
@@ -180,18 +180,18 @@ const KaderDashboard = () => {
             {/* Kartu 2: Pemeriksaan Bulan Ini */}
             <div
               onClick={() => navigate("/kader/laporan-kia")}
-              className="group bg-card p-5 rounded-2xl border border-line hover:border-emerald-500/50 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
+              className="group bg-card p-5 rounded-2xl border border-line hover:border-emerald-300 dark:hover:border-emerald-800/60 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-caption uppercase tracking-wider">
                   Pemeriksaan Bulan Ini
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold text-heading group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <p className="text-2xl sm:text-3xl font-bold text-heading transition-colors">
                   {summary?.monthly_visits || 0}
                 </p>
                 <p className="text-xs text-caption">Kunjungan posyandu tercatat</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30 shrink-0">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
             </div>
@@ -199,18 +199,18 @@ const KaderDashboard = () => {
             {/* Kartu 3: Menunggu Validasi */}
             <div
               onClick={() => navigate("/kader/laporan-kia")}
-              className="group bg-card p-5 rounded-2xl border border-line hover:border-amber-500/50 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
+              className="group bg-card p-5 rounded-2xl border border-line hover:border-amber-300 dark:hover:border-amber-800/60 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-caption uppercase tracking-wider">
                   Menunggu Validasi
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold text-heading group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                <p className={`text-2xl sm:text-3xl font-bold ${(summary?.pending_validation || 0) > 0 ? "text-amber-600 dark:text-amber-400" : "text-heading"} transition-colors`}>
                   {summary?.pending_validation || 0}
                 </p>
                 <p className="text-xs text-caption">Laporan draft perlu pengesahan</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/30 shrink-0">
                 <Clock className="w-6 h-6" />
               </div>
             </div>
@@ -218,18 +218,18 @@ const KaderDashboard = () => {
             {/* Kartu 4: Pantauan Berisiko Tinggi */}
             <div
               onClick={() => navigate("/kader/laporan-kia")}
-              className="group bg-card p-5 rounded-2xl border border-line hover:border-rose-500/50 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
+              className="group bg-card p-5 rounded-2xl border border-line hover:border-rose-300 dark:hover:border-rose-800/60 shadow-card flex items-center justify-between cursor-pointer transition-all duration-200"
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-caption uppercase tracking-wider">
                   Pantauan Berisiko
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold text-heading group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                <p className={`text-2xl sm:text-3xl font-bold ${(summary?.high_risk_count || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-heading"} transition-colors`}>
                   {summary?.high_risk_count || 0}
                 </p>
                 <p className="text-xs text-caption">Butuh tindak lanjut / kunjungan</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 shrink-0">
                 <AlertTriangle className="w-6 h-6" />
               </div>
             </div>
@@ -241,7 +241,7 @@ const KaderDashboard = () => {
       <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/40">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-200 dark:border-rose-800/40">
+            <div className="p-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/30">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>

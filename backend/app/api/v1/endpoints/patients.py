@@ -1,11 +1,15 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 
 from app.core.database import get_db
 from app.models.patient import Patient, PatientType
 from app.models.visit import Visit
 from app.models.report import Report
+from app.models.revision import RevisionRequest
+from app.models.audit_log import AuditLog
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, LongitudinalHistoryResponse
 from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
@@ -141,16 +145,40 @@ def delete_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
 
-    # 1. Hapus audit logs terkait laporan pasien ini
-    report_ids = [r.id for r in db.query(Report).filter(Report.patient_id == patient_id).all()]
+    # 1. Cari seluruh report_id dan visit_id dari pasien ini
+    report_ids = [r[0] for r in db.query(Report.id).filter(Report.patient_id == patient_id).all()]
+    visit_ids = [v[0] for v in db.query(Visit.id).filter(Visit.patient_id == patient_id).all()]
+
+    # 2. Hapus pengajuan revisi terkait report atau visit
+    if report_ids or visit_ids:
+        rev_filters = []
+        if report_ids:
+            rev_filters.append(RevisionRequest.report_id.in_(report_ids))
+        if visit_ids:
+            rev_filters.append(RevisionRequest.visit_id.in_(visit_ids))
+        db.query(RevisionRequest).filter(or_(*rev_filters)).delete(synchronize_session=False)
+
+    # 3. Hapus audit logs terkait
     if report_ids:
         db.query(AuditLog).filter(AuditLog.report_id.in_(report_ids)).delete(synchronize_session=False)
-        
-    # 2. Hapus reports dan visits
+
+    # 4. Hapus berkas PDF fisik
+    reports = db.query(Report).filter(Report.patient_id == patient_id).all()
+    for r in reports:
+        if r.pdf_path and os.path.exists(r.pdf_path):
+            try:
+                os.remove(r.pdf_path)
+            except Exception:
+                pass
+
+    # 5. Hapus reports dan visits
     db.query(Report).filter(Report.patient_id == patient_id).delete(synchronize_session=False)
     db.query(Visit).filter(Visit.patient_id == patient_id).delete(synchronize_session=False)
-    
-    # 3. Hapus pasien
+
+    # 6. Lepas foreign key mother_id jika pasien ini adalah ibu bagi pasien lain
+    db.query(Patient).filter(Patient.mother_id == patient_id).update({Patient.mother_id: None}, synchronize_session=False)
+
+    # 7. Hapus pasien
     db.delete(patient)
     db.commit()
     return {"message": f"Data pasien {patient.name} beserta rekam kunjungannya berhasil dihapus."}
@@ -171,16 +199,40 @@ def bulk_delete_patients(
     if not req.ids:
         return {"deleted_count": 0, "message": "Tidak ada pasien yang dipilih."}
 
-    # 1. Cari seluruh report_id dari pasien-pasien ini
+    # 1. Cari seluruh report_id dan visit_id dari pasien-pasien ini
     report_ids = [r[0] for r in db.query(Report.id).filter(Report.patient_id.in_(req.ids)).all()]
+    visit_ids = [v[0] for v in db.query(Visit.id).filter(Visit.patient_id.in_(req.ids)).all()]
+
+    # 2. Hapus pengajuan revisi terkait report atau visit
+    if report_ids or visit_ids:
+        rev_filters = []
+        if report_ids:
+            rev_filters.append(RevisionRequest.report_id.in_(report_ids))
+        if visit_ids:
+            rev_filters.append(RevisionRequest.visit_id.in_(visit_ids))
+        db.query(RevisionRequest).filter(or_(*rev_filters)).delete(synchronize_session=False)
+
+    # 3. Hapus audit logs terkait laporan pasien ini
     if report_ids:
         db.query(AuditLog).filter(AuditLog.report_id.in_(report_ids)).delete(synchronize_session=False)
 
-    # 2. Hapus reports dan visits
+    # 4. Hapus berkas PDF fisik
+    reports = db.query(Report).filter(Report.patient_id.in_(req.ids)).all()
+    for r in reports:
+        if r.pdf_path and os.path.exists(r.pdf_path):
+            try:
+                os.remove(r.pdf_path)
+            except Exception:
+                pass
+
+    # 5. Hapus reports dan visits
     db.query(Report).filter(Report.patient_id.in_(req.ids)).delete(synchronize_session=False)
     db.query(Visit).filter(Visit.patient_id.in_(req.ids)).delete(synchronize_session=False)
 
-    # 3. Hapus pasien-pasien
+    # 6. Lepas foreign key mother_id untuk pasien yang merujuk ke pasien-pasien ini
+    db.query(Patient).filter(Patient.mother_id.in_(req.ids)).update({Patient.mother_id: None}, synchronize_session=False)
+
+    # 7. Hapus pasien-pasien
     deleted_count = db.query(Patient).filter(Patient.id.in_(req.ids)).delete(synchronize_session=False)
     db.commit()
 

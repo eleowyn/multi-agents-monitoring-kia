@@ -81,7 +81,7 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     verification_details = []
     verifier_mode = MODE_FALLBACK
 
-    llm = get_chat_llm(temperature=0.0)
+    llm = get_chat_llm(temperature=0.0, max_tokens=1000)
     judge_results_map: Dict[int, Dict[str, Any]] = {}
 
     if llm is not None and recommendations:
