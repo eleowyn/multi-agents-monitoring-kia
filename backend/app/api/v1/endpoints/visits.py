@@ -54,6 +54,7 @@ def create_visit_and_analyze(
         systolic_bp=visit_in.systolic_bp,
         diastolic_bp=visit_in.diastolic_bp,
         fundal_height_cm=visit_in.fundal_height_cm,
+        ttd_consumption=visit_in.ttd_consumption,
         kspr_answers=visit_in.kspr_answers,
         birth_weight_gram=visit_in.birth_weight_gram,
         birth_length_cm=visit_in.birth_length_cm,

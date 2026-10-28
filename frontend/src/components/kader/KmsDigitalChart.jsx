@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -37,6 +37,11 @@ const KmsDigitalChart = ({
   // Tab pilihan metrik
   const [metricTab, setMetricTab] = useState(isChild ? "z_pbu" : "lila");
 
+  // Sinkronkan tab metrik otomatis saat tipe pasien berganti (Anak -> Ibu Hamil / sebaliknya)
+  useEffect(() => {
+    setMetricTab(isChild ? "z_pbu" : "lila");
+  }, [isChild, patient?.id]);
+
   // Format tanggal singkat
   const formatDate = (iso) => {
     if (!iso) return "-";
@@ -49,7 +54,7 @@ const KmsDigitalChart = ({
     if (!visits || visits.length === 0) return [];
 
     return visits.map((v, idx) => {
-      const ageLabel = v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : formatDate(v.visit_date);
+      const ageLabel = !isChild ? (v.gestational_age_weeks ? `${v.gestational_age_weeks} Mgg` : (v.trimester ? `Tri ${v.trimester}` : formatDate(v.visit_date))) : (v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : formatDate(v.visit_date));
       const prevVisit = idx > 0 ? visits[idx - 1] : null;
 
       // Hitung delta berat badan
@@ -174,11 +179,13 @@ const KmsDigitalChart = ({
               <Layers className="w-4 h-4" />
             </span>
             <h3 className="text-sm sm:text-base font-bold text-heading">
-              Grafik Pertumbuhan Pita Warna KMS Digital
+              {isChild ? "Grafik Pertumbuhan Pita Warna KMS Digital" : "Grafik Pemantauan Kesehatan Ibu Hamil (LiLA & Hb)"}
             </h3>
           </div>
           <p className="text-xs text-caption">
-            Standar Kurva Pertumbuhan WHO Anthro & Pedoman Buku KIA Kemenkes RI
+            {isChild
+              ? "Standar Kurva Pertumbuhan WHO Anthro & Pedoman Buku KIA Kemenkes RI"
+              : "Pemantauan Risiko KEK (< 23.5 cm) & Anemia (< 11.0 g/dL) Standar Buku KIA Kemenkes RI"}
           </p>
         </div>
 

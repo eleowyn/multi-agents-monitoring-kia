@@ -512,6 +512,13 @@ const ValidasiLaporan = () => {
                   </p>
                   <p className="text-xs text-dim">Skor KSPR: {Array.isArray(visitData.kspr_answers) ? visitData.kspr_answers.length * 4 + 2 : "-"}</p>
                 </div>
+                <div className="p-3.5 bg-card border border-line rounded-xl">
+                  <p className="text-xs text-caption">Kepatuhan TTD</p>
+                  <p className="text-base font-bold text-heading mt-0.5">
+                    {visitData.ttd_consumption === "RUTIN" ? "Rutin (≥30)" : visitData.ttd_consumption === "TIDAK_RUTIN" ? "Tidak Rutin" : visitData.ttd_consumption === "BELUM_PERNAH" ? "Belum Dapat" : (visitData.ttd_consumption || "Rutin")}
+                  </p>
+                  <p className="text-xs text-dim">Tablet Tambah Darah</p>
+                </div>
               </div>
             )}
 

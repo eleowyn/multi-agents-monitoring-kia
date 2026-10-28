@@ -37,6 +37,7 @@ def snapshot_visit_data(visit: Visit, patient: Optional[Patient] = None) -> Dict
         "systolic_bp": visit.systolic_bp,
         "diastolic_bp": visit.diastolic_bp,
         "fundal_height_cm": visit.fundal_height_cm,
+        "ttd_consumption": getattr(visit, "ttd_consumption", None),
         "kspr_answers": visit.kspr_answers or [],
         "birth_weight_gram": visit.birth_weight_gram,
         "birth_length_cm": visit.birth_length_cm,

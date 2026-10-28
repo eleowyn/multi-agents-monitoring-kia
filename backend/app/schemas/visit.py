@@ -19,6 +19,7 @@ class VisitCreate(BaseModel):
     systolic_bp: Optional[int] = None
     diastolic_bp: Optional[int] = None
     fundal_height_cm: Optional[float] = None
+    ttd_consumption: Optional[str] = None
     kspr_answers: Optional[List[str]] = []
     
     # Fase Bayi Baru Lahir

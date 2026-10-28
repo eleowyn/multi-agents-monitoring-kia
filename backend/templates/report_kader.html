@@ -581,8 +581,8 @@
         <tr>
           <th class="label-cell">Tekanan Darah</th>
           <td>{{ visit_data.systolic_bp or '-' }}/{{ visit_data.diastolic_bp or '-' }} mmHg</td>
-          <th class="label-cell">Tinggi Fundus Uteri</th>
-          <td>{{ visit_data.fundal_height_cm or '-' }} cm</td>
+          <th class="label-cell">Kepatuhan TTD</th>
+          <td>{{ 'Rutin (≥30 tablet/bln)' if visit_data.ttd_consumption == 'RUTIN' else ('Tidak Rutin' if visit_data.ttd_consumption == 'TIDAK_RUTIN' else ('Belum Pernah' if visit_data.ttd_consumption == 'BELUM_PERNAH' else (visit_data.ttd_consumption or 'Rutin'))) }}</td>
         </tr>
         {% elif visit_data.phase == 'BAYI_BARU_LAHIR' %}
         <colgroup>

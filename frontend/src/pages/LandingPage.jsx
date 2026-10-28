@@ -336,19 +336,19 @@ const LandingPage = () => {
     <div className="min-h-screen bg-page text-body flex flex-col">
       {/* ─── Clean Single-Line Top Navbar with Official Logos ─── */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-line">
-        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 h-16 flex items-center justify-between gap-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Brand with Official Minahasa Utara & Puskesmas Airmadidi Logos */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2 shrink-0">
               <img
                 src="/logo-minahasa-utara.png"
                 alt="Logo Kabupaten Minahasa Utara"
-                className="w-8 h-8 object-contain"
+                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
               />
               <img
                 src="/logo-puskesmas-airmadidi.png"
                 alt="Logo UPTD Puskesmas Airmadidi"
-                className="w-9 h-9 object-contain rounded-md bg-white p-0.5 border border-line-light"
+                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
               />
             </div>
             <div className="leading-tight">
@@ -362,7 +362,7 @@ const LandingPage = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-label">
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-label">
             <a href="#fase-1000-hpk" className="hover:text-heading transition-colors whitespace-nowrap">
               3 Fase 1.000 HPK
             </a>
@@ -381,7 +381,7 @@ const LandingPage = () => {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={toggleTheme}
               aria-label={isDark ? "Mode terang" : "Mode gelap"}
@@ -390,19 +390,11 @@ const LandingPage = () => {
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <Link
-              to={dashboardPath}
-              className="btn-interactive hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all whitespace-nowrap"
-            >
-              <span>{user ? "Buka Dashboard" : "Login Petugas"}</span>
-              <ArrowRight className="w-4 h-4 shrink-0" />
-            </Link>
-
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label="Menu navigasi"
-              className="xl:hidden p-2 text-caption hover:text-heading hover:bg-subtle rounded-xl border border-line cursor-pointer"
+              className="lg:hidden p-2 text-caption hover:text-heading hover:bg-subtle rounded-xl border border-line cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -411,7 +403,7 @@ const LandingPage = () => {
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="xl:hidden border-t border-line bg-card px-5 py-4 space-y-3 animate-fade-in">
+          <div className="lg:hidden border-t border-line bg-card px-5 py-4 space-y-3 animate-fade-in">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-medium text-label">
               <a
                 href="#fase-1000-hpk"
@@ -448,15 +440,6 @@ const LandingPage = () => {
               >
                 Profil & Lokasi Puskesmas
               </a>
-            </div>
-            <div className="pt-2 sm:hidden">
-              <Link
-                to={dashboardPath}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl text-sm font-semibold"
-              >
-                <span>{user ? "Buka Dashboard" : "Login Petugas"}</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
             </div>
           </div>
         )}
@@ -805,68 +788,72 @@ const LandingPage = () => {
         {/* Profile, Services & Interactive Map Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           {/* Left: Puskesmas Profile, Services & Social Media */}
-          <div className="lg:col-span-6 p-6 bg-card rounded-2xl border border-line flex flex-col justify-between gap-6">
+          <div className="lg:col-span-6 p-6 sm:p-7 bg-card rounded-2xl border border-line flex flex-col justify-between gap-6 shadow-xs">
             <div className="space-y-5">
               {/* Official Identity Header */}
               <div className="flex items-center gap-4 pb-4 border-b border-line">
                 <img
                   src="/logo-puskesmas-airmadidi.png"
                   alt="Logo UPTD Puskesmas Airmadidi"
-                  className="w-16 h-16 object-contain rounded-xl bg-white p-1 border border-line shrink-0"
+                  className="w-14 h-14 object-contain shrink-0"
                 />
                 <div>
-                  <span className="text-xs font-semibold text-caption uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-caption uppercase tracking-wider block">
                     Dinas Kesehatan Kab. Minahasa Utara
                   </span>
-                  <h3 className="text-xl font-bold text-heading">UPTD Puskesmas Airmadidi</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-heading">
+                    UPTD Puskesmas Airmadidi
+                  </h3>
                   <p className="text-xs text-caption mt-0.5">
                     Motto: <strong className="text-heading">SEHATI</strong> &bull; Santun, Empati, Harmonis, Adil, Tanggap, Inovatif
                   </p>
                 </div>
               </div>
 
-              {/* Services Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                  <p className="font-bold text-heading">Layanan Dalam Gedung</p>
-                  <ul className="text-xs text-caption space-y-1 leading-relaxed list-disc pl-4">
-                    <li>Poli KIA, KB & Pemeriksaan Ibu Hamil (ANC Terpadu)</li>
-                    <li>Konseling Gizi, Laktasi (ASI) & MP-ASI</li>
-                    <li>Imunisasi Bayi & Baduta Rutin</li>
-                    <li>Pemeriksaan Laboratorium (Hb, Golongan Darah, Skrining)</li>
-                  </ul>
-                </div>
-
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                  <p className="font-bold text-heading">Layanan Luar Gedung</p>
-                  <ul className="text-xs text-caption space-y-1 leading-relaxed list-disc pl-4">
-                    <li>Pelayanan Posyandu Rutin di 9 Kelurahan & Desa</li>
-                    <li>Jejaring Pustu (Pustu Tanggari) & Poskesdes (Sukur)</li>
-                    <li>Kunjungan Rumah Ibu Hamil Risiko Tinggi & Neonatus</li>
-                    <li>Penyuluhan Gizi & Pencegahan Stunting</li>
-                  </ul>
+              {/* Layanan Utama (Ringkas & Informatif, Tidak Terlalu Full) */}
+              <div className="space-y-2.5">
+                <p className="text-xs font-bold text-caption uppercase tracking-wider">
+                  Fokus Pelayanan KIA & Gizi
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 bg-subtle rounded-xl border border-line-light flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />
+                    <span className="font-medium text-heading">Poli KIA & ANC Terpadu</span>
+                  </div>
+                  <div className="p-2.5 bg-subtle rounded-xl border border-line-light flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="font-medium text-heading">Imunisasi Lengkap Baduta</span>
+                  </div>
+                  <div className="p-2.5 bg-subtle rounded-xl border border-line-light flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-pink-500 shrink-0" />
+                    <span className="font-medium text-heading">Konseling Laktasi & MP-ASI</span>
+                  </div>
+                  <div className="p-2.5 bg-subtle rounded-xl border border-line-light flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span className="font-medium text-heading">Posyandu di 9 Desa Binaan</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Contact & Social Media */}
-              <div className="space-y-2.5 pt-1 text-sm">
+              {/* Contact & Location */}
+              <div className="space-y-2 pt-1 text-xs sm:text-sm">
                 <div className="flex items-start gap-2.5">
                   <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                  <span className="text-xs sm:text-sm text-body">
-                    Kompleks Pasar Airmadidi, Kelurahan Sarongsong I, Kecamatan Airmadidi, Kabupaten Minahasa Utara, Sulawesi Utara 95371
+                  <span className="text-body leading-relaxed">
+                    Kompleks Pasar Airmadidi, Kelurahan Sarongsong I, Kecamatan Airmadidi, Minahasa Utara 95371
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Phone className="w-4 h-4 text-sky-500 shrink-0" />
-                  <span className="text-xs sm:text-sm text-body">
-                    Kontak Layanan Puskesmas: <strong className="text-heading">0813-4076-0004</strong>
+                  <span className="text-body">
+                    Kontak Layanan: <strong className="text-heading">0813-4076-0004</strong>
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Social Media & Maps Links */}
-            <div className="pt-4 border-t border-line flex flex-wrap items-center gap-2.5">
+            <div className="pt-4 border-t border-line flex flex-wrap items-center gap-2">
               <a
                 href={GOOGLE_MAPS_URL}
                 target="_blank"
@@ -874,7 +861,7 @@ const LandingPage = () => {
                 className="btn-interactive inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white transition-colors"
               >
                 <MapPin className="w-3.5 h-3.5" />
-                <span>Buka di Google Maps</span>
+                <span>Buka Google Maps</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
 
@@ -884,7 +871,7 @@ const LandingPage = () => {
                 rel="noopener noreferrer"
                 className="btn-interactive inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-subtle hover:bg-muted text-heading border border-line transition-colors"
               >
-                <span>Instagram: @uptd_puskesmas_airmadidi</span>
+                <span>Instagram</span>
                 <ExternalLink className="w-3 h-3 text-caption" />
               </a>
 
@@ -894,7 +881,7 @@ const LandingPage = () => {
                 rel="noopener noreferrer"
                 className="btn-interactive inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-subtle hover:bg-muted text-heading border border-line transition-colors"
               >
-                <span>Facebook: Puskesmas Airmadidi</span>
+                <span>Facebook</span>
                 <ExternalLink className="w-3 h-3 text-caption" />
               </a>
             </div>
@@ -969,7 +956,7 @@ const LandingPage = () => {
                 <img
                   src="/logo-puskesmas-airmadidi.png"
                   alt="Logo UPTD Puskesmas Airmadidi"
-                  className="w-9 h-9 object-contain rounded-md bg-white p-0.5 border border-line-light"
+                  className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
                 />
                 <span className="font-bold text-heading text-base tracking-tight">
                   UPTD Puskesmas Airmadidi

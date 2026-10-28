@@ -133,6 +133,20 @@ def build_comprehensive_care_plan(
             "sedangkan TTD mencegah anemia maternal yang berisiko memicu perdarahan persalinan dan bayi lahir BBLR."
         )
 
+        ttd_val = str(v_data.get("ttd_consumption") or "").upper()
+        if ttd_val in ["TIDAK_RUTIN", "BELUM_PERNAH"]:
+            ms_guidelines.insert(
+                0,
+                "PERINGATAN KEPATUHAN TTD: Ibu tercatat belum rutin meminum Tablet Tambah Darah (TTD). Sangat penting meminum minimal 90 tablet selama kehamilan (1 tablet tiap malam sebelum tidur bersama air jeruk/air putih) untuk mencegah anemia berat dan risiko bayi lahir BBLR/Stunting."
+            )
+
+        feeding_val = str(v_data.get("feeding_status") or "").upper()
+        if "PKMK" in feeding_val or "FORMULA" in feeding_val:
+            ms_guidelines.insert(
+                0,
+                "TERAPI NUTRISI KHUSUS PKMK: Anak terdaftar menerima susu formula khusus/PKMK padat kalori atas anjuran dokter. Pastikan takaran dan higienitas penyiapan susu dipatuhi secara tepat sesuai instruksi tenaga medis untuk mengejar ketertinggalan berat badan (catch-up growth)."
+            )
+
         milk_and_supplements = {
             "title": ms_title,
             "headline": ms_title,
@@ -568,6 +582,7 @@ def build_comprehensive_care_plan(
         "daily_activities": stim_list,
         "rest_and_sleep": rest_sleep,
         "restrictions": [
+            *(["PERINGATAN IMUNISASI KEJAR (CATCH-UP): Status imunisasi dasar anak belum lengkap. Segera kunjungi Posyandu atau Puskesmas Airmadidi untuk melengkapi vaksin yang tertunda guna melindungi anak dari komplikasi infeksi dan gagal tumbuh."] if str(v_data.get("immunization_status") or "").upper() in ["BELUM_LENGKAP", "TIDAK_IMUNISASI"] else []),
             "Hindari penggunaan layar gawai/HP/TV (screen time) saat anak makan maupun pada anak usia di bawah 2 tahun sesuai pedoman IDAI & Buku KIA.",
             "Pastikan lantai/area bermain bersih, bebas benda tajam/kecil yang berisiko tertelan, dan bebas asap rokok.",
         ],

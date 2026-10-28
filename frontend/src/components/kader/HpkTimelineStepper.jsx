@@ -33,7 +33,7 @@ const HpkTimelineStepper = ({
   const isGraduated = hpkStatus?.is_graduation_milestone || currentHpkDay >= 1000;
 
   // Filter dan normalisasi titik kunjungan
-  const f1Visits = isChild ? maternalVisits : maternalVisits;
+  const f1Visits = !isChild ? (maternalVisits.length > 0 ? maternalVisits : (patient?.visits || [])) : maternalVisits;
   const f3Visits = isChild ? childVisits : [];
 
   const getVisitRiskTone = (v) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getErrorMessage } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -107,10 +107,12 @@ const InputKunjungan = () => {
     };
   }, []);
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   // Form State Kunjungan
-  const [visitDate, setVisitDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  const [visitDate, setVisitDate] = useState(todayStr);
+
+
 
   // Fase Ibu Hamil
   const [trimester, setTrimester] = useState(1);
@@ -122,6 +124,7 @@ const InputKunjungan = () => {
   const [systolicBp, setSystolicBp] = useState("");
   const [diastolicBp, setDiastolicBp] = useState("");
   const [ksprAnswers, setKsprAnswers] = useState([]);
+  const [ttdConsumption, setTtdConsumption] = useState("RUTIN");
 
   // Fase Bayi Baru Lahir
   const [birthWeight, setBirthWeight] = useState("");
@@ -138,6 +141,7 @@ const InputKunjungan = () => {
   const [weightTrend, setWeightTrend] = useState("NAIK");
   const [feedingStatus, setFeedingStatus] = useState("MP_ASI");
   const [vitaminA, setVitaminA] = useState("Ya");
+  const [immunizationStatus, setImmunizationStatus] = useState("LENGKAP");
   const [clinicalNotes, setClinicalNotes] = useState("");
 
   // New Patient Modal State
@@ -148,6 +152,76 @@ const InputKunjungan = () => {
   const [newGender, setNewGender] = useState("L");
   const [newVillage, setNewVillage] = useState(user?.village_name || "Airmadidi Atas");
   const [newMotherId, setNewMotherId] = useState("");
+
+  // Hitung status live 1.000 HPK dan estimasi umur dari tanggal kunjungan
+  const hpkLiveInfo = useMemo(() => {
+    if (!selectedPatient) return null;
+
+    if (phase === "IBU_HAMIL" || selectedPatient.patient_type === "MOTHER") {
+      const weeks = gestationalAge
+        ? parseInt(gestationalAge, 10)
+        : (trimester === 1 ? 10 : (trimester === 2 ? 20 : 34));
+      const days = Math.min(270, Math.max(1, (weeks || 20) * 7));
+      const remaining = Math.max(0, 1000 - days);
+      const percent = ((days / 1000) * 100).toFixed(1);
+      return {
+        day: days,
+        percent,
+        remaining,
+        phaseCode: "IBU_HAMIL",
+        label: `Hari ke-${days} dari 1.000 HPK (${percent}%) • Fase 1: Kehamilan (Trimester ${trimester})`,
+        isGraduation: false,
+      };
+    } else {
+      // Pasien Anak (Bayi Baru Lahir atau Baduta)
+      if (!selectedPatient.birth_date || !visitDate) return null;
+      const bDate = new Date(selectedPatient.birth_date);
+      const vDate = new Date(visitDate);
+
+      if (isNaN(bDate.getTime()) || isNaN(vDate.getTime())) return null;
+
+      const diffTime = vDate.getTime() - bDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        return {
+          error: "Tanggal kunjungan tidak boleh sebelum tanggal lahir!",
+          isInvalid: true,
+        };
+      }
+
+      const totalHpkDay = Math.min(1000, 270 + diffDays);
+      const remaining = Math.max(0, 1000 - totalHpkDay);
+      const percent = ((totalHpkDay / 1000) * 100).toFixed(1);
+      const calcMonths = Math.min(24, Math.floor(diffDays / 30.4375));
+      const isGrad = diffDays >= 730 || totalHpkDay >= 1000;
+
+      return {
+        day: totalHpkDay,
+        diffDays,
+        calculatedMonths: calcMonths,
+        percent,
+        remaining,
+        isGraduation: isGrad,
+        phaseCode: diffDays <= 28 ? "BAYI_BARU_LAHIR" : "BADUTA",
+        label: isGrad
+          ? `Hari ke-${totalHpkDay} • Target Kelulusan 1.000 HPK (Usia 24 Bulan)! 🎓`
+          : `Hari ke-${totalHpkDay} dari 1.000 HPK (${percent}%) • Fase ${diffDays <= 28 ? "2: Neonatal (0-28 hari)" : "3: Baduta"} (Usia ${calcMonths} Bulan)`,
+      };
+    }
+  }, [selectedPatient, phase, visitDate, gestationalAge, trimester]);
+
+  // Sinkronisasi otomatis Usia Bulan dan Tab Fase saat Tanggal Kunjungan atau Pasien berubah
+  useEffect(() => {
+    if (selectedPatient && selectedPatient.patient_type === "CHILD" && hpkLiveInfo && !hpkLiveInfo.isInvalid) {
+      if (hpkLiveInfo.calculatedMonths !== undefined) {
+        setAgeInMonths(String(hpkLiveInfo.calculatedMonths));
+      }
+      if (hpkLiveInfo.phaseCode && (phase === "BADUTA" || phase === "BAYI_BARU_LAHIR")) {
+        setPhase(hpkLiveInfo.phaseCode);
+      }
+    }
+  }, [visitDate, selectedPatient?.id]);
 
   useEffect(() => {
     if (user?.village_name) {
@@ -265,6 +339,7 @@ const InputKunjungan = () => {
         hb_level: hbLevel ? parseFloat(hbLevel) : null,
         systolic_bp: systolicBp ? parseInt(systolicBp) : null,
         diastolic_bp: diastolicBp ? parseInt(diastolicBp) : null,
+        ttd_consumption: phase === "IBU_HAMIL" ? ttdConsumption : null,
         kspr_answers: ksprAnswers,
         birth_weight_gram: birthWeight ? parseFloat(birthWeight) : null,
         birth_length_cm: birthLength ? parseFloat(birthLength) : null,
@@ -284,6 +359,7 @@ const InputKunjungan = () => {
         weight_trend_kms: weightTrend,
         feeding_status: feedingStatus,
         vitamin_a: vitaminA,
+        immunization_status: phase === "BADUTA" ? immunizationStatus : null,
         clinical_notes: clinicalNotes,
       };
 
@@ -544,14 +620,43 @@ const InputKunjungan = () => {
           <form onSubmit={handleSubmitVisit} className="space-y-5">
             {/* Visit Date */}
             <FormField id="visit-date" label="Tanggal Kunjungan Posyandu">
-              <input
-                id="visit-date"
-                type="date"
-                required
-                value={visitDate}
-                onChange={(e) => setVisitDate(e.target.value)}
-                className={`${INPUT_CLASS} sm:w-1/2`}
-              />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input
+                  id="visit-date"
+                  type="date"
+                  required
+                  max={todayStr}
+                  value={visitDate}
+                  onChange={(e) => setVisitDate(e.target.value)}
+                  className={`${INPUT_CLASS} sm:w-60 shrink-0`}
+                />
+                {hpkLiveInfo && (
+                  <div className="flex items-center gap-2 flex-wrap animate-fade-in">
+                    {hpkLiveInfo.isInvalid ? (
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>{hpkLiveInfo.error}</span>
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                          hpkLiveInfo.isGraduation
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 shadow-xs"
+                            : "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                        }`}
+                      >
+                        <HeartPulse className="w-4 h-4 shrink-0" />
+                        <span>{hpkLiveInfo.label}</span>
+                      </span>
+                    )}
+                    {selectedPatient?.birth_date && selectedPatient?.patient_type === "CHILD" && (
+                      <span className="text-xs text-caption font-medium">
+                        (Tgl Lahir: <strong>{selectedPatient.birth_date}</strong>)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </FormField>
 
             {/* ═══ TAB 1: IBU HAMIL ═══ */}
@@ -623,6 +728,42 @@ const InputKunjungan = () => {
                       onChange={(e) => setMaternalWeight(e.target.value)}
                       className={INPUT_CLASS}
                     />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField id="systolic-bp" label="Tekanan Darah (Sistolik / Diastolik mmHg)">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        id="systolic-bp"
+                        type="number"
+                        placeholder="Sistolik (120)"
+                        value={systolicBp}
+                        onChange={(e) => setSystolicBp(e.target.value)}
+                        className={INPUT_CLASS}
+                      />
+                      <input
+                        id="diastolic-bp"
+                        type="number"
+                        placeholder="Diastolik (80)"
+                        value={diastolicBp}
+                        onChange={(e) => setDiastolicBp(e.target.value)}
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+                  </FormField>
+
+                  <FormField id="ttd-consumption" label="Kepatuhan Tablet Tambah Darah (TTD)">
+                    <select
+                      id="ttd-consumption"
+                      value={ttdConsumption}
+                      onChange={(e) => setTtdConsumption(e.target.value)}
+                      className={INPUT_CLASS}
+                    >
+                      <option value="RUTIN">Rutin (≥30 tablet/bulan)</option>
+                      <option value="TIDAK_RUTIN">Tidak Rutin / Kadang-kadang</option>
+                      <option value="BELUM_PERNAH">Belum Pernah Minum / Dapat</option>
+                    </select>
                   </FormField>
                 </div>
 
@@ -724,7 +865,11 @@ const InputKunjungan = () => {
                 className="space-y-5 animate-slide-up"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormField id="age-months" label="Usia Anak (Bulan)">
+                  <FormField
+                    id="age-months"
+                    label="Usia Anak (Bulan)"
+                    hint="*Otomatis sinkron dari tgl lahir & kunjungan (dapat diedit)"
+                  >
                     <input
                       id="age-months"
                       type="number"
@@ -795,8 +940,14 @@ const InputKunjungan = () => {
                       <option value="TIDAK_ADEKUAT">
                         MP-ASI Kurang Protein Hewani
                       </option>
+                      <option value="FORMULA_PKMK">
+                        Formula Khusus / PKMK Medis (Anjuran Dokter)
+                      </option>
                     </select>
                   </FormField>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField id="vitamin-a" label="Kapsul Vitamin A">
                     <select
                       id="vitamin-a"
@@ -806,6 +957,18 @@ const InputKunjungan = () => {
                     >
                       <option value="Ya">Sudah Diberikan</option>
                       <option value="Tidak">Belum Diberikan</option>
+                    </select>
+                  </FormField>
+                  <FormField id="immunization-status" label="Status Imunisasi Dasar">
+                    <select
+                      id="immunization-status"
+                      value={immunizationStatus}
+                      onChange={(e) => setImmunizationStatus(e.target.value)}
+                      className={INPUT_CLASS}
+                    >
+                      <option value="LENGKAP">Lengkap Sesuai Usia</option>
+                      <option value="BELUM_LENGKAP">Belum Lengkap / Tertunda</option>
+                      <option value="TIDAK_IMUNISASI">Belum Pernah Imunisasi</option>
                     </select>
                   </FormField>
                 </div>
@@ -936,6 +1099,7 @@ const InputKunjungan = () => {
                     id="new-birthdate"
                     type="date"
                     required
+                    max={todayStr}
                     value={newBirthDate}
                     onChange={(e) => setNewBirthDate(e.target.value)}
                     className={INPUT_CLASS}

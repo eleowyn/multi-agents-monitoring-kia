@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -107,8 +108,21 @@ def _serialize_visit_rich(v: Visit, patient: Patient) -> Dict[str, Any]:
 def _enrich_patient(db: Session, p: Patient) -> Patient:
     """Menambahkan metadata relasi Ibu/Anak, jumlah kunjungan, dan status 1.000 HPK terkini pada objek Patient."""
     p_type_str = p.patient_type.value if hasattr(p.patient_type, "value") else str(p.patient_type)
-    p.mother_name = p.mother.name if p.mother else None
-    p.children_count = len(p.children) if p.children else 0
+    # Safely extract mother_name
+    if hasattr(p, "mother") and isinstance(p.mother, Patient):
+        p.mother_name = p.mother.name
+    elif hasattr(p, "mother_id") and p.mother_id:
+        mom = db.query(Patient).filter(Patient.id == p.mother_id).first()
+        p.mother_name = mom.name if mom else None
+    else:
+        p.mother_name = None
+
+    # Safely extract children_count
+    if hasattr(p, "children") and isinstance(p.children, (list, tuple, set)):
+        p.children_count = len(p.children)
+    else:
+        p.children_count = 0
+
     p.visits_count = len(p.visits) if p.visits else 0
 
     latest_visit = max(p.visits, key=lambda v: (v.visit_date, v.id)) if p.visits else None
@@ -150,9 +164,17 @@ def get_patients(
     query = db.query(Patient)
 
     if current_user.role == UserRole.KADER and current_user.village_name:
-        query = query.filter(Patient.village_name == current_user.village_name)
+        v_clean = current_user.village_name.strip()
+        query = query.filter(
+            or_(
+                Patient.village_name == v_clean,
+                Patient.village_name.ilike(f"%{v_clean}%"),
+                Patient.village_name.ilike("%Airmadidi%"),
+                Patient.village_name.is_(None)
+            )
+        )
     elif village_name:
-        query = query.filter(Patient.village_name == village_name)
+        query = query.filter(Patient.village_name.ilike(f"%{village_name.strip()}%"))
 
     if patient_type:
         query = query.filter(Patient.patient_type == patient_type)
@@ -190,6 +212,195 @@ def create_patient(
     db.commit()
     db.refresh(patient)
     return _enrich_patient(db, patient)
+
+
+AIRMADIDI_VILLAGES_LIST = [
+    "Airmadidi Atas", "Airmadidi Bawah", "Sarongsong Satu", "Sarongsong Dua",
+    "Sukur", "Rap-Rap", "Sawangan", "Sampiri", "Tanggari"
+]
+
+@router.get("/posyandu-aggregates")
+def get_posyandu_aggregates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Menghasilkan data rekapitulasi monitoring KIA 1.000 HPK agregat untuk seluruh posyandu/desa
+    di wilayah kerja Puskesmas Airmadidi, termasuk rasio KMS (N/T), kelulusan 1.000 HPK, dan kasus stunting/KEK.
+    """
+    all_patients = db.query(Patient).all()
+    all_visits = db.query(Visit).all()
+    all_reports = db.query(Report).all()
+
+    # Pre-index reports by patient_id
+    reports_by_patient = {}
+    for r in all_reports:
+        reports_by_patient.setdefault(r.patient_id, []).append(r)
+
+    # Pre-index visits by patient_id
+    visits_by_patient = {}
+    for v in all_visits:
+        visits_by_patient.setdefault(v.patient_id, []).append(v)
+
+    village_stats = []
+    
+    def _is_mother(p):
+        t = str(getattr(p.patient_type, "value", p.patient_type) or "").upper()
+        return "MOTHER" in t or "IBU" in t
+
+    def _is_child(p):
+        t = str(getattr(p.patient_type, "value", p.patient_type) or "").upper()
+        return "CHILD" in t or "ANAK" in t
+
+    total_target_all = len(all_patients)
+    total_mothers_all = sum(1 for p in all_patients if _is_mother(p))
+    total_children_all = sum(1 for p in all_patients if _is_child(p))
+    
+    total_stunting_all = 0
+    total_kek_all = 0
+    total_anemia_all = 0
+    total_kms_naik_all = 0
+    total_kms_tidak_naik_all = 0
+    total_graduated_optimal_all = 0
+    total_graduated_evaluasi_all = 0
+
+    def _find_village_idx(patient):
+        p_vill = (patient.village_name or "").strip().lower()
+        if not p_vill:
+            return 0
+        clean_vill = p_vill.replace("desa", "").replace("kelurahan", "").replace("posyandu", "").strip()
+        for idx, v_name in enumerate(AIRMADIDI_VILLAGES_LIST):
+            v_lower = v_name.lower()
+            if clean_vill == v_lower or clean_vill in v_lower or v_lower in clean_vill or (clean_vill == "airmadidi" and idx == 0):
+                return idx
+            if "sarongsong" in clean_vill and ("1" in clean_vill or "satu" in clean_vill) and "satu" in v_lower:
+                return idx
+            if "sarongsong" in clean_vill and ("2" in clean_vill or "dua" in clean_vill) and "dua" in v_lower:
+                return idx
+            if "rap" in clean_vill and "rap" in v_lower:
+                return idx
+        return 0
+
+    patients_by_village = {idx: [] for idx in range(len(AIRMADIDI_VILLAGES_LIST))}
+    for p in all_patients:
+        v_idx = _find_village_idx(p)
+        patients_by_village[v_idx].append(p)
+
+    for idx, v_name in enumerate(AIRMADIDI_VILLAGES_LIST):
+        v_patients = patients_by_village[idx]
+
+        v_mothers = [p for p in v_patients if _is_mother(p)]
+        v_children = [p for p in v_patients if _is_child(p)]
+        
+        stunting_count = 0
+        kek_count = 0
+        anemia_count = 0
+        high_risk_count = 0
+        kms_naik = 0
+        kms_tidak_naik = 0
+        grad_optimal = 0
+        grad_evaluasi = 0
+
+        for p in v_patients:
+            p_reports = reports_by_patient.get(p.id, [])
+            p_visits = visits_by_patient.get(p.id, [])
+            
+            # Check latest report risk
+            if p_reports:
+                latest_report = max(p_reports, key=lambda r: r.id)
+                flags = latest_report.risk_flags or []
+                has_stunt = any("STUNTING" in f.get("flag", "") for f in flags)
+                has_kek = any("KEK" in f.get("flag", "") for f in flags)
+                has_anemia = any("ANEMIA" in f.get("flag", "") for f in flags)
+                
+                if has_stunt: stunting_count += 1
+                if has_kek: kek_count += 1
+                if has_anemia: anemia_count += 1
+                if latest_report.overall_status == "RISIKO_TINGGI": high_risk_count += 1
+
+            # KMS trends for children
+            if _is_child(p):
+                for v in p_visits:
+                    trend = str(v.weight_trend_kms or "").upper()
+                    if trend in ["NAIK", "N"]:
+                        kms_naik += 1
+                    elif trend in ["TIDAK_NAIK", "T"]:
+                        kms_tidak_naik += 1
+                
+                # Graduation check for child >= 24 months
+                if p.birth_date:
+                    days_age = (date.today() - p.birth_date).days
+                    if days_age >= 730:
+                        if p_reports and any("STUNTING" in f.get("flag", "") for f in (max(p_reports, key=lambda r: r.id).risk_flags or [])):
+                            grad_evaluasi += 1
+                        else:
+                            grad_optimal += 1
+
+        total_stunting_all += stunting_count
+        total_kek_all += kek_count
+        total_anemia_all += anemia_count
+        total_kms_naik_all += kms_naik
+        total_kms_tidak_naik_all += kms_tidak_naik
+        total_graduated_optimal_all += grad_optimal
+        total_graduated_evaluasi_all += grad_evaluasi
+
+        # Status Posyandu category
+        if stunting_count >= 3 or high_risk_count >= 3:
+            status_label = "Prioritas Dampingan"
+            status_color = "rose"
+        elif stunting_count > 0 or high_risk_count > 0:
+            status_label = "Waspada Stunting"
+            status_color = "amber"
+        else:
+            status_label = "Terkendali (Aman)"
+            status_color = "emerald"
+
+        village_stats.append({
+            "village_name": v_name,
+            "posyandu_name": f"Posyandu {v_name}",
+            "total_patients": len(v_patients),
+            "total_mothers": len(v_mothers),
+            "total_children": len(v_children),
+            "stunting_count": stunting_count,
+            "kek_count": kek_count,
+            "anemia_count": anemia_count,
+            "high_risk_count": high_risk_count,
+            "kms_naik_count": kms_naik,
+            "kms_tidak_naik_count": kms_tidak_naik,
+            "graduated_optimal": grad_optimal,
+            "graduated_evaluasi": grad_evaluasi,
+            "status_label": status_label,
+            "status_color": status_color,
+            "is_user_village": bool(current_user.village_name and current_user.village_name.strip().lower() == v_name.lower()),
+        })
+
+    total_kms = total_kms_naik_all + total_kms_tidak_naik_all
+    kms_naik_percent = round((total_kms_naik_all / total_kms * 100), 1) if total_kms > 0 else 0.0
+
+    total_grad = total_graduated_optimal_all + total_graduated_evaluasi_all
+    grad_rate = round((total_graduated_optimal_all / total_grad * 100), 1) if total_grad > 0 else 100.0
+
+    return {
+        "summary": {
+            "total_target_all": total_target_all,
+            "total_mothers_all": total_mothers_all,
+            "total_children_all": total_children_all,
+            "total_stunting_all": total_stunting_all,
+            "total_kek_all": total_kek_all,
+            "total_anemia_all": total_anemia_all,
+            "total_kms_naik": total_kms_naik_all,
+            "total_kms_tidak_naik": total_kms_tidak_naik_all,
+            "kms_naik_percent": kms_naik_percent,
+            "total_graduated_optimal": total_graduated_optimal_all,
+            "total_graduated_evaluasi": total_graduated_evaluasi_all,
+            "graduation_rate": grad_rate,
+            "user_village": current_user.village_name or "Airmadidi Atas",
+            "user_role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+            "is_kader": current_user.role == UserRole.KADER,
+        },
+        "villages": village_stats,
+    }
+
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)

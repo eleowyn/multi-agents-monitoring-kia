@@ -58,6 +58,18 @@ def on_startup():
     """Membuat tabel database dan menyemai user demo awal jika kosong."""
     try:
         Base.metadata.create_all(bind=engine)
+        # Auto-migration check: tambahkan kolom baru jika belum ada
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        try:
+            cols = [c["name"] for c in inspector.get_columns("visits")]
+            if "ttd_consumption" not in cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE visits ADD COLUMN ttd_consumption VARCHAR(30) NULL;"))
+                    conn.commit()
+                print(" [DATABASE] Berhasil menambahkan kolom ttd_consumption pada tabel visits.")
+        except Exception as col_err:
+            print(f" [DATABASE] Info cek kolom ttd_consumption: {col_err}")
         print(" [DATABASE] Seluruh tabel database MySQL berhasil diverifikasi/dibuat.")
         
         # Auto-seed users
