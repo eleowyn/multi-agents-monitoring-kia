@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import api, { getErrorMessage } from "../../services/api";
 import {
-  ShieldAlert,
   CheckCircle,
   XCircle,
   RefreshCw,
   AlertTriangle,
   Trash2,
+  Activity,
+  ShieldCheck,
+  Clock,
+  Cpu,
+  ChevronRight,
+  X,
+  ExternalLink,
 } from "lucide-react";
 
 const AuditLogs = () => {
@@ -15,6 +22,7 @@ const AuditLogs = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deletingBulk, setDeletingBulk] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
+  const [selectedLogModal, setSelectedLogModal] = useState(null);
 
   useEffect(() => {
     fetchLogs();
@@ -24,7 +32,7 @@ const AuditLogs = () => {
     try {
       setLoading(true);
       const res = await api.get("/admin/audit-logs");
-      setLogs(res.data);
+      setLogs(res.data || []);
       setSelectedIds([]);
     } catch (e) {
       console.error(e);
@@ -91,39 +99,155 @@ const AuditLogs = () => {
     }
   };
 
+  // Hitung rekapitulasi token dan durasi dari daftar log
+  const totalTokensAll = logs.reduce(
+    (acc, l) => acc + Number(l.token_usage?.total_tokens || 0),
+    0
+  );
+  const totalInputTokensAll = logs.reduce(
+    (acc, l) => acc + Number(l.token_usage?.input_tokens || 0),
+    0
+  );
+  const totalOutputTokensAll = logs.reduce(
+    (acc, l) => acc + Number(l.token_usage?.output_tokens || 0),
+    0
+  );
+  const avgLifetimeMs =
+    logs.length > 0
+      ? Math.round(
+          logs.reduce((acc, l) => acc + Number(l.lifetime_ms || 0), 0) / logs.length
+        )
+      : 0;
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-            Audit Log Evaluator AI Independen
+            Audit Log, Telemetri Lifetime & Konsumsi Token Multi-Agent AI
           </h1>
+          <p className="text-sm text-caption mt-1">
+            Bukti eksekusi Sequential Pipeline (Agent 1 → 2 → 3), Parallel Evaluator (ThreadPoolExecutor), Lifetime Ephemeral, dan penggunaan token per-agent.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {logs.length > 0 && (
             <button
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 rounded-xl text-xs font-semibold transition-colors duration-200 disabled:opacity-50"
+              className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line text-heading hover:bg-subtle rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-              {clearingAll ? "Membersihkan..." : "Bersihkan Seluruh Log"}
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{clearingAll ? "Membersihkan..." : "Bersihkan Seluruh Log"}</span>
             </button>
           )}
           <button
             onClick={fetchLogs}
-            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200"
+            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-subtle text-heading rounded-xl text-xs font-semibold transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            Segarkan
+            <RefreshCw className="w-3.5 h-3.5 text-sky-500" />
+            <span>Segarkan</span>
           </button>
         </div>
       </div>
 
+      {/* ─── Ringkasan Hierarki Agent & Telemetri (Clean Minimalist Cards) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
+              <Activity className="w-4 h-4 text-rose-500" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+              Sequential Step #1
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+              Paling Penting (Keselamatan Jiwa)
+            </p>
+            <p className="text-sm font-bold text-heading mt-0.5">
+              Agent 1: Deteksi Risiko
+            </p>
+            <p className="text-xs text-caption mt-1 leading-relaxed">
+              Safety Gatekeeper deterministik (Z-Score WHO, KSPR, LiLA, Hb, BBLR) mencegah false-negative.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
+              <Cpu className="w-4 h-4 text-amber-500" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+              Sequential Step #2
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+              Paling Sulit (Multi-Hop ReAct)
+            </p>
+            <p className="text-sm font-bold text-heading mt-0.5">
+              Agent 2: Rekomendasi Klinis RAG
+            </p>
+            <p className="text-xs text-caption mt-1 leading-relaxed">
+              Penalaran ReAct otonom, kueri vektor ChromaDB, adaptasi menu lokal Minahasa & Care Plan.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+              Sequential Step #3
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+              Paling Mudah / Terfokus
+            </p>
+            <p className="text-sm font-bold text-heading mt-0.5">
+              Agent 3: Verifikasi Grounding
+            </p>
+            <p className="text-xs text-caption mt-1 leading-relaxed">
+              Evaluasi keterhubungan tertutup (faithfulness 0.0–1.0) atau Single-Pass otomatis (0 token).
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
+              <Clock className="w-4 h-4 text-sky-500" />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+              Parallel Eval (3 Threads)
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+              Total Konsumsi Token & Lifetime
+            </p>
+            <p className="text-sm font-bold text-heading font-mono mt-0.5">
+              {totalTokensAll.toLocaleString("id-ID")} <span className="font-sans font-normal text-xs text-caption">token</span>
+            </p>
+            <p className="text-xs text-caption mt-1 font-mono">
+              In: {totalInputTokensAll} &bull; Out: {totalOutputTokensAll} &bull; Avg: {avgLifetimeMs} ms (TERMINATED)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-2xl animate-fade-in shadow-sm">
-          <div className="flex items-center gap-2.5 text-xs font-semibold text-sky-800 dark:text-sky-200">
-            <span className="px-2.5 py-1 bg-sky-600 text-white rounded-lg text-xs font-bold shadow-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-subtle border border-line rounded-2xl animate-fade-in">
+          <div className="flex items-center gap-2.5 text-xs font-semibold text-heading">
+            <span className="px-2.5 py-1 bg-card border border-line rounded-lg text-xs font-bold">
               {selectedIds.length}
             </span>
             <span>Log audit terpilih untuk dihapus</span>
@@ -140,21 +264,22 @@ const AuditLogs = () => {
               type="button"
               onClick={handleBulkDelete}
               disabled={deletingBulk}
-              className="btn-interactive flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+              className="btn-interactive flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log Terpilih`}
+              <span>{deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log Terpilih`}</span>
             </button>
           </div>
         </div>
       )}
 
+      {/* Table */}
       <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-muted text-label border-b border-line">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-subtle text-caption text-xs font-semibold uppercase tracking-wider border-b border-line">
               <tr>
-                <th className="p-3 w-10 text-center">
+                <th className="p-3.5 w-10 text-center">
                   <input
                     type="checkbox"
                     checked={logs.length > 0 && selectedIds.length === logs.length}
@@ -163,101 +288,282 @@ const AuditLogs = () => {
                     aria-label="Pilih semua log"
                   />
                 </th>
-                <th className="p-3">ID & Waktu</th>
-                <th className="p-3">Nama Agent</th>
-                <th className="p-3">Instruksi Awal</th>
-                <th className="p-3">Kepatuhan Output (Biner)</th>
-                <th className="p-3">Catatan Evaluasi</th>
+                <th className="p-3.5">ID & Laporan</th>
+                <th className="p-3.5">Agent & Urutan Eksekusi</th>
+                <th className="p-3.5">Lifetime (Selesai Tugas = Selesai Hidup)</th>
+                <th className="p-3.5">Konsumsi Token</th>
+                <th className="p-3.5">Kepatuhan</th>
+                <th className="p-3.5 text-right">Bukti Kerja</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-dim">
-                    Memuat catatan log audit...
+                  <td colSpan="7" className="p-8 text-center text-dim text-sm">
+                    Memuat catatan log audit dan telemetri agent...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="6"
-                    className="p-8 text-center text-dim italic"
-                  >
+                  <td colSpan="7" className="p-8 text-center text-dim italic text-sm">
                     Belum ada log evaluasi audit tersimpan.
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className={`table-row-interactive hover:bg-accent-sky transition-colors duration-150 ${
-                      selectedIds.includes(log.id) ? "bg-sky-50/60 dark:bg-sky-950/20" : ""
-                    }`}
-                  >
-                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(log.id)}
-                        onChange={() => handleToggleRow(log.id)}
-                        className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
-                        aria-label={`Pilih log audit #${log.id}`}
-                      />
-                    </td>
-                    <td className="p-3 text-caption">
-                      <p className="font-bold text-heading">#{log.id}</p>
-                      <p className="text-[10px] text-dim">
-                        {log.created_at}
-                      </p>
-                    </td>
-                    <td className="p-3 font-semibold text-heading">
-                      {log.agent_name}
-                    </td>
-                    <td
-                      className="p-3 text-body max-w-xs truncate"
-                      title={log.input_instruction}
+                logs.map((log) => {
+                  const tok = log.token_usage || {};
+                  return (
+                    <tr
+                      key={log.id}
+                      onClick={() => setSelectedLogModal(log)}
+                      className={`cursor-pointer hover:bg-subtle/60 transition-colors ${
+                        selectedIds.includes(log.id) ? "bg-subtle" : ""
+                      }`}
                     >
-                      {log.input_instruction}
-                    </td>
-                    <td className="p-3">
-                      {log.is_compliant === true ? (
-                        <span 
-                          title="Agen selesai berjalan dan diverifikasi patuh terhadap pedoman klinis."
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-[10px] font-bold cursor-help"
+                      <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(log.id)}
+                          onChange={() => handleToggleRow(log.id)}
+                          className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
+                          aria-label={`Pilih log audit #${log.id}`}
+                        />
+                      </td>
+
+                      <td className="p-3.5">
+                        <p className="font-bold text-heading font-mono text-xs">Log #{log.id}</p>
+                        {log.report_id && (
+                          <Link
+                            to={`/kader/validasi/${log.report_id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline mt-0.5"
+                          >
+                            <span>Laporan #{log.report_id}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        )}
+                      </td>
+
+                      <td className="p-3.5 space-y-1">
+                        <p className="font-bold text-heading text-sm">{log.agent_name}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-subtle text-caption border border-line">
+                            Sequential Step #{log.execution_order || 1}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-xs font-mono bg-subtle text-caption border border-line">
+                            {log.parallel_worker || "ParallelEval"}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5 font-mono text-xs space-y-0.5">
+                        <p className="text-heading font-semibold">
+                          {log.lifetime_ms ?? 0} ms &bull; TERMINATED
+                        </p>
+                        <p className="text-caption truncate max-w-[210px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
+                          {log.spawned_at ? log.spawned_at.slice(11, 23) : "-"} →{" "}
+                          {log.terminated_at ? log.terminated_at.slice(11, 23) : "-"}
+                        </p>
+                      </td>
+
+                      <td className="p-3.5 font-mono text-xs space-y-0.5">
+                        <p className="text-heading font-bold">
+                          {tok.total_tokens ?? 0} <span className="font-sans font-normal text-caption">token</span>
+                        </p>
+                        <p className="text-caption">
+                          In: {tok.input_tokens ?? 0} &bull; Out: {tok.output_tokens ?? 0}
+                        </p>
+                      </td>
+
+                      <td className="p-3.5">
+                        {log.is_compliant === true ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Patuh (Valid)</span>
+                          </span>
+                        ) : log.is_compliant === false ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                            <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                            <span>Ada Deviasi</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Menunggu</span>
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLogModal(log);
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-label hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer"
                         >
-                          <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          Patuh (Valid)
-                        </span>
-                      ) : log.is_compliant === false ? (
-                        <span 
-                          title="Agen selesai berjalan dan menghasilkan output, namun LLM Evaluator mencatat adanya catatan deviasi logika/sitasi."
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-rose text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50 rounded-lg text-[10px] font-bold cursor-help"
-                        >
-                          <XCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
-                          Ada Deviasi
-                        </span>
-                      ) : (
-                        <span 
-                          title="Evaluasi belum selesai atau API evaluator offline."
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded-lg text-[10px] font-bold"
-                        >
-                          <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                          Belum Dievaluasi
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-caption text-[11px] max-w-sm">
-                      {log.evaluation_notes}
-                    </td>
-                  </tr>
-                ))
+                          <span>Lihat bukti</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ═══ Clean Minimalist Detail Modal Pop-up ═══ */}
+      {selectedLogModal && (
+        <div
+          className="fixed inset-0 bg-overlay backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 z-50 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedLogModal(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="audit-log-modal-title"
+        >
+          <div className="bg-card rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-line shadow-prominent overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-line flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+                  Log Audit #{selectedLogModal.id} &bull; Sequential Step #{selectedLogModal.execution_order || 1} &bull;{" "}
+                  {selectedLogModal.parallel_worker || "ParallelEval"}
+                </span>
+                <h3 id="audit-log-modal-title" className="text-lg sm:text-xl font-bold text-heading">
+                  {selectedLogModal.agent_name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedLogModal(null)}
+                aria-label="Tutup modal log"
+                className="p-2 text-dim hover:text-heading hover:bg-subtle rounded-xl transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+              {/* Klasifikasi Kompleksitas & Kepentingan */}
+              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-caption">
+                  Klasifikasi Peran & Tingkat Kesulitan/Kepentingan
+                </p>
+                <p className="text-sm font-bold text-heading">{selectedLogModal.complexity_rank}</p>
+                <p className="text-sm text-body leading-relaxed">{selectedLogModal.complexity_reason}</p>
+              </div>
+
+              {/* Lifetime & Token */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
+                  <p className="font-bold uppercase tracking-wider text-caption">
+                    Bukti Lifetime (Selesai Tugas = Selesai Hidup)
+                  </p>
+                  <p className="font-mono text-heading">
+                    Spawn: <strong>{selectedLogModal.spawned_at || "-"}</strong>
+                  </p>
+                  <p className="font-mono text-heading">
+                    Terminated: <strong>{selectedLogModal.terminated_at || "-"}</strong>
+                  </p>
+                  <p className="text-body">
+                    Durasi Hidup: <strong className="text-heading">{selectedLogModal.lifetime_ms ?? 0} ms</strong> (Status: Ephemeral TERMINATED)
+                  </p>
+                </div>
+
+                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
+                  <p className="font-bold uppercase tracking-wider text-caption">
+                    Konsumsi Token Agent
+                  </p>
+                  <p className="font-mono text-heading">
+                    Input Prompt: <strong>{selectedLogModal.token_usage?.input_tokens ?? 0} token</strong>
+                  </p>
+                  <p className="font-mono text-heading">
+                    Output Completion: <strong>{selectedLogModal.token_usage?.output_tokens ?? 0} token</strong>
+                  </p>
+                  <p className="font-mono text-heading">
+                    Total Konsumsi: <strong>{selectedLogModal.token_usage?.total_tokens ?? 0} token</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Tools Invoked */}
+              {Array.isArray(selectedLogModal.tools_invoked) && selectedLogModal.tools_invoked.length > 0 && (
+                <div className="p-4 bg-subtle rounded-xl border border-line space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-caption">
+                    Tools & Kalkulator yang Dieksekusi Agent
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedLogModal.tools_invoked.map((tl, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-md text-xs font-mono bg-card text-heading border border-line"
+                      >
+                        {tl}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Instruksi Tugas Awal */}
+              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-caption">
+                  Instruksi Tugas Awal (Input Context)
+                </p>
+                <p className="text-sm text-body leading-relaxed">{selectedLogModal.input_instruction}</p>
+              </div>
+
+              {/* Output yang Dihasilkan Agent */}
+              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-caption">
+                  Bukti Output Aktual yang Dihasilkan Agent
+                </p>
+                <pre className="p-3 bg-card rounded-lg border border-line text-xs font-mono text-body overflow-x-auto whitespace-pre-wrap max-h-48">
+                  {selectedLogModal.agent_output}
+                </pre>
+              </div>
+
+              {/* Catatan Evaluator Paralel */}
+              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-caption">
+                  Hasil Audit Evaluator Paralel & Jejak Timestamp
+                </p>
+                <p className="text-sm text-body leading-relaxed">{selectedLogModal.evaluation_notes}</p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-line bg-subtle flex items-center justify-between gap-3">
+              {selectedLogModal.report_id ? (
+                <Link
+                  to={`/kader/validasi/${selectedLogModal.report_id}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                >
+                  <span>Buka Lembar Laporan #{selectedLogModal.report_id}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedLogModal(null)}
+                className="px-4 py-2 bg-card hover:bg-muted text-heading border border-line rounded-xl text-sm font-semibold cursor-pointer transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AuditLogs;
-

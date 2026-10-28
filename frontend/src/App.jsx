@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/common/Navbar";
 import Sidebar from "./components/common/Sidebar";
 
+import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import KaderDashboard from "./pages/kader/KaderDashboard";
 import InputKunjungan from "./pages/kader/InputKunjungan";
@@ -56,7 +57,11 @@ const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
       <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex flex-1 relative">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 bg-page overflow-y-auto min-h-[calc(100vh-4rem)]" id="main-content" role="main">
+        <main
+          className="flex-1 bg-page overflow-y-auto min-h-[calc(100vh-4rem)]"
+          id="main-content"
+          role="main"
+        >
           {children}
         </main>
       </div>
@@ -69,19 +74,97 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/kader/dashboard" element={<ProtectedLayout allowedRole="KADER"><KaderDashboard /></ProtectedLayout>} />
-          <Route path="/kader/input-kunjungan" element={<ProtectedLayout allowedRole="KADER"><InputKunjungan /></ProtectedLayout>} />
-          <Route path="/kader/validasi-laporan/:reportId" element={<ProtectedLayout allowedRoles={["KADER", "ADMIN"]}><ValidasiLaporan /></ProtectedLayout>} />
-          <Route path="/kader/data-pasien" element={<ProtectedLayout allowedRole="KADER"><DataPasien /></ProtectedLayout>} />
-          <Route path="/kader/laporan-kia" element={<ProtectedLayout allowedRole="KADER"><ArsipLaporan /></ProtectedLayout>} />
-          <Route path="/admin/dashboard" element={<ProtectedLayout allowedRole="ADMIN"><AdminDashboard /></ProtectedLayout>} />
-          <Route path="/admin/manage-pasien" element={<ProtectedLayout allowedRole="ADMIN"><ManagePasien /></ProtectedLayout>} />
-          <Route path="/admin/manage-kader" element={<ProtectedLayout allowedRole="ADMIN"><ManageKader /></ProtectedLayout>} />
-          <Route path="/admin/audit-logs" element={<ProtectedLayout allowedRole="ADMIN"><AuditLogs /></ProtectedLayout>} />
-          <Route path="/admin/revisions" element={<ProtectedLayout allowedRole="ADMIN"><AdminRevisions /></ProtectedLayout>} />
-          <Route path="/admin/reports" element={<ProtectedLayout allowedRole="ADMIN"><ManageReports /></ProtectedLayout>} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/kader/dashboard"
+            element={
+              <ProtectedLayout allowedRole="KADER">
+                <KaderDashboard />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/kader/input-kunjungan"
+            element={
+              <ProtectedLayout allowedRole="KADER">
+                <InputKunjungan />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/kader/validasi-laporan/:reportId"
+            element={
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+                <ValidasiLaporan />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/kader/data-pasien"
+            element={
+              <ProtectedLayout allowedRole="KADER">
+                <DataPasien />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/kader/laporan-kia"
+            element={
+              <ProtectedLayout allowedRole="KADER">
+                <ArsipLaporan />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <AdminDashboard />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manage-pasien"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <ManagePasien />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manage-kader"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <ManageKader />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <AuditLogs />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/revisions"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <AdminRevisions />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <ManageReports />
+              </ProtectedLayout>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

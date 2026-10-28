@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import {
   Users,
@@ -8,6 +8,9 @@ import {
   CheckCircle,
   MapPin,
   RefreshCw,
+  Pause,
+  Play,
+  Activity,
 } from "lucide-react";
 import OverallTrendChart from "../../components/admin/OverallTrendChart";
 import PatientTrendChart from "../../components/admin/PatientTrendChart";
@@ -40,30 +43,58 @@ const AdminDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [countdown, setCountdown] = useState(30);
+  const [newDataBadge, setNewDataBadge] = useState(false);
+  const previousVisitCount = useRef(null);
 
   useEffect(() => {
     fetchSummary();
   }, []);
 
-  const fetchSummary = async (isManual = false) => {
+  const fetchSummary = async (isManual = false, isSilent = false) => {
     try {
       if (isManual) {
         setRefreshing(true);
-      } else {
+      } else if (!isSilent) {
         setLoading(true);
       }
       setError(null);
       const res = await api.get("/admin/dashboard-summary");
+      
+      if (previousVisitCount.current !== null && res.data?.total_visits > previousVisitCount.current) {
+        setNewDataBadge(true);
+        setTimeout(() => setNewDataBadge(false), 8000);
+      }
+      previousVisitCount.current = res.data?.total_visits ?? null;
+
       setSummary(res.data);
-      setLastUpdated(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }));
+      setLastUpdated(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     } catch (e) {
       console.error(e);
-      setError("Gagal memuat ringkasan data dashboard. Silakan periksa koneksi backend.");
+      if (!isSilent) {
+        setError("Gagal memuat ringkasan data dashboard. Silakan periksa koneksi backend.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setCountdown(30);
     }
   };
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          fetchSummary(false, true);
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
 
   // Aggregated totals for table footer
   const villageTotals = summary?.village_breakdown?.reduce(
@@ -83,14 +114,19 @@ const AdminDashboard = () => {
       {/* Top Header & Context */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-line-light">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
               Dashboard Monitoring KIA & Stunting
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-sky text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
-              Live Monitoring
-            </span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+              <span className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+              <span>{autoRefresh ? `Live Sync (${countdown}s)` : "Sync Dijeda"}</span>
+            </div>
+            {newDataBadge && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 animate-bounce">
+                ✨ Data Baru Masuk
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-caption mt-1 flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-body">Puskesmas Kecamatan Airmadidi</span>
@@ -99,21 +135,41 @@ const AdminDashboard = () => {
             {lastUpdated && (
               <>
                 <span>&bull;</span>
-                <span className="text-dim">Pembaruan: {lastUpdated} WITA</span>
+                <span className="text-dim">Sinkronisasi: {lastUpdated} WITA</span>
               </>
             )}
           </p>
         </div>
 
-        <button
-          onClick={() => fetchSummary(true)}
-          disabled={loading || refreshing}
-          aria-label="Segarkan data dashboard"
-          className="btn-interactive inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-card border border-line text-body hover:text-heading hover:bg-muted/80 shadow-xs active:scale-[0.98] transition-all duration-150 disabled:opacity-50 self-start sm:self-auto cursor-pointer focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${refreshing ? "animate-spin" : ""}`} />
-          <span>{refreshing ? "Menyegarkan..." : "Segarkan Data"}</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            title={autoRefresh ? "Jeda auto-sync" : "Aktifkan auto-sync"}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-card border border-line text-caption hover:text-body hover:bg-muted/60 transition-colors cursor-pointer"
+          >
+            {autoRefresh ? (
+              <>
+                <Pause className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="hidden md:inline">Jeda Sync</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden md:inline">Lanjutkan Sync</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => fetchSummary(true)}
+            disabled={loading || refreshing}
+            aria-label="Segarkan data dashboard sekarang"
+            className="btn-interactive inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-card border border-line text-body hover:text-heading hover:bg-muted/80 shadow-xs active:scale-[0.98] transition-all duration-150 disabled:opacity-50 cursor-pointer focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${refreshing ? "animate-spin" : ""}`} />
+            <span>{refreshing ? "Menyegarkan..." : "Segarkan Sekarang"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Error Alert if any */}

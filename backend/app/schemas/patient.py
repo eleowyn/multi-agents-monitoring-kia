@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 from app.models.patient import PatientType, Gender
 
@@ -38,6 +38,10 @@ class PatientResponse(PatientBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    mother_name: Optional[str] = None
+    children_count: Optional[int] = 0
+    visits_count: Optional[int] = 0
+    hpk_status: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -45,5 +49,9 @@ class PatientResponse(PatientBase):
 class LongitudinalHistoryResponse(BaseModel):
     patient: PatientResponse
     mother: Optional[PatientResponse] = None
-    maternal_visits: List[dict] = []
-    child_visits: List[dict] = []
+    children: List[PatientResponse] = []
+    hpk_status: Optional[Dict[str, Any]] = None
+    maternal_summary: Optional[Dict[str, Any]] = None
+    maternal_visits: List[Dict[str, Any]] = []
+    child_visits: List[Dict[str, Any]] = []
+    visits: List[Dict[str, Any]] = []

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import PatientTrendChart from "../../components/admin/PatientTrendChart";
 import {
   Users,
   AlertTriangle,
@@ -15,6 +16,8 @@ import {
   Baby,
   Heart,
   ShieldAlert,
+  Pause,
+  Play,
 } from "lucide-react";
 
 const SkeletonCard = () => (
@@ -33,30 +36,61 @@ const KaderDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [countdown, setCountdown] = useState(30);
+  const [newDataBadge, setNewDataBadge] = useState(false);
+  const previousPendingCount = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchDashboardSummary();
   }, []);
 
-  const fetchDashboardSummary = async (isManual = false) => {
+  const fetchDashboardSummary = async (isManual = false, isSilent = false) => {
     try {
       if (isManual) {
         setRefreshing(true);
-      } else {
+      } else if (!isSilent) {
         setLoading(true);
       }
       setError("");
       const res = await api.get("/kader/dashboard-summary");
+
+      if (previousPendingCount.current !== null && res.data?.pending_validation > previousPendingCount.current) {
+        setNewDataBadge(true);
+        setTimeout(() => setNewDataBadge(false), 8000);
+      }
+      previousPendingCount.current = res.data?.pending_validation ?? null;
+
       setSummary(res.data);
+      const now = new Date();
+      setLastUpdated(now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     } catch (e) {
       console.error(e);
-      setError("Gagal memuat ringkasan data posyandu. Silakan periksa koneksi backend.");
+      if (!isSilent) {
+        setError("Gagal memuat ringkasan data posyandu. Silakan periksa koneksi backend.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setCountdown(30);
     }
   };
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          fetchDashboardSummary(false, true);
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
 
   const getRiskBadge = (risk) => {
     if (risk === "RISIKO_TINGGI") {
@@ -80,26 +114,63 @@ const KaderDashboard = () => {
       {/* ═══ Header Posyandu ═══ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-            Dashboard Posyandu
-          </h1>
-          <p className="text-xs sm:text-sm text-caption mt-1">
-            Wilayah Kerja {summary?.posyandu_name || "Posyandu"} &bull; {summary?.village_name || "Kec. Airmadidi"}
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+              Dashboard Posyandu
+            </h1>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+              <span className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+              <span>{autoRefresh ? `Live Sync (${countdown}s)` : "Sync Dijeda"}</span>
+            </div>
+            {newDataBadge && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 animate-bounce">
+                ✨ Laporan Baru Menunggu Validasi
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-caption mt-1 flex items-center gap-1.5 flex-wrap">
+            <span>Wilayah Kerja {summary?.posyandu_name || "Posyandu"} &bull; {summary?.village_name || "Kec. Airmadidi"}</span>
+            {lastUpdated && (
+              <>
+                <span>&bull;</span>
+                <span className="text-dim">Sinkronisasi: {lastUpdated} WITA</span>
+              </>
+            )}
           </p>
         </div>
 
-        <button
-          onClick={() => fetchDashboardSummary(true)}
-          disabled={loading || refreshing}
-          className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer self-start sm:self-auto"
-        >
-          <RefreshCw
-            className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${
-              refreshing ? "animate-spin" : ""
-            }`}
-          />
-          <span>Segarkan Data</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            title={autoRefresh ? "Jeda auto-sync" : "Aktifkan auto-sync"}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-card border border-line text-caption hover:text-body hover:bg-muted/60 transition-colors cursor-pointer"
+          >
+            {autoRefresh ? (
+              <>
+                <Pause className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="hidden md:inline">Jeda Sync</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden md:inline">Lanjutkan Sync</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => fetchDashboardSummary(true)}
+            disabled={loading || refreshing}
+            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${
+                refreshing ? "animate-spin" : ""
+              }`}
+            />
+            <span>{refreshing ? "Menyegarkan..." : "Segarkan Sekarang"}</span>
+          </button>
+        </div>
       </div>
 
       {/* ═══ Error Alert ═══ */}
@@ -117,33 +188,6 @@ const KaderDashboard = () => {
           </button>
         </div>
       )}
-
-      {/* ═══ Quick Actions Bar ═══ */}
-      <div className="flex flex-wrap items-center gap-3 bg-card p-3 sm:p-4 rounded-2xl border border-line shadow-card">
-        <button
-          onClick={() => navigate("/kader/input-kunjungan")}
-          className="btn-interactive flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors cursor-pointer"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Mulai Input Kunjungan</span>
-        </button>
-
-        <button
-          onClick={() => navigate("/kader/data-pasien")}
-          className="btn-interactive flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-card border border-line text-heading rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-        >
-          <Users className="w-4 h-4 text-dim" />
-          <span>Direktori Pasien</span>
-        </button>
-
-        <button
-          onClick={() => navigate("/kader/laporan-kia")}
-          className="btn-interactive flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-card border border-line text-heading rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-        >
-          <FileText className="w-4 h-4 text-dim" />
-          <span>Arsip Laporan KIA</span>
-        </button>
-      </div>
 
       {/* ═══ 4 Metric Cards ═══ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -236,6 +280,9 @@ const KaderDashboard = () => {
           </>
         )}
       </div>
+
+      {/* ═══ Grafik Tren Longitudinal 1.000 HPK Per Pasien ═══ */}
+      <PatientTrendChart />
 
       {/* ═══ Radar Pasien Prioritas Berisiko Tinggi ═══ */}
       <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">

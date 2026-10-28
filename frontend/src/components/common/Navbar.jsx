@@ -57,21 +57,18 @@ const Navbar = ({ onToggleSidebar }) => {
 
             {/* User info */}
             <div className="flex items-center gap-2.5 bg-subtle px-3 py-1.5 rounded-xl border border-line">
-              <div className="w-7 h-7 rounded-full bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
-                <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
+              <div className="w-8 h-8 rounded-full bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+                <UserIcon className="w-4 h-4" aria-hidden="true" />
               </div>
-              <div className="items-center gap-2 hidden sm:flex">
-                <span className="text-sm font-semibold text-heading">
-                  {isKader ? "Kader" : "Admin"}
+              <div className="hidden sm:flex flex-col justify-center leading-tight">
+                <span className="text-xs font-bold text-heading truncate max-w-[200px]">
+                  {user?.full_name || user?.username || (isKader ? "Kader Posyandu" : "Administrator")}
                 </span>
-                {isKader && (
-                  <>
-                    <span className="text-dim text-xs">&bull;</span>
-                    <span className="text-xs text-caption font-medium">
-                      {user?.posyandu_name || "Posyandu"} &bull; Kec. Airmadidi
-                    </span>
-                  </>
-                )}
+                <span className="text-[11px] text-caption font-medium truncate max-w-[220px] mt-0.5">
+                  {isKader
+                    ? `${user?.posyandu_name || "Posyandu"} • ${user?.village_name || "Kec. Airmadidi"}`
+                    : `${user?.posyandu_name || "Puskesmas Airmadidi"} • ${user?.village_name || "Kec. Airmadidi"}`}
+                </span>
               </div>
             </div>
 

@@ -19,7 +19,8 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isAdmin) {
-      api.get("/revisions/", { params: { status: "PENDING" } })
+      api
+        .get("/revisions/", { params: { status: "PENDING" } })
         .then((res) => setPendingRevisions(res.data?.length || 0))
         .catch(() => {});
     }
@@ -39,7 +40,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   const kaderLinks = [
@@ -81,7 +84,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             }
             aria-label={link.label}
           >
-            <Icon className="w-[18px] h-[18px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110" aria-hidden="true" />
+            <Icon
+              className="w-[18px] h-[18px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
+              aria-hidden="true"
+            />
             <span className="flex-1">{link.label}</span>
             {link.count > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">

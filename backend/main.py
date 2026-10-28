@@ -78,7 +78,7 @@ def root():
         "status": "online",
         "api_v1": settings.API_V1_STR,
         "docs": "/docs",
-        "version": "1.0.0"
+        "version": "1.1.0"
     }
 
 

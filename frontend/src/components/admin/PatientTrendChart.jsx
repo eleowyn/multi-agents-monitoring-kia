@@ -31,6 +31,7 @@ const METRICS = {
   MOTHER: [
     { key: "lila", label: "LiLA", unit: "cm", pick: (p) => p.lila_cm, threshold: 23.5, thresholdLabel: "Batas KEK 23,5" },
     { key: "hb", label: "Hemoglobin", unit: "g/dL", pick: (p) => p.hb_level, threshold: 11, thresholdLabel: "Batas Anemia 11" },
+    { key: "maternal_weight", label: "Berat Badan Ibu", unit: "kg", pick: (p) => p.maternal_weight_kg },
   ],
 };
 
@@ -92,15 +93,25 @@ const PatientTrendChart = () => {
     <section className="card-interactive bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div>
-          <h2 className="text-sm font-bold text-heading">Tren Per Pasien</h2>
-          <p className="text-[11px] text-caption">Perkembangan hasil ukur per kunjungan</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-bold text-heading">Tren Longitudinal 1.000 HPK Per Pasien</h2>
+            {trend?.hpk_status && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                Hari ke-{trend.hpk_status.hpk_day} / 1.000 HPK ({trend.hpk_status.progress_percent}%)
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-caption">
+            Perkembangan hasil ukur klinis antar kunjungan
+            {trend?.hpk_status?.phase_label ? ` • ${trend.hpk_status.phase_label}` : ""}
+          </p>
         </div>
         <label htmlFor="patient-trend-select" className="sr-only">Pilih pasien</label>
         <select
           id="patient-trend-select"
           value={patientId}
           onChange={(e) => setPatientId(e.target.value)}
-          className="text-xs bg-card border border-line rounded-lg px-2.5 py-1.5 text-body max-w-[220px] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
+          className="text-xs bg-card border border-line rounded-lg px-2.5 py-1.5 text-body max-w-[240px] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
         >
           {patients.length === 0 && <option value="">Belum ada pasien</option>}
           {patients.map((p) => (

@@ -10,4 +10,3 @@ api_router.include_router(visits.router, prefix="/visits", tags=["Kunjungan & An
 api_router.include_router(reports.router, prefix="/reports", tags=["Validasi Laporan & PDF"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin Puskesmas"])
 api_router.include_router(revisions.router, prefix="/revisions", tags=["Pengajuan Revisi Kunjungan"])
-

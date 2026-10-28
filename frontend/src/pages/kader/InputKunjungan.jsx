@@ -339,8 +339,8 @@ const InputKunjungan = () => {
     },
     {
       value: "BADUTA",
-      label: "3. Fase Baduta (6-24 Bln)",
-      shortLabel: "3. Baduta",
+      label: "3. Fase Baduta (1-24 Bln)",
+      shortLabel: "3. Baduta (1-24 Bln)",
       icon: Baby,
       activeClass: "bg-sky-600 text-white shadow-sm border-sky-600",
     },
@@ -475,14 +475,33 @@ const InputKunjungan = () => {
           </div>
 
           {selectedPatient && (
-            <div className="p-3.5 bg-accent-sky border border-sky-200 dark:border-sky-800/50 rounded-xl text-xs text-body">
+            <div className="p-3.5 bg-accent-sky border border-sky-200 dark:border-sky-800/50 rounded-xl text-xs text-body space-y-1">
               <p className="font-semibold text-caption">Pasien Terpilih:</p>
-              <p className="text-sky-700 dark:text-sky-300 font-bold text-sm mt-0.5">
+              <p className="text-sky-700 dark:text-sky-300 font-bold text-sm">
                 {selectedPatient.name}
               </p>
-              <p className="text-xs text-caption mt-0.5">
+              <p className="text-xs text-caption">
                 Tgl Lahir: {selectedPatient.birth_date}
               </p>
+              {selectedPatient.mother_name && (
+                <p className="text-xs text-pink-700 dark:text-pink-300 font-semibold">
+                  Ibu Kandung: {selectedPatient.mother_name}
+                </p>
+              )}
+              {selectedPatient.hpk_status && (
+                <div className="pt-1.5 mt-1 border-t border-sky-200/70 dark:border-sky-800/50">
+                  <div className="flex justify-between text-[11px] font-bold text-sky-800 dark:text-sky-200 mb-1">
+                    <span>Hari ke-{selectedPatient.hpk_status.hpk_day} / 1.000 HPK</span>
+                    <span>{selectedPatient.hpk_status.progress_percent}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-sky-100 dark:bg-sky-950 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-sky-600 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, selectedPatient.hpk_status.progress_percent || 0)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

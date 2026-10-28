@@ -103,6 +103,17 @@ class AuditLogResponse(BaseModel):
     is_compliant: Optional[bool] = None
     evaluation_notes: Optional[str]
     created_at: Any
+    execution_order: Optional[int] = None
+    execution_pattern: Optional[str] = None
+    parallel_worker: Optional[str] = None
+    spawned_at: Optional[str] = None
+    terminated_at: Optional[str] = None
+    lifetime_ms: Optional[float] = None
+    lifecycle_state: Optional[str] = None
+    complexity_rank: Optional[str] = None
+    complexity_reason: Optional[str] = None
+    token_usage: Optional[Dict[str, Any]] = None
+    tools_invoked: Optional[List[str]] = None
 
     class Config:
         from_attributes = True
@@ -115,6 +126,3 @@ class BulkDeleteRequest(BaseModel):
 class BulkStatusRequest(BaseModel):
     ids: List[int]
     is_active: bool
-
-
-

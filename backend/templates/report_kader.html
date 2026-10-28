@@ -100,8 +100,14 @@
       }
 
       .kop-logo {
-        width: 65px;
+        width: 72px;
         text-align: center;
+      }
+
+      .kop-logo img {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
       }
 
       .kop-logo svg {
@@ -330,6 +336,25 @@
         margin-bottom: 6px;
       }
 
+      .rec-detail-grid {
+        margin: 6px 0;
+        background-color: #ffffff;
+        border: 1px solid #bae6fd;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 8.5pt;
+      }
+
+      .rec-detail-row {
+        margin-bottom: 4px;
+        line-height: 1.45;
+        text-align: justify;
+      }
+
+      .rec-detail-row:last-child {
+        margin-bottom: 0;
+      }
+
       .action-steps-list {
         margin: 4px 0 6px 0;
         padding-left: 18px;
@@ -352,6 +377,25 @@
         font-weight: 600;
         margin-top: 4px;
         border: 1px solid #bae6fd;
+      }
+
+      /* Care Plan Cards */
+      .care-plan-box {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 5px;
+        padding: 9px 12px;
+        margin-bottom: 9px;
+        page-break-inside: avoid;
+      }
+
+      .care-plan-header {
+        font-size: 9.5pt;
+        font-weight: 700;
+        color: #0c4a6e;
+        margin-bottom: 4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 3px;
       }
 
       /* Signature Table */
@@ -410,26 +454,32 @@
         <table class="kop-table">
           <tr>
             <td class="kop-logo">
-              <!-- Emblem Puskesmas Minahasa Utara -->
+              {% if logo_minut_data_uri %}
+              <img src="{{ logo_minut_data_uri }}" alt="Logo Kabupaten Minahasa Utara" />
+              {% else %}
               <svg viewBox="0 0 100 100">
                 <polygon points="50,4 95,28 95,74 50,96 5,74 5,28" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
                 <circle cx="50" cy="50" r="28" fill="#ffffff"/>
                 <path d="M50,28 L50,72 M28,50 L72,50" stroke="#0284c7" stroke-width="8" stroke-linecap="round"/>
               </svg>
+              {% endif %}
             </td>
             <td class="kop-text">
               <h3 class="kop-line-1">Pemerintah Kabupaten Minahasa Utara</h3>
               <h2 class="kop-line-2">Dinas Kesehatan &bull; UPTD Puskesmas Airmadidi</h2>
-              <p class="kop-line-3">Jl. Arnold Mononutu, Airmadidi, Kabupaten Minahasa Utara, Sulawesi Utara 95371</p>
-              <p class="kop-line-4">Pelayanan Terpadu KIA &bull; Pemantauan 1.000 Hari Pertama Kehidupan (HPK)</p>
+              <p class="kop-line-3">Kompleks Pasar Airmadidi, Kel. Sarongsong I, Kec. Airmadidi, Minahasa Utara 95371 &bull; Telp: 0813-4076-0004</p>
+              <p class="kop-line-4">Motto SEHATI (Santun, Empati, Harmonis, Adil, Tanggap, Inovatif) &bull; Pelayanan KIA 1.000 HPK</p>
             </td>
             <td class="kop-logo">
-              <!-- Emblem Posyandu ILP -->
+              {% if logo_puskesmas_data_uri %}
+              <img src="{{ logo_puskesmas_data_uri }}" alt="Logo UPTD Puskesmas Airmadidi" />
+              {% else %}
               <svg viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
                 <path d="M50 25 C34 25 24 35 24 50 C24 68 50 85 50 85 C50 85 76 68 76 50 C76 35 66 25 50 25 Z" fill="#16a34a"/>
                 <circle cx="50" cy="46" r="10" fill="#ffffff"/>
               </svg>
+              {% endif %}
             </td>
           </tr>
         </table>
@@ -480,6 +530,29 @@
             {% endif %}
           </td>
         </tr>
+        {% set hpk = (visit_data.hpk_status if visit_data and visit_data.hpk_status else report_data.hpk_status) %}
+        {% if hpk and hpk.hpk_day %}
+        <tr>
+          <th class="label-cell">Progres 1.000 HPK</th>
+          <td colspan="3">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+              <strong>{{ hpk.summary_label }}</strong>
+              <span style="font-size: 8pt; color: #0369a1; font-weight: 700;">
+                {% if hpk.is_graduation_milestone %}
+                <span style="background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">🎓 Kelulusan 1.000 HPK</span>
+                {% endif %}
+                {{ hpk.phase_label }}
+              </span>
+            </div>
+            <div style="width: 100%; height: 7px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden;">
+              <div style="width: {{ hpk.progress_percent }}%; height: 100%; background-color: #0284c7;"></div>
+            </div>
+            <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">
+              Target Fase: {{ hpk.target_milestone }}
+            </div>
+          </td>
+        </tr>
+        {% endif %}
       </table>
 
       <!-- II. Parameter Pengukuran Fisik & Antropometri Kunjungan -->
@@ -565,6 +638,63 @@
       </table>
       {% endif %}
 
+      <!-- II.B Rekam Jejak Longitudinal 1.000 HPK (Lintas Fase & Komparasi Kunjungan) -->
+      {% set long_sum = (visit_data.longitudinal_summary if visit_data and visit_data.longitudinal_summary else report_data.longitudinal_summary) %}
+      {% if long_sum and (long_sum.comparison_items or (long_sum.maternal_history and (long_sum.maternal_history.mother_name or long_sum.maternal_history.birth_weight_gram))) %}
+      <div class="section-title">Rekam Jejak Longitudinal 1.000 HPK (Lintas Fase & Antar Kunjungan)</div>
+      {% if long_sum.maternal_history and (long_sum.maternal_history.mother_name or long_sum.maternal_history.birth_weight_gram) %}
+      <div class="narrative-box" style="margin-bottom: 8px; background-color: #fdf2f8; border-color: #fbcfe8;">
+        <strong>Rantai Lintas Fase Maternal & Kelahiran:</strong>
+        <span style="font-size: 8.5pt;">
+          {% if long_sum.maternal_history.mother_name %}
+          Ibu Kandung: <strong>{{ long_sum.maternal_history.mother_name }}</strong> ({{ long_sum.maternal_history.maternal_visits_count or 0 }} kunjungan ANC) &bull;
+          {% endif %}
+          Status KEK Ibu: <strong>{% if long_sum.maternal_history.is_kek %}Ya (LiLA {{ long_sum.maternal_history.min_maternal_lila_cm }} cm){% else %}Tidak / Normal{% endif %}</strong> &bull;
+          Status Anemia Ibu: <strong>{% if long_sum.maternal_history.is_anemia %}Ya (Hb {{ long_sum.maternal_history.min_maternal_hb }} g/dL){% else %}Tidak / Normal{% endif %}</strong> &bull;
+          Skor KSPR Ibu: <strong>{{ long_sum.maternal_history.kspr_category or 'KRR' }} ({{ long_sum.maternal_history.max_kspr_score or 2 }})</strong>
+          {% if long_sum.maternal_history.birth_weight_gram %}
+          &bull; Berat Lahir Anak: <strong>{{ long_sum.maternal_history.birth_weight_gram }} g</strong>
+          {% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% if long_sum.comparison_items %}
+      <table class="data-table">
+        <colgroup>
+          <col style="width: 30%;" />
+          <col style="width: 22%;" />
+          <col style="width: 22%;" />
+          <col style="width: 13%;" />
+          <col style="width: 13%;" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Parameter Pemantauan</th>
+            <th class="text-center">Kunjungan Sebelumnya ({{ long_sum.previous_visit_date or '-' }})</th>
+            <th class="text-center">Kunjungan Saat Ini ({{ visit_date }})</th>
+            <th class="text-center">Perubahan</th>
+            <th class="text-center">Evaluasi Tren</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in long_sum.comparison_items %}
+          <tr>
+            <td class="font-bold">{{ item.metric }}</td>
+            <td class="text-center">{{ item.previous if item.previous is not none else '-' }} {{ item.unit }}</td>
+            <td class="text-center font-bold">{{ item.current if item.current is not none else '-' }} {{ item.unit }}</td>
+            <td class="text-center font-bold">{{ item.delta }}</td>
+            <td class="text-center">
+              <span class="badge {% if 'TURUN' in item.status or 'KEK' in item.status or 'ANEMIA' in item.status or 'TIDAK' in item.status %}badge-yellow{% else %}badge-green{% endif %}">
+                {{ item.status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% endif %}
+
       <!-- III. Hasil Analisis Klinis & Deteksi Risiko (Agent 1) -->
       <div class="section-title">{% if visit_data and visit_data.phase %}III.{% else %}II.{% endif %} Hasil Analisis Klinis & Deteksi Indikator Risiko (Agent 1)</div>
       <div class="narrative-box">
@@ -621,6 +751,25 @@
             <span class="badge-category">{{ rec.category }}</span>
           </div>
           <div class="recommendation-text">{{ rec.recommendation_text }}</div>
+          {% if rec.food_guide or rec.milk_and_supplements or rec.activity_and_stimulation %}
+          <div class="rec-detail-grid">
+            {% if rec.food_guide %}
+            <div class="rec-detail-row">
+              <strong style="color: #0369a1;">Panduan Makanan, Tekstur &amp; Porsi Lokal:</strong> {{ rec.food_guide }}
+            </div>
+            {% endif %}
+            {% if rec.milk_and_supplements %}
+            <div class="rec-detail-row">
+              <strong style="color: #0369a1;">Panduan ASI, Susu &amp; Suplementasi:</strong> {{ rec.milk_and_supplements }}
+            </div>
+            {% endif %}
+            {% if rec.activity_and_stimulation %}
+            <div class="rec-detail-row">
+              <strong style="color: #0369a1;">Aktivitas Fisik &amp; Stimulasi Harian:</strong> {{ rec.activity_and_stimulation }}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
           {% if rec.action_steps %}
           <div style="font-weight: 600; font-size: 8.5pt; color: #1e293b; margin-top: 4px;">Langkah Tindakan Kader:</div>
           <ul class="action-steps-list">
@@ -637,7 +786,152 @@
         </div>
         {% endfor %}
       {% else %}
-        <p class="narrative-box">Pasien dalam kondisi pertumbuhan optimal. Pertahankan pemantauan berkala di Posyandu setiap bulan.</p>
+        <p class="narrative-box">Pasien dalam kondisi pertumbuhan optimal. Pertahankan pemantauan berkala di Posyandu setiap bulan serta terapkan panduan gizi, ASI/susu, dan stimulasi harian di bawah ini.</p>
+      {% endif %}
+
+      <!-- IV.B Panduan Harian Gizi, Makanan/MP-ASI, ASI/Susu & Aktivitas Stimulasi 1.000 HPK -->
+      {% set cp = care_plan if care_plan else (report_data.care_plan if report_data and report_data.care_plan else (visit_data.care_plan if visit_data and visit_data.care_plan else None)) %}
+      {% if cp and cp.food_and_nutrition %}
+      <div class="section-title">Panduan Harian Makanan/MP-ASI, ASI/Susu &amp; Aktivitas Stimulasi 1.000 HPK ({{ cp.age_or_trimester_label }})</div>
+      
+      <!-- 1. Makanan & Menu Sehari -->
+      <div class="care-plan-box">
+        <div class="care-plan-header">1. {{ cp.food_and_nutrition.headline }}</div>
+        <p class="text-justified" style="font-size: 8.5pt; margin: 3px 0;">
+          <strong>Tekstur &amp; Konsistensi:</strong> {{ cp.food_and_nutrition.texture_and_consistency }}<br />
+          <strong>Frekuensi &amp; Takaran Porsi:</strong> {{ cp.food_and_nutrition.frequency_and_portion }}<br />
+          {% if cp.food_and_nutrition.local_ingredients %}
+          <strong>Bahan Pangan Lokal Dianjurkan (Minahasa Utara):</strong> {{ cp.food_and_nutrition.local_ingredients | join(', ') }}
+          {% endif %}
+        </p>
+        {% if cp.food_and_nutrition.sample_daily_menu %}
+        <table class="data-table" style="margin-top: 5px; margin-bottom: 4px;">
+          <colgroup>
+            <col style="width: 24%;" />
+            <col style="width: 76%;" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Waktu Pemberian</th>
+              <th>Rekomendasi Menu Harian &amp; Takaran Rumah Tangga</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in cp.food_and_nutrition.sample_daily_menu %}
+            <tr>
+              <td class="font-bold">{{ m.time }}</td>
+              <td>{{ m.menu }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+
+      <!-- 2. ASI, Susu & Suplementasi Medis -->
+      {% if cp.milk_and_supplements %}
+      <div class="care-plan-box">
+        <div class="care-plan-header">2. {{ cp.milk_and_supplements.headline }}</div>
+        {% if cp.milk_and_supplements.compliance_badge %}
+        <div style="font-size: 8pt; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 4px 8px; border-radius: 4px; margin-bottom: 5px; font-weight: bold;">
+          🛡️ {{ cp.milk_and_supplements.compliance_badge }}
+        </div>
+        {% endif %}
+        <p class="text-justified" style="font-size: 8.5pt; margin: 3px 0;">
+          <strong>Sumber Utama:</strong> {{ cp.milk_and_supplements.primary_source }}
+        </p>
+        <ul class="action-steps-list" style="margin-top: 2px;">
+          {% for g in cp.milk_and_supplements.guidelines %}
+          <li>{{ g }}</li>
+          {% endfor %}
+        </ul>
+        {% if cp.milk_and_supplements.medical_warning %}
+        <div style="font-size: 8pt; background-color: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 5px 8px; border-radius: 4px;">
+          <strong>Catatan Keamanan Medis:</strong> {{ cp.milk_and_supplements.medical_warning }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- 3. Aktivitas Fisik, Stimulasi & Istirahat -->
+      {% if cp.activity_and_stimulation %}
+      <div class="care-plan-box">
+        <div class="care-plan-header">3. {{ cp.activity_and_stimulation.headline }}</div>
+        <ul class="action-steps-list" style="margin-top: 3px;">
+          {% for act in cp.activity_and_stimulation.daily_activities %}
+          <li>{{ act }}</li>
+          {% endfor %}
+        </ul>
+        <p class="text-justified" style="font-size: 8.5pt; margin: 3px 0 0 0;">
+          <strong>Panduan Tidur &amp; Istirahat:</strong> {{ cp.activity_and_stimulation.rest_and_sleep }}
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- 4. Tanda Bahaya -->
+      {% if cp.danger_signs %}
+      <div class="care-plan-box" style="background-color: #fef2f2; border-color: #fecaca;">
+        <div class="care-plan-header" style="color: #991b1b; border-color: #fecaca;">
+          4. Kewaspadaan Tanda Bahaya (Segera Rujuk ke Puskesmas Airmadidi Bila Ditemukan)
+        </div>
+        <ul class="action-steps-list" style="color: #7f1d1d; margin-bottom: 0;">
+          {% for ds in cp.danger_signs %}
+          <li>{{ ds }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- IV.C Milestone Kelulusan Periode Emas 1.000 HPK (Usia 24 Bulan) -->
+      {% if cp.graduation_package %}
+      {% set gp = cp.graduation_package %}
+      <div class="care-plan-box" style="margin-top: 8px; background-color: {% if gp.status_type == 'ALERT' %}#fff1f2{% else %}#f0fdf4{% endif %}; border: 1.5px solid {% if gp.status_type == 'ALERT' %}#fda4af{% else %}#86efac{% endif %};">
+        <div class="care-plan-header" style="color: {% if gp.status_type == 'ALERT' %}#9f1239{% else %}#166534{% endif %}; border-color: {% if gp.status_type == 'ALERT' %}#fecdd3{% else %}#bbf7d0{% endif %}; font-size: 9pt;">
+          {{ gp.title }} &bull; <span style="font-weight: 800;">{{ gp.status_badge }}</span>
+        </div>
+        
+        <p class="text-justified" style="font-size: 8.5pt; margin: 4px 0 6px 0; line-height: 1.4;">
+          <strong>Evaluasi Akhir 1.000 HPK:</strong> {{ gp.exit_assessment }}
+        </p>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 8pt;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 4px;">
+              <div style="background-color: #ffffff; padding: 5px 7px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <strong style="color: #0369a1;">🍼 {{ gp.weaning_guidance.title }}</strong>
+                <ul class="action-steps-list" style="margin-top: 2px; padding-left: 12px;">
+                  {% for p in gp.weaning_guidance.principles %}
+                  <li>{{ p }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 4px;">
+              <div style="background-color: #ffffff; padding: 5px 7px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <strong style="color: #047857;">🍽️ {{ gp.toddler_nutrition_transition.title }}</strong>
+                <ul class="action-steps-list" style="margin-top: 2px; padding-left: 12px;">
+                  {% for p in gp.toddler_nutrition_transition.principles %}
+                  <li>{{ p }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding-top: 5px;">
+              <div style="background-color: #ffffff; padding: 5px 7px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <strong style="color: #4338ca;">🧩 {{ gp.kpsp_24_months.title }}</strong>
+                <ul class="action-steps-list" style="margin-top: 2px; padding-left: 12px;">
+                  {% for m in gp.kpsp_24_months.milestones %}
+                  <li>{{ m }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      {% endif %}
       {% endif %}
 
       <!-- V. Verifikasi Grounding Sitasi Ilmiah (Agent 3) -->

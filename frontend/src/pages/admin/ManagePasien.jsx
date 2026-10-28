@@ -10,6 +10,9 @@ import {
   Save,
   AlertCircle,
   ChevronDown,
+  Heart,
+  Baby,
+  Activity,
 } from "lucide-react";
 
 const ManagePasien = () => {
@@ -26,6 +29,7 @@ const ManagePasien = () => {
   const [editNik, setEditNik] = useState("");
   const [editBirthDate, setEditBirthDate] = useState("");
   const [editGender, setEditGender] = useState("L");
+  const [editMotherId, setEditMotherId] = useState("");
   const [editVillage, setEditVillage] = useState("");
   const [editPosyandu, setEditPosyandu] = useState("");
   const [editAddress, setEditAddress] = useState("");
@@ -38,8 +42,11 @@ const ManagePasien = () => {
   const [newType, setNewType] = useState("CHILD");
   const [newBirthDate, setNewBirthDate] = useState("");
   const [newGender, setNewGender] = useState("L");
+  const [newMotherId, setNewMotherId] = useState("");
   const [newVillage, setNewVillage] = useState("Airmadidi Atas");
   const [newPosyandu, setNewPosyandu] = useState("");
+
+  const motherList = patients.filter((p) => p.patient_type === "MOTHER");
 
   useEffect(() => {
     fetchPatients();
@@ -65,6 +72,7 @@ const ManagePasien = () => {
     setEditNik(p.nik);
     setEditBirthDate(p.birth_date);
     setEditGender(p.gender || "L");
+    setEditMotherId(p.mother_id ? String(p.mother_id) : "");
     setEditVillage(p.village_name || "Airmadidi Atas");
     setEditPosyandu(p.posyandu_name || "");
     setEditAddress(p.address || "");
@@ -79,6 +87,10 @@ const ManagePasien = () => {
         nik: editNik.trim(),
         birth_date: editBirthDate,
         gender: editingPatient.patient_type === "CHILD" ? editGender : null,
+        mother_id:
+          editingPatient.patient_type === "CHILD" && editMotherId
+            ? parseInt(editMotherId, 10)
+            : null,
         village_name: editVillage,
         posyandu_name: editPosyandu,
         address: editAddress,
@@ -121,7 +133,7 @@ const ManagePasien = () => {
 
   const handleToggleRow = (id) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -129,7 +141,7 @@ const ManagePasien = () => {
     if (selectedIds.length === 0) return;
     if (
       !window.confirm(
-        `Apakah Anda yakin ingin menghapus ${selectedIds.length} data pasien terpilih beserta seluruh rekam kunjungannya? Tindakan ini permanen dan tidak dapat dibatalkan.`
+        `Apakah Anda yakin ingin menghapus ${selectedIds.length} data pasien terpilih beserta seluruh rekam kunjungannya? Tindakan ini permanen dan tidak dapat dibatalkan.`,
       )
     ) {
       return;
@@ -137,7 +149,9 @@ const ManagePasien = () => {
     try {
       setDeletingBulk(true);
       const res = await api.post("/patients/bulk-delete", { ids: selectedIds });
-      alert(res.data.message || `${selectedIds.length} pasien berhasil dihapus.`);
+      alert(
+        res.data.message || `${selectedIds.length} pasien berhasil dihapus.`,
+      );
       setSelectedIds([]);
       fetchPatients();
     } catch (err) {
@@ -156,6 +170,8 @@ const ManagePasien = () => {
         patient_type: newType,
         birth_date: newBirthDate,
         gender: newType === "CHILD" ? newGender : null,
+        mother_id:
+          newType === "CHILD" && newMotherId ? parseInt(newMotherId, 10) : null,
         village_name: newVillage,
         posyandu_name: newPosyandu,
       };
@@ -165,6 +181,7 @@ const ManagePasien = () => {
       setNewName("");
       setNewNik("");
       setNewBirthDate("");
+      setNewMotherId("");
       fetchPatients();
     } catch (err) {
       alert(getErrorMessage(err, "Gagal menambahkan pasien."));
@@ -190,6 +207,9 @@ const ManagePasien = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
             Kelola Data Pasien (Admin Puskesmas)
           </h1>
+          <p className="text-xs text-caption mt-0.5">
+            Manajemen direktori pasien, relasi Ibu-Anak lintas fase, dan progres monitoring 1.000 HPK
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -256,7 +276,9 @@ const ManagePasien = () => {
               className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Pasien Terpilih`}
+              {deletingBulk
+                ? "Menghapus..."
+                : `Hapus ${selectedIds.length} Pasien Terpilih`}
             </button>
           </div>
         </div>
@@ -270,7 +292,10 @@ const ManagePasien = () => {
                 <th className="p-3.5 w-10 text-center">
                   <input
                     type="checkbox"
-                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    checked={
+                      filtered.length > 0 &&
+                      selectedIds.length === filtered.length
+                    }
                     onChange={handleToggleAll}
                     className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
                     aria-label="Pilih semua pasien"
@@ -278,7 +303,8 @@ const ManagePasien = () => {
                 </th>
                 <th className="p-3.5">ID</th>
                 <th className="p-3.5">Nama &amp; NIK</th>
-                <th className="p-3.5">Tipe</th>
+                <th className="p-3.5">Tipe &amp; Relasi Ibu-Anak</th>
+                <th className="p-3.5">Progres 1.000 HPK</th>
                 <th className="p-3.5">Tanggal Lahir</th>
                 <th className="p-3.5">Desa / Posyandu</th>
                 <th className="p-3.5 text-center">Aksi Administrator</th>
@@ -287,14 +313,14 @@ const ManagePasien = () => {
             <tbody className="divide-y divide-line-light">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-6 text-center text-dim text-sm">
+                  <td colSpan="8" className="p-6 text-center text-dim text-sm">
                     Memuat data pasien...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className="p-6 text-center text-dim text-sm italic"
                   >
                     Tidak ada data pasien yang ditemukan.
@@ -305,10 +331,15 @@ const ManagePasien = () => {
                   <tr
                     key={p.id}
                     className={`table-row-interactive hover:bg-accent-sky transition-colors duration-150 ${
-                      selectedIds.includes(p.id) ? "bg-sky-50/60 dark:bg-sky-950/20" : ""
+                      selectedIds.includes(p.id)
+                        ? "bg-sky-50/60 dark:bg-sky-950/20"
+                        : ""
                     }`}
                   >
-                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="p-3.5 text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(p.id)}
@@ -317,25 +348,66 @@ const ManagePasien = () => {
                         aria-label={`Pilih pasien ${p.name}`}
                       />
                     </td>
-                    <td className="p-3.5 text-dim font-bold text-xs sm:text-sm">#{p.id}</td>
+                    <td className="p-3.5 text-dim font-bold text-xs sm:text-sm">
+                      #{p.id}
+                    </td>
                     <td className="p-3.5">
                       <p className="font-bold text-heading text-sm">{p.name}</p>
-                      <p className="text-xs text-dim font-mono mt-0.5">NIK: {p.nik}</p>
+                      <p className="text-xs text-dim font-mono mt-0.5">
+                        NIK: {p.nik}
+                      </p>
                     </td>
                     <td className="p-3.5">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                          p.patient_type === "MOTHER"
-                            ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
-                            : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
-                        }`}
-                      >
-                        {p.patient_type === "MOTHER"
-                          ? "Ibu Hamil"
-                          : `Anak (${p.gender || "-"})`}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                            p.patient_type === "MOTHER"
+                              ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
+                              : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
+                          }`}
+                        >
+                          {p.patient_type === "MOTHER"
+                            ? "Ibu Hamil"
+                            : `Anak (${p.gender || "-"})`}
+                        </span>
+                        {p.patient_type === "CHILD" && p.mother_name && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-pink-700 dark:text-pink-300">
+                            <Heart className="w-3 h-3" /> Ibu: {p.mother_name}
+                          </span>
+                        )}
+                        {p.patient_type === "MOTHER" && p.children_count > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                            <Baby className="w-3 h-3" /> {p.children_count} Anak Terhubung
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="p-3.5 text-body text-xs sm:text-sm">{p.birth_date}</td>
+                    <td className="p-3.5">
+                      {p.hpk_status ? (
+                        <div className="min-w-[140px]">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1">
+                            <span>Hari ke-{p.hpk_status.hpk_day} / 1000</span>
+                            <span>{p.hpk_status.progress_percent}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-line-light">
+                            <div
+                              className="h-full bg-gradient-to-r from-pink-500 via-amber-500 to-sky-500 rounded-full"
+                              style={{
+                                width: `${Math.min(100, Math.max(3, p.hpk_status.progress_percent || 5))}%`,
+                              }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-caption mt-0.5 truncate">
+                            {p.hpk_status.phase_label}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-dim">-</span>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-body text-xs sm:text-sm">
+                      {p.birth_date}
+                    </td>
                     <td className="p-3.5 text-body">
                       <p className="font-semibold text-heading text-xs sm:text-sm">
                         {p.village_name || "-"}
@@ -457,6 +529,29 @@ const ManagePasien = () => {
                 )}
               </div>
 
+              {editingPatient.patient_type === "CHILD" && (
+                <div>
+                  <label className="block text-xs font-semibold text-caption mb-1.5">
+                    Relasi Ibu Kandung (Kontinuitas 1.000 HPK)
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={editMotherId}
+                      onChange={(e) => setEditMotherId(e.target.value)}
+                      className={SELECT_CLASS}
+                    >
+                      <option value="">-- Tidak Terhubung / Pilih Ibu Kandung --</option>
+                      {motherList.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} (NIK: {m.nik})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-caption mb-1.5">
@@ -482,7 +577,9 @@ const ManagePasien = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-caption mb-1.5">Posyandu</label>
+                  <label className="block text-xs font-semibold text-caption mb-1.5">
+                    Posyandu
+                  </label>
                   <input
                     type="text"
                     placeholder="Nama Posyandu..."
@@ -573,7 +670,9 @@ const ManagePasien = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-caption mb-1.5">NIK</label>
+                  <label className="block text-xs font-semibold text-caption mb-1.5">
+                    NIK
+                  </label>
                   <input
                     type="text"
                     required
@@ -596,6 +695,47 @@ const ManagePasien = () => {
                   />
                 </div>
               </div>
+
+              {newType === "CHILD" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-caption mb-1.5">
+                      Jenis Kelamin
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={newGender}
+                        onChange={(e) => setNewGender(e.target.value)}
+                        className={SELECT_CLASS}
+                      >
+                        <option value="L">Laki-laki (L)</option>
+                        <option value="P">Perempuan (P)</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-caption mb-1.5">
+                      Ibu Kandung (Relasi 1.000 HPK)
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={newMotherId}
+                        onChange={(e) => setNewMotherId(e.target.value)}
+                        className={SELECT_CLASS}
+                      >
+                        <option value="">-- Pilih Ibu Kandung --</option>
+                        {motherList.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} ({m.nik})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -622,7 +762,9 @@ const ManagePasien = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-caption mb-1.5">Posyandu</label>
+                  <label className="block text-xs font-semibold text-caption mb-1.5">
+                    Posyandu
+                  </label>
                   <input
                     type="text"
                     placeholder="Posyandu Mawar..."

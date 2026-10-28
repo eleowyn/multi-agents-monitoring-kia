@@ -14,7 +14,7 @@ os.makedirs(OUTPUT_PDF_DIR, exist_ok=True)
 PHASE_LABELS = {
     "IBU_HAMIL": "Ibu Hamil",
     "BAYI_BARU_LAHIR": "Bayi Baru Lahir (0 - 28 Hari)",
-    "BADUTA": "Baduta (6 - 24 Bulan)",
+    "BADUTA": "Baduta (1 - 24 Bulan)",
 }
 
 RISK_LABELS = {
@@ -23,18 +23,34 @@ RISK_LABELS = {
     "KEHAMILAN_RISIKO_RENDAH_KRR": "Kehamilan Risiko Rendah (KRR)",
     "STUNTING_SEVERELY_STUNTED": "Sangat Pendek / Severely Stunted (PB/U < -3 SD)",
     "STUNTING_STUNTED": "Pendek / Stunted (PB/U -3 SD s.d. < -2 SD)",
+    "RISIKO_STUNTING_BERAT": "Sangat Pendek / Severely Stunted (PB/U < -3 SD)",
+    "RISIKO_STUNTING": "Pendek / Stunted (PB/U -3 SD s.d. < -2 SD)",
     "GIZI_BURUK_SEVERELY_UNDERWEIGHT": "Berat Badan Sangat Kurang (BB/U < -3 SD)",
     "GIZI_KURANG_UNDERWEIGHT": "Berat Badan Kurang / Underweight (BB/U -3 s.d. < -2 SD)",
+    "RISIKO_GIZI_BURUK": "Gizi Buruk / Severely Wasted (BB/PB < -3 SD)",
+    "RISIKO_GIZI_KURANG": "Gizi Kurang / Wasted (BB/PB -3 s.d. < -2 SD)",
     "WASTING_SEVERELY_WASTED": "Gizi Buruk / Severely Wasted (BB/PB < -3 SD)",
     "WASTING_WASTED": "Gizi Kurang / Wasted (BB/PB -3 s.d. < -2 SD)",
     "ANEMIA_BERAT": "Anemia Berat (Hb < 8.0 g/dL)",
     "ANEMIA_SEDANG": "Anemia Sedang (Hb 8.0 - 9.9 g/dL)",
     "ANEMIA_RINGAN": "Anemia Ringan (Hb 10.0 - 10.9 g/dL)",
+    "RISIKO_ANEMIA_BERAT": "Anemia Berat Maternal",
+    "RISIKO_ANEMIA_SEDANG": "Anemia Sedang Maternal",
+    "RISIKO_ANEMIA_RINGAN": "Anemia Ringan Maternal",
     "RISIKO_KEK": "Kurang Energi Kronis / KEK (LiLA < 23.5 cm)",
+    "RISIKO_KEK_MATERNAL": "Kurang Energi Kronis / KEK (LiLA < 23.5 cm)",
     "BBLR": "Berat Bayi Lahir Rendah (< 2.500 g)",
+    "RISIKO_BBLR": "Berat Bayi Lahir Rendah (< 2.500 g)",
     "BBLSR": "Berat Bayi Lahir Sangat Rendah (< 1.500 g)",
     "PREMATUR": "Kelahiran Prematur (< 37 Minggu)",
+    "RISIKO_PREMATUR": "Kelahiran Prematur (< 37 Minggu)",
     "BB_TIDAK_NAIK_KMS": "Berat Badan Tidak Naik (KMS)",
+    "BB_TIDAK_NAIK_2T": "Berat Badan Tidak Naik 2x Berturut-turut (2T)",
+    "BB_IBU_HAMIL_TURUN": "Penurunan Berat Badan Ibu Hamil Antar Kunjungan",
+    "RIWAYAT_IBU_KEK": "Riwayat Maternal Ibu KEK Saat Hamil",
+    "RIWAYAT_IBU_ANEMIA": "Riwayat Maternal Ibu Anemia Saat Hamil",
+    "RIWAYAT_KEHAMILAN_RISIKO_TINGGI": "Riwayat Obstetri Kehamilan Risiko Tinggi (KSPR)",
+    "RIWAYAT_BBLR_ANAK": "Riwayat Kelahiran Anak BBLR (< 2.500 g)",
     "MIKROSEFALI": "Mikrosefali (< -2 SD Lingkar Kepala)",
     "MAKROSEFALI": "Makrosefali (> +2 SD Lingkar Kepala)",
 }
@@ -118,6 +134,21 @@ def _load_weasyprint_html():
         ) from e
 
 
+def _load_logo_data_uri(filename: str) -> str:
+    """Membaca file gambar logo di templates/assets dan mengubahnya menjadi data URI base64."""
+    import base64
+
+    logo_path = os.path.join(TEMPLATES_DIR, "assets", filename)
+    if not os.path.exists(logo_path):
+        return ""
+    try:
+        with open(logo_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        return ""
+
+
 def render_report_html(
     report_data: Dict[str, Any],
     visit_date: str,
@@ -131,13 +162,25 @@ def render_report_html(
     env.filters["human_status"] = human_status
     env.filters["clean_citation"] = clean_citation
 
+    care_plan = (
+        (report_data or {}).get("care_plan")
+        or (visit_data or {}).get("care_plan")
+        or {}
+    )
+
+    logo_minut_data_uri = _load_logo_data_uri("logo_minahasa_utara.png")
+    logo_puskesmas_data_uri = _load_logo_data_uri("logo_puskesmas_airmadidi.png")
+
     template = env.get_template("report_kader.html")
     return template.render(
         report_data=report_data,
         visit_date=visit_date,
         kader_name=kader_name,
         validated_date=validated_date,
-        visit_data=visit_data or {}
+        visit_data=visit_data or {},
+        care_plan=care_plan,
+        logo_minut_data_uri=logo_minut_data_uri,
+        logo_puskesmas_data_uri=logo_puskesmas_data_uri,
     )
 
 
@@ -178,4 +221,3 @@ def generate_visit_report_pdf(
     except Exception as e:
         print(f"[PDF SERVICE WARNING] Gagal membuat PDF: {e}. Cadangan HTML: {html_filepath}")
         return html_filepath
-

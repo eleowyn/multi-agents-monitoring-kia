@@ -78,6 +78,102 @@ MODE_LLM = "LLM"
 MODE_FALLBACK = "MODE_FALLBACK"
 
 
+def extract_token_usage(
+    response: Any = None,
+    prompt_text: str = "",
+    output_text: str = "",
+    is_llm_call: bool = True,
+) -> dict:
+    """
+    Mengekstrak konsumsi token (input_tokens, output_tokens, total_tokens) dari
+    respons API LLM (LangChain AIMessage usage_metadata / response_metadata).
+    Jika proxy API tidak menyertakan header usage pada panggilan LLM aktif,
+    gunakan estimator tokenizer (karakter / 4). Jika mode deterministik/single-pass,
+    kembalikan 0 token beserta estimasi penghematan token.
+    """
+    if not is_llm_call or response is None:
+        est_saved = max(180, (len(str(prompt_text or "")) + len(str(output_text or ""))) // 4)
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "llm_calls": 0,
+            "source": "DETERMINISTIC_ZERO_TOKEN",
+            "estimated_saved_tokens": est_saved,
+        }
+
+    in_tok = 0
+    out_tok = 0
+    tot_tok = 0
+    source = "API_METADATA"
+
+    usage_meta = getattr(response, "usage_metadata", None)
+    if isinstance(usage_meta, dict):
+        in_tok = int(usage_meta.get("input_tokens") or usage_meta.get("prompt_tokens") or 0)
+        out_tok = int(usage_meta.get("output_tokens") or usage_meta.get("completion_tokens") or 0)
+        tot_tok = int(usage_meta.get("total_tokens") or (in_tok + out_tok))
+
+    if tot_tok == 0:
+        resp_meta = getattr(response, "response_metadata", None) or {}
+        if isinstance(resp_meta, dict):
+            tu = resp_meta.get("token_usage") or resp_meta.get("usage") or {}
+            if isinstance(tu, dict):
+                in_tok = int(tu.get("prompt_tokens") or tu.get("input_tokens") or 0)
+                out_tok = int(tu.get("completion_tokens") or tu.get("output_tokens") or 0)
+                tot_tok = int(tu.get("total_tokens") or (in_tok + out_tok))
+
+    if tot_tok == 0:
+        source = "TOKENIZER_ESTIMATE"
+        p_str = str(prompt_text or "")
+        o_str = str(output_text or extract_text(getattr(response, "content", "")) or "")
+        in_tok = max(32, len(p_str) // 4)
+        out_tok = max(16, len(o_str) // 4)
+        tot_tok = in_tok + out_tok
+
+    return {
+        "input_tokens": in_tok,
+        "output_tokens": out_tok,
+        "total_tokens": tot_tok,
+        "llm_calls": 1,
+        "source": source,
+        "estimated_saved_tokens": 0,
+    }
+
+
+def merge_token_usage(usages: list) -> dict:
+    """Menggabungkan beberapa catatan penggunaan token (misal dari multi-step ReAct loop)."""
+    valid = [u for u in (usages or []) if isinstance(u, dict)]
+    if not valid:
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "llm_calls": 0,
+            "source": "DETERMINISTIC_ZERO_TOKEN",
+            "estimated_saved_tokens": 0,
+        }
+    in_tok = sum(int(u.get("input_tokens", 0)) for u in valid)
+    out_tok = sum(int(u.get("output_tokens", 0)) for u in valid)
+    tot_tok = sum(int(u.get("total_tokens", 0)) for u in valid)
+    calls = sum(int(u.get("llm_calls", 0)) for u in valid)
+    saved = sum(int(u.get("estimated_saved_tokens", 0)) for u in valid)
+    sources = {u.get("source") for u in valid if u.get("source")}
+    if "API_METADATA" in sources:
+        src = "API_METADATA"
+    elif "TOKENIZER_ESTIMATE" in sources:
+        src = "TOKENIZER_ESTIMATE"
+    else:
+        src = "DETERMINISTIC_ZERO_TOKEN"
+    return {
+        "input_tokens": in_tok,
+        "output_tokens": out_tok,
+        "total_tokens": tot_tok,
+        "llm_calls": calls,
+        "source": src,
+        "estimated_saved_tokens": saved,
+    }
+
+
 def is_koboillm() -> bool:
     """True jika provider diatur ke KoboiLLM / OpenAI proxy atau menggunakan key sk-..."""
     from app.core.config import settings
