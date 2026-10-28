@@ -115,7 +115,7 @@ const MonitoringKia = () => {
             <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
               Pusat Monitoring KIA 1.000 HPK
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Monitoring Aktif
             </span>
@@ -203,7 +203,7 @@ const MonitoringKia = () => {
 
         {/* Pemilih Pasien Dropdown / Chips */}
         <div>
-          <label htmlFor="patient-select-input" className="text-[11px] font-bold text-caption uppercase tracking-wider block mb-1">
+          <label htmlFor="patient-select-input" className="text-xs font-bold text-caption uppercase tracking-wider block mb-1">
             Pilih Sasaran Pasien yang Dipantau:
           </label>
           <select
@@ -237,11 +237,11 @@ const MonitoringKia = () => {
                 <h2 className="text-base sm:text-lg font-bold text-heading">
                   {selectedPatient.name}
                 </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isChild ? "bg-sky-100 text-sky-800 border-sky-200" : "bg-pink-100 text-pink-800 border-pink-200"}`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${isChild ? "bg-sky-100 text-sky-800 border-sky-200" : "bg-pink-100 text-pink-800 border-pink-200"}`}>
                   {isChild ? "Fase 3: Baduta (1-24 Bln)" : "Fase 1: Ibu Hamil"}
                 </span>
                 {hpkStatus?.is_graduation_milestone && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                     🎓 Lulus 1.000 HPK
                   </span>
                 )}

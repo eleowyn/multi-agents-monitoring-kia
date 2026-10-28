@@ -258,7 +258,7 @@ const KmsDigitalChart = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-subtle p-3 rounded-xl border border-line">
         <div className="flex items-center gap-3">
           <span className="text-caption">Nilai Terakhir:</span>
-          <span className="text-base font-extrabold text-heading tabular-nums">
+          <span className="text-base font-bold text-heading tabular-nums">
             {lastVal !== undefined ? `${lastVal} ${metricConfig.unit}` : "-"}
           </span>
           {activePoints.length > 1 && (
@@ -293,7 +293,7 @@ const KmsDigitalChart = ({
 
         {/* Legenda Pita Warna Resmi */}
         {metricConfig.zones.length > 0 && (
-          <div className="flex items-center gap-3 text-[11px] flex-wrap">
+          <div className="flex items-center gap-3 text-xs flex-wrap">
             <span className="text-caption font-semibold">Legenda Pita:</span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm bg-emerald-500/30 border border-emerald-500 inline-block" />
@@ -356,7 +356,7 @@ const KmsDigitalChart = ({
                       {data.kms_code && (
                         <p className="text-body flex items-center justify-between gap-4">
                           <span className="text-caption">Status KMS:</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${data.kms_code === "N" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${data.kms_code === "N" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
                             {data.kms_code === "N" ? "Naik (N)" : "Tidak Naik (T)"}
                           </span>
                         </p>
@@ -427,7 +427,7 @@ const KmsDigitalChart = ({
         </h4>
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-xs text-left">
-            <thead className="bg-subtle text-caption border-b border-line text-[11px]">
+            <thead className="bg-subtle text-caption border-b border-line text-xs">
               <tr>
                 <th className="p-2.5">Tanggal</th>
                 <th className="p-2.5">{isChild ? "Usia" : "Trimester"}</th>
@@ -455,11 +455,11 @@ const KmsDigitalChart = ({
                   )}
                   <td className="p-2.5 text-center">
                     {row.kms_code ? (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${row.kms_code === "N" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${row.kms_code === "N" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                         {row.kms_code === "N" ? "N (Naik)" : "T (Tidak Naik)"}
                       </span>
                     ) : (
-                      <span className="text-caption text-[11px]">-</span>
+                      <span className="text-caption text-xs">-</span>
                     )}
                   </td>
                 </tr>

@@ -641,7 +641,7 @@ const ValidasiLaporan = () => {
                       <GraduationCap className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-caption">Milestone Hari ke-1.000</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-caption">Milestone Hari ke-1.000</span>
                       <h4 className="text-sm sm:text-base font-bold text-heading">
                         Kelulusan Periode Emas 1.000 HPK (Usia 24 Bulan)
                       </h4>
@@ -662,7 +662,7 @@ const ValidasiLaporan = () => {
                       <p className="text-xs font-bold text-sky-700 dark:text-sky-400">
                         🍼 Menyapih Penuh Kasih
                       </p>
-                      <p className="text-[11px] text-caption leading-relaxed">
+                      <p className="text-xs text-caption leading-relaxed">
                         Prinsip <em>Weaning with Love</em> bertahap tanpa zat pahit/paksaan, beralih ke cangkir/gelas.
                       </p>
                     </div>
@@ -670,7 +670,7 @@ const ValidasiLaporan = () => {
                       <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         🍽️ Nutrisi Balita 2–5 Tahun
                       </p>
-                      <p className="text-[11px] text-caption leading-relaxed">
+                      <p className="text-xs text-caption leading-relaxed">
                         3x makan keluarga (Isi Piringku Balita) + 2x selingan protein hewani lokal (ikan tude/telur).
                       </p>
                     </div>
@@ -678,7 +678,7 @@ const ValidasiLaporan = () => {
                       <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400">
                         🧩 Skrining KPSP 24 Bulan
                       </p>
-                      <p className="text-[11px] text-caption leading-relaxed">
+                      <p className="text-xs text-caption leading-relaxed">
                         Melompat, naik tangga, bicara kalimat 2 kata, menyusun 4-6 balok, dan toilet training.
                       </p>
                     </div>
@@ -974,7 +974,7 @@ const ValidasiLaporan = () => {
                       </div>
 
                       {carePlan.milk_and_supplements.compliance_badge && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           <span>ASI Standar Emas Mutlak • PKMK Khusus Resep Dokter</span>
                         </div>

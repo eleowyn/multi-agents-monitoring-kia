@@ -118,12 +118,12 @@ const KaderDashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
               Dashboard Posyandu
             </h1>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
               <span className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
               <span>{autoRefresh ? `Live Sync (${countdown}s)` : "Sync Dijeda"}</span>
             </div>
             {newDataBadge && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 animate-bounce">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 animate-bounce">
                 ✨ Laporan Baru Menunggu Validasi
               </span>
             )}
@@ -147,7 +147,7 @@ const KaderDashboard = () => {
           >
             {autoRefresh ? (
               <>
-                <Pause className="w-3.5 h-3.5 text-zinc-500" />
+                <Pause className="w-3.5 h-3.5 text-dim" />
                 <span className="hidden md:inline">Jeda Sync</span>
               </>
             ) : (

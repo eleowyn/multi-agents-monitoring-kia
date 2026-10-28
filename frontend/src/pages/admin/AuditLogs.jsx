@@ -258,7 +258,7 @@ const AuditLogs = () => {
                         <p className="text-heading font-medium">
                           {log.lifetime_ms ?? 0} ms
                         </p>
-                        <p className="text-caption text-[11px] truncate max-w-[180px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
+                        <p className="text-caption text-xs truncate max-w-[180px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
                           {log.spawned_at ? log.spawned_at.slice(11, 19) : "-"}
                         </p>
                       </td>
@@ -267,7 +267,7 @@ const AuditLogs = () => {
                         <p className="text-heading font-medium">
                           {(tok.total_tokens ?? 0).toLocaleString("id-ID")}
                         </p>
-                        <p className="text-caption text-[11px]">
+                        <p className="text-caption text-xs">
                           In: {tok.input_tokens ?? 0} &bull; Out: {tok.output_tokens ?? 0}
                         </p>
                       </td>

@@ -20,7 +20,7 @@ const SERIES = [
 const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-card border border-line rounded-lg shadow-elevated px-3 py-2 text-[11px]">
+    <div className="bg-card border border-line rounded-lg shadow-elevated px-3 py-2 text-xs">
       <p className="font-bold text-heading mb-1">{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey} className="flex items-center gap-1.5 text-body tabular-nums">
@@ -64,11 +64,11 @@ const OverallTrendChart = ({ data = [], loading }) => {
     <section className="card-interactive bg-card rounded-2xl border border-line shadow-card p-4 sm:p-5 flex flex-col">
       <header className="mb-3">
         <h2 className="text-sm font-bold text-heading">Tren Kasus Risiko Keseluruhan</h2>
-        <p className="text-[11px] text-caption">Jumlah pasien berisiko per bulan &bull; 6 bulan terakhir</p>
+        <p className="text-xs text-caption">Jumlah pasien berisiko per bulan &bull; 6 bulan terakhir</p>
       </header>
 
       {/* Ringkasan bulan ini vs bulan lalu */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] pb-3 mb-2 border-b border-line-light">
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs pb-3 mb-2 border-b border-line-light">
         {SERIES.map((s) => (
           <DeltaBadge
             key={s.key}

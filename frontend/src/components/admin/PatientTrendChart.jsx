@@ -96,12 +96,12 @@ const PatientTrendChart = () => {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-bold text-heading">Tren Longitudinal 1.000 HPK Per Pasien</h2>
             {trend?.hpk_status && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                 Hari ke-{trend.hpk_status.hpk_day} / 1.000 HPK ({trend.hpk_status.progress_percent}%)
               </span>
             )}
           </div>
-          <p className="text-[11px] text-caption">
+          <p className="text-xs text-caption">
             Perkembangan hasil ukur klinis antar kunjungan
             {trend?.hpk_status?.phase_label ? ` • ${trend.hpk_status.phase_label}` : ""}
           </p>
@@ -123,7 +123,7 @@ const PatientTrendChart = () => {
       </header>
 
       {/* Pilihan metrik + ringkasan perubahan */}
-      <div className="flex flex-wrap items-center gap-3 text-[11px] pb-3 mb-2 border-b border-line-light">
+      <div className="flex flex-wrap items-center gap-3 text-xs pb-3 mb-2 border-b border-line-light">
         <div className="inline-flex rounded-lg border border-line p-0.5" role="tablist" aria-label="Pilih metrik">
           {metrics.map((m) => (
             <button

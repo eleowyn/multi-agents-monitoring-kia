@@ -324,7 +324,7 @@ const DataPasien = () => {
                     <td className="px-4 py-3.5">
                       <p className="font-semibold text-sm text-heading">{p.name}</p>
                       <p className="text-xs text-caption font-mono mt-0.5">NIK: {p.nik}</p>
-                      <p className="text-[11px] text-dim mt-0.5">Tgl Lahir: {p.birth_date}</p>
+                      <p className="text-xs text-dim mt-0.5">Tgl Lahir: {p.birth_date}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${p.patient_type === "MOTHER"
@@ -357,7 +357,7 @@ const DataPasien = () => {
                               style={{ width: `${Math.min(100, hpk.progress_percent || 0)}%` }}
                             />
                           </div>
-                          <p className="text-[11px] text-caption">
+                          <p className="text-xs text-caption">
                             {p.visits_count || 0}x kunjungan tercatat
                           </p>
                         </div>
@@ -495,7 +495,7 @@ const DataPasien = () => {
                       {selectedLongitudinal.hpk_status.phase_label}
                     </p>
                   </div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-sky-600 text-white self-start sm:self-auto">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sky-600 text-white self-start sm:self-auto">
                     Hari ke-{selectedLongitudinal.hpk_status.hpk_day} / 1.000 HPK ({selectedLongitudinal.hpk_status.progress_percent}%)
                   </span>
                 </div>
@@ -505,7 +505,7 @@ const DataPasien = () => {
                     style={{ width: `${Math.min(100, selectedLongitudinal.hpk_status.progress_percent || 0)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] text-dim font-semibold">
+                <div className="flex justify-between text-xs text-dim font-semibold">
                   <span>Fase 1: Kehamilan (Hari 1-270)</span>
                   <span>Fase 2: BBL 0-28 Hr (Hari 271-298)</span>
                   <span>Fase 3: Baduta 1-24 Bln (Hari 299-1.000)</span>
@@ -538,16 +538,16 @@ const DataPasien = () => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                   <div className="p-2.5 bg-card rounded-lg border border-line">
-                    <span className="text-[10px] text-caption block">Ibu Kandung</span>
+                    <span className="text-xs text-caption block">Ibu Kandung</span>
                     <span className="font-bold text-heading">
                       {selectedLongitudinal.mother ? selectedLongitudinal.mother.name : "Belum ditautkan"}
                     </span>
                     {selectedLongitudinal.mother && (
-                      <span className="block text-[10px] text-dim font-mono">NIK: {selectedLongitudinal.mother.nik}</span>
+                      <span className="block text-xs text-dim font-mono">NIK: {selectedLongitudinal.mother.nik}</span>
                     )}
                   </div>
                   <div className="p-2.5 bg-card rounded-lg border border-line">
-                    <span className="text-[10px] text-caption block">Status KEK Saat Hamil</span>
+                    <span className="text-xs text-caption block">Status KEK Saat Hamil</span>
                     <span className={`font-bold ${selectedLongitudinal.maternal_summary?.is_kek ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                       {selectedLongitudinal.maternal_summary?.is_kek
                         ? `Riwayat KEK (LiLA ${selectedLongitudinal.maternal_summary.min_maternal_lila_cm} cm)`
@@ -555,7 +555,7 @@ const DataPasien = () => {
                     </span>
                   </div>
                   <div className="p-2.5 bg-card rounded-lg border border-line">
-                    <span className="text-[10px] text-caption block">Status Anemia & KSPR Ibu</span>
+                    <span className="text-xs text-caption block">Status Anemia & KSPR Ibu</span>
                     <span className={`font-bold ${selectedLongitudinal.maternal_summary?.is_anemia || selectedLongitudinal.maternal_summary?.is_high_risk_kspr ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                       {selectedLongitudinal.maternal_summary?.is_anemia
                         ? `Anemia (Hb ${selectedLongitudinal.maternal_summary.min_maternal_hb})`
@@ -564,7 +564,7 @@ const DataPasien = () => {
                     </span>
                   </div>
                   <div className="p-2.5 bg-card rounded-lg border border-line">
-                    <span className="text-[10px] text-caption block">Kelahiran (Fase 2 BBL)</span>
+                    <span className="text-xs text-caption block">Kelahiran (Fase 2 BBL)</span>
                     <span className={`font-bold ${selectedLongitudinal.maternal_summary?.birth_weight_gram && selectedLongitudinal.maternal_summary.birth_weight_gram < 2500 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
                       {selectedLongitudinal.maternal_summary?.birth_weight_gram
                         ? `${selectedLongitudinal.maternal_summary.birth_weight_gram} g ${selectedLongitudinal.maternal_summary.birth_weight_gram < 2500 ? "(BBLR)" : "(Normal)"}`
@@ -591,7 +591,7 @@ const DataPasien = () => {
                     >
                       <span>{ch.name} ({ch.gender || "-"})</span>
                       {ch.hpk_status && (
-                        <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-xs font-bold">
                           Hari ke-{ch.hpk_status.hpk_day} HPK
                         </span>
                       )}
@@ -688,17 +688,17 @@ const DataPasien = () => {
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${phaseInfo.cls}`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${phaseInfo.cls}`}>
                               {phaseInfo.label}
                             </span>
                             <span className="font-bold text-sm text-heading">{cv.visit_date}</span>
                             {cv.hpk_day && (
-                              <span className="px-2 py-0.5 rounded-md bg-card border border-line text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+                              <span className="px-2 py-0.5 rounded-md bg-card border border-line text-xs font-semibold text-sky-700 dark:text-sky-300">
                                 Hari ke-{cv.hpk_day} HPK
                               </span>
                             )}
                             {cv.overall_status && (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${cv.overall_status === "RISIKO_TINGGI"
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${cv.overall_status === "RISIKO_TINGGI"
                                 ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
                                 : cv.overall_status === "PERLU_PERHATIAN"
                                   ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"

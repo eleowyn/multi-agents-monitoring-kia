@@ -68,7 +68,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const sidebarContent = (
     <div className="space-y-1">
-      <p className="px-3 text-[11px] font-bold text-dim uppercase tracking-wider mb-3">
+      <p className="px-3 text-xs font-bold text-dim uppercase tracking-wider mb-3">
         {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
       </p>
       {links.map((link) => {
@@ -93,7 +93,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             />
             <span className="flex-1">{link.label}</span>
             {link.count > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white">
                 {link.count}
               </span>
             )}

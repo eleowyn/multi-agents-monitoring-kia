@@ -490,7 +490,7 @@ const InputKunjungan = () => {
               )}
               {selectedPatient.hpk_status && (
                 <div className="pt-1.5 mt-1 border-t border-sky-200/70 dark:border-sky-800/50">
-                  <div className="flex justify-between text-[11px] font-bold text-sky-800 dark:text-sky-200 mb-1">
+                  <div className="flex justify-between text-xs font-bold text-sky-800 dark:text-sky-200 mb-1">
                     <span>Hari ke-{selectedPatient.hpk_status.hpk_day} / 1.000 HPK</span>
                     <span>{selectedPatient.hpk_status.progress_percent}%</span>
                   </div>
@@ -975,7 +975,7 @@ const InputKunjungan = () => {
                   <option value="Tanggari">Tanggari</option>
                 </select>
                 {isKader && (
-                  <p className="text-[11px] text-caption mt-1">
+                  <p className="text-xs text-caption mt-1">
                     * Otomatis diselaraskan dengan wilayah kerja Posyandu Anda ({user?.posyandu_name || "Posyandu"} - {user?.village_name || "Airmadidi Atas"}).
                   </p>
                 )}
@@ -1070,9 +1070,9 @@ const InputKunjungan = () => {
                 <div>
                   <div className="text-xs font-bold text-heading flex items-center gap-1.5">
                     <span>Agen 1: Deteksi Risiko & Parameter Antropometri</span>
-                    {loadingStep === 1 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                    {loadingStep === 1 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
                   </div>
-                  <p className="text-[11px] text-caption mt-0.5">
+                  <p className="text-xs text-caption mt-0.5">
                     Kalkulasi Z-score WHO, skor KSPR, LiLA, dan evaluasi riwayat longitudinal.
                   </p>
                 </div>
@@ -1098,9 +1098,9 @@ const InputKunjungan = () => {
                 <div>
                   <div className="text-xs font-bold text-heading flex items-center gap-1.5">
                     <span>Agen 2: Penalaran ReAct & RAG Pedoman KIA</span>
-                    {loadingStep === 2 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                    {loadingStep === 2 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
                   </div>
-                  <p className="text-[11px] text-caption mt-0.5">
+                  <p className="text-xs text-caption mt-0.5">
                     Penelusuran semantik Buku KIA 2024 & KMK Stunting untuk sintesis rekomendasi klinis tersitasi.
                   </p>
                 </div>
@@ -1126,9 +1126,9 @@ const InputKunjungan = () => {
                 <div>
                   <div className="text-xs font-bold text-heading flex items-center gap-1.5">
                     <span>Agen 3: Verifikasi Grounding Sitasi & Laporan</span>
-                    {loadingStep === 3 && <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
+                    {loadingStep === 3 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
                   </div>
-                  <p className="text-[11px] text-caption mt-0.5">
+                  <p className="text-xs text-caption mt-0.5">
                     Audit integritas bukti (LLM-Judge) dan penerbitan draf laporan resmi Posyandu.
                   </p>
                 </div>
@@ -1137,7 +1137,7 @@ const InputKunjungan = () => {
 
             {/* Progress bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] text-caption font-medium">
+              <div className="flex justify-between text-xs text-caption font-medium">
                 <span>Memproses pipeline klinis...</span>
                 <span>{loadingProgress}%</span>
               </div>
@@ -1149,7 +1149,7 @@ const InputKunjungan = () => {
               </div>
             </div>
 
-            <p className="text-[11px] text-caption italic">
+            <p className="text-xs text-caption italic">
               * Harap tidak menyegarkan (refresh) atau menutup browser agar proses pembuatan laporan tidak terputus.
             </p>
           </div>

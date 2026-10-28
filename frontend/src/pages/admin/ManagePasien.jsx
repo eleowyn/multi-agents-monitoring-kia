@@ -371,12 +371,12 @@ const ManagePasien = () => {
                             : `Anak (${p.gender || "-"})`}
                         </span>
                         {p.patient_type === "CHILD" && p.mother_name && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-pink-700 dark:text-pink-300">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-pink-700 dark:text-pink-300">
                             <Heart className="w-3 h-3" /> Ibu: {p.mother_name}
                           </span>
                         )}
                         {p.patient_type === "MOTHER" && p.children_count > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 dark:text-sky-300">
                             <Baby className="w-3 h-3" /> {p.children_count} Anak Terhubung
                           </span>
                         )}
@@ -385,7 +385,7 @@ const ManagePasien = () => {
                     <td className="p-3.5">
                       {p.hpk_status ? (
                         <div className="min-w-[140px]">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-sky-700 dark:text-sky-300 mb-1">
+                          <div className="flex items-center justify-between text-xs font-bold text-sky-700 dark:text-sky-300 mb-1">
                             <span>Hari ke-{p.hpk_status.hpk_day} / 1000</span>
                             <span>{p.hpk_status.progress_percent}%</span>
                           </div>
@@ -397,7 +397,7 @@ const ManagePasien = () => {
                               }}
                             />
                           </div>
-                          <p className="text-[10px] text-caption mt-0.5 truncate">
+                          <p className="text-xs text-caption mt-0.5 truncate">
                             {p.hpk_status.phase_label}
                           </p>
                         </div>

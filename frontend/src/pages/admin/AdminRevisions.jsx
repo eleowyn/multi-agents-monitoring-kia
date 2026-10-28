@@ -328,7 +328,7 @@ const AdminRevisions = () => {
                     >
                       <td className="p-4 whitespace-nowrap">
                         <span className="font-bold text-heading">#{rev.id}</span>
-                        <p className="text-[11px] text-caption mt-0.5">
+                        <p className="text-xs text-caption mt-0.5">
                           {rev.created_at ? new Date(rev.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
                         </p>
                       </td>
@@ -336,7 +336,7 @@ const AdminRevisions = () => {
                       <td className="p-4">
                         <p className="font-semibold text-heading">{rev.patient_name || "Pasien"}</p>
                         <p className="text-xs text-caption font-mono">NIK: {rev.patient_nik || "-"}</p>
-                        <p className="text-[11px] text-dim flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-dim flex items-center gap-1 mt-0.5">
                           <MapPin className="w-3 h-3" />
                           <span>{rev.village_name || "Airmadidi"}</span>
                         </p>
@@ -344,16 +344,16 @@ const AdminRevisions = () => {
 
                       <td className="p-4 whitespace-nowrap">
                         <p className="font-medium text-body">{rev.kader_name || "Kader"}</p>
-                        <p className="text-[11px] text-caption">Kader Posyandu</p>
+                        <p className="text-xs text-caption">Kader Posyandu</p>
                       </td>
 
                       <td className="p-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent-sky text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent-sky text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
                             {rev.phase || "KIA"}
                           </span>
                           {rev.proposed_data?._action === "DELETE" && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                            <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                               HAPUS
                             </span>
                           )}
@@ -369,7 +369,7 @@ const AdminRevisions = () => {
                           {rev.reason}
                         </p>
                         {rev.admin_notes && (
-                          <p className="text-[11px] text-caption italic mt-1 bg-subtle p-1.5 rounded border border-line-light">
+                          <p className="text-xs text-caption italic mt-1 bg-subtle p-1.5 rounded border border-line-light">
                             <strong>Admin:</strong> {rev.admin_notes}
                           </p>
                         )}
@@ -435,12 +435,12 @@ const AdminRevisions = () => {
                     {selectedRev.id}
                   </h2>
                   {isDeleteRequest && (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-300 dark:border-rose-800">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-300 dark:border-rose-800">
                       HAPUS KUNJUNGAN
                     </span>
                   )}
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                       selectedRev.status === "PENDING"
                         ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
                         : selectedRev.status === "APPROVED"
@@ -508,7 +508,7 @@ const AdminRevisions = () => {
                       <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
                         Perbandingan Nilai Rekam Medis (Side-by-Side Diff)
                       </h3>
-                      <span className="text-[11px] text-caption">
+                      <span className="text-xs text-caption">
                         Baris berwarna menunjukkan data yang diubah
                       </span>
                     </div>
@@ -544,7 +544,7 @@ const AdminRevisions = () => {
                                 <td className="p-3 text-body font-semibold">
                                   {FIELD_LABELS[key] || key}
                                   {isChanged && (
-                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold">
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold">
                                       Diubah
                                     </span>
                                   )}

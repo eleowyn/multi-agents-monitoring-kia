@@ -118,12 +118,12 @@ const AdminDashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
               Dashboard Monitoring KIA & Stunting
             </h1>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
               <span className={`w-2 h-2 rounded-full ${autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
               <span>{autoRefresh ? `Live Sync (${countdown}s)` : "Sync Dijeda"}</span>
             </div>
             {newDataBadge && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 animate-bounce">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 animate-bounce">
                 ✨ Data Baru Masuk
               </span>
             )}
@@ -149,7 +149,7 @@ const AdminDashboard = () => {
           >
             {autoRefresh ? (
               <>
-                <Pause className="w-3.5 h-3.5 text-zinc-500" />
+                <Pause className="w-3.5 h-3.5 text-dim" />
                 <span className="hidden md:inline">Jeda Sync</span>
               </>
             ) : (
@@ -212,7 +212,7 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Total Pasien Terdaftar
                 </p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-heading mt-1 tracking-tight tabular-nums">
+                <p className="text-2xl sm:text-3xl font-bold text-heading mt-1 tracking-tight tabular-nums">
                   {summary?.total_patients || 0}
                 </p>
                 <p className="text-xs text-caption mt-1">
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Kasus Stunting Terdeteksi
                 </p>
-                <p className={`text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight tabular-nums ${(summary?.total_stunting || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
+                <p className={`text-2xl sm:text-3xl font-bold mt-1 tracking-tight tabular-nums ${(summary?.total_stunting || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
                   {summary?.total_stunting || 0}
                 </p>
                 <p className="text-xs text-caption mt-1">
@@ -258,7 +258,7 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Ibu Hamil KEK / Anemia
                 </p>
-                <p className={`text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight tabular-nums ${((summary?.total_kek || 0) + (summary?.total_anemia || 0)) > 0 ? "text-amber-600 dark:text-amber-400" : "text-heading"}`}>
+                <p className={`text-2xl sm:text-3xl font-bold mt-1 tracking-tight tabular-nums ${((summary?.total_kek || 0) + (summary?.total_anemia || 0)) > 0 ? "text-amber-600 dark:text-amber-400" : "text-heading"}`}>
                   {(summary?.total_kek || 0) + (summary?.total_anemia || 0)}
                 </p>
                 <p className="text-xs text-caption mt-1">
@@ -281,7 +281,7 @@ const AdminDashboard = () => {
                 <p className="text-xs font-semibold text-caption group-hover:text-body transition-colors">
                   Laporan Tervalidasi Kader
                 </p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-heading mt-1 tracking-tight tabular-nums">
+                <p className="text-2xl sm:text-3xl font-bold text-heading mt-1 tracking-tight tabular-nums">
                   {summary?.total_reports_approved || 0}
                 </p>
                 <p className="text-xs text-caption mt-1">
@@ -314,7 +314,7 @@ const AdminDashboard = () => {
                 <h2 className="text-sm font-bold text-heading">
                   Distribusi Kasus Risiko 1.000 HPK per Desa/Kelurahan
                 </h2>
-                <p className="text-[11px] text-caption">
+                <p className="text-xs text-caption">
                   Monitoring wilayah kerja Puskesmas Kecamatan Airmadidi
                 </p>
               </div>
@@ -406,12 +406,12 @@ const AdminDashboard = () => {
                         </td>
                         <td className="p-3.5 text-center tabular-nums">
                           {hasHighRisk ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-accent-rose text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-xs">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-accent-rose text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-xs">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                               <span>{v.high_risk_count} Kasus</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-dim border border-line">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-dim border border-line">
                               Aman
                             </span>
                           )}
@@ -431,22 +431,22 @@ const AdminDashboard = () => {
               {!loading && summary?.village_breakdown && summary.village_breakdown.length > 0 && (
                 <tfoot className="bg-muted/60 dark:bg-slate-800/70 border-t-2 border-line text-xs font-bold">
                   <tr>
-                    <td className="p-3.5 text-heading font-extrabold">
+                    <td className="p-3.5 text-heading font-bold">
                       Total Wilayah Kerja (9 Desa)
                     </td>
-                    <td className="p-3.5 text-center text-heading font-extrabold tabular-nums">
+                    <td className="p-3.5 text-center text-heading font-bold tabular-nums">
                       {villageTotals?.total_patients || 0}
                     </td>
-                    <td className="p-3.5 text-center text-rose-600 dark:text-rose-400 font-extrabold tabular-nums">
+                    <td className="p-3.5 text-center text-rose-600 dark:text-rose-400 font-bold tabular-nums">
                       {villageTotals?.stunting_count || 0}
                     </td>
-                    <td className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-extrabold tabular-nums">
+                    <td className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-bold tabular-nums">
                       {villageTotals?.kek_count || 0}
                     </td>
-                    <td className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-extrabold tabular-nums">
+                    <td className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-bold tabular-nums">
                       {villageTotals?.anemia_count || 0}
                     </td>
-                    <td className="p-3.5 text-center text-rose-700 dark:text-rose-300 font-extrabold tabular-nums">
+                    <td className="p-3.5 text-center text-rose-700 dark:text-rose-300 font-bold tabular-nums">
                       {villageTotals?.high_risk_count || 0} Kasus
                     </td>
                   </tr>

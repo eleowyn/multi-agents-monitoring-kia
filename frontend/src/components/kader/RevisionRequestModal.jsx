@@ -598,7 +598,7 @@ const RevisionRequestModal = ({ isOpen, onClose, visitId, patientInfo, onSuccess
                   className={inputClass}
                   required
                 />
-                <p className="text-[11px] text-caption mt-1">
+                <p className="text-xs text-caption mt-1">
                   Catatan ini akan ditelaah oleh Administrator Puskesmas sebelum usulan perubahan diterapkan ke basis data resmi.
                 </p>
               </div>

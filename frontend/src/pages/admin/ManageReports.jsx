@@ -601,7 +601,7 @@ const ManageReports = () => {
                     <h2 className="text-base font-bold text-heading">
                       {previewReport.final_report_json?.metadata?.patient_name || "Pasien KIA"}
                     </h2>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent-sky text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-accent-sky text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
                       {previewReport.final_report_json?.metadata?.phase || previewReport.visit_data?.phase || "KIA"}
                     </span>
                   </div>
@@ -639,7 +639,7 @@ const ManageReports = () => {
               {/* Physical Visit Parameters */}
               {previewReport.visit_data && (
                 <div className="p-3.5 bg-subtle border border-line rounded-xl space-y-2">
-                  <p className="font-bold text-heading uppercase tracking-wider text-[11px]">
+                  <p className="font-bold text-heading uppercase tracking-wider text-xs">
                     Hasil Pengukuran Fisik Kunjungan
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-caption">
@@ -673,7 +673,7 @@ const ManageReports = () => {
 
               {/* Active Risk Flags */}
               <div className="space-y-2">
-                <p className="font-bold text-heading uppercase tracking-wider text-[11px]">
+                <p className="font-bold text-heading uppercase tracking-wider text-xs">
                   Indikator Risiko Terdeteksi ({previewReport.risk_flags?.length || 0})
                 </p>
                 {previewReport.risk_flags && previewReport.risk_flags.length > 0 ? (
@@ -682,7 +682,7 @@ const ManageReports = () => {
                       <div key={idx} className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl space-y-1">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-amber-950 dark:text-amber-200">{flag.indicator}</span>
-                          <span className="text-[10px] bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-xs bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full font-bold">
                             {flag.flag}
                           </span>
                         </div>
@@ -699,20 +699,20 @@ const ManageReports = () => {
 
               {/* Recommendations */}
               <div className="space-y-2">
-                <p className="font-bold text-heading uppercase tracking-wider text-[11px]">
+                <p className="font-bold text-heading uppercase tracking-wider text-xs">
                   Rekomendasi Tindakan Klinis Kader
                 </p>
                 {previewReport.recommendations?.map((rec, idx) => (
                   <div key={idx} className="p-3 bg-card border border-line rounded-xl space-y-1.5 shadow-xs">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-sky-800 dark:text-sky-300">{idx + 1}. {rec.title}</span>
-                      <span className="text-[10px] bg-accent-sky text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-semibold">
+                      <span className="text-xs bg-accent-sky text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-semibold">
                         {rec.category}
                       </span>
                     </div>
                     <p className="text-body leading-relaxed">{rec.recommendation_text}</p>
                     {rec.citation && (
-                      <p className="text-[11px] text-dim flex items-center gap-1 pt-1 border-t border-line-light">
+                      <p className="text-xs text-dim flex items-center gap-1 pt-1 border-t border-line-light">
                         <BookOpen className="w-3 h-3 text-sky-600" />
                         <span>Rujukan: {rec.citation.source} (Hal. {rec.citation.page})</span>
                       </p>

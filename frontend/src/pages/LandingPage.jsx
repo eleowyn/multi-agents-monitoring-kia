@@ -468,7 +468,7 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             {/* Left Column */}
             <div className="lg:col-span-7 space-y-5 animate-slide-in-up">
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-heading tracking-tight leading-[1.2]">
+              <h1 className="text-3xl sm:text-4xl lg:text-4xl font-bold text-heading tracking-tight leading-[1.2]">
                 Kawal Tumbuh Kembang Anak & Kesehatan Ibu di Masa Emas 1.000 Hari Pertama Kehidupan
               </h1>
 

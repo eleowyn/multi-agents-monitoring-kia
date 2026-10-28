@@ -62,12 +62,12 @@ const HpkTimelineStepper = ({
               Kontinuitas Garis Waktu 1.000 HPK
             </span>
             {isGraduated ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
                 <GraduationCap className="w-3.5 h-3.5" />
                 Lulus Periode Emas
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300">
                 <Clock className="w-3.5 h-3.5" />
                 Hari ke-{currentHpkDay} ({progressPercent}%)
               </span>
@@ -79,7 +79,7 @@ const HpkTimelineStepper = ({
         </div>
 
         {/* Legend Warna Titik Kunjungan */}
-        <div className="flex items-center gap-3 text-[11px] text-caption self-start sm:self-auto">
+        <div className="flex items-center gap-3 text-xs text-caption self-start sm:self-auto">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
             Normal / Baik
@@ -104,16 +104,16 @@ const HpkTimelineStepper = ({
               <Heart className="w-4 h-4 text-pink-500" />
               Fase 1: Kehamilan (270 Hari)
             </span>
-            <span className="text-[10px] text-caption">Trimester 1–3</span>
+            <span className="text-xs text-caption">Trimester 1–3</span>
           </div>
-          <p className="text-[11px] text-caption leading-relaxed">
+          <p className="text-xs text-caption leading-relaxed">
             {isChild && maternalSummary?.mother_name ? (
               <span>Ibu: <strong>{maternalSummary.mother_name}</strong> {maternalSummary.is_kek ? "(Riwayat KEK)" : "(Gizi Normal)"}</span>
             ) : (
               "Pemantauan LiLA, Hb, Tensi & KSPR Kemenkes"
             )}
           </p>
-          <div className="mt-2 text-[11px] font-semibold text-label">
+          <div className="mt-2 text-xs font-semibold text-label">
             {f1Visits.length} Kunjungan Tercatat
           </div>
         </div>
@@ -125,16 +125,16 @@ const HpkTimelineStepper = ({
               <Baby className="w-4 h-4 text-amber-500" />
               Fase 2: Neonatus (28 Hari)
             </span>
-            <span className="text-[10px] text-caption">0–28 Hari</span>
+            <span className="text-xs text-caption">0–28 Hari</span>
           </div>
-          <p className="text-[11px] text-caption leading-relaxed">
+          <p className="text-xs text-caption leading-relaxed">
             {isChild && maternalSummary?.birth_weight_gram ? (
               <span>Lahir: <strong>{maternalSummary.birth_weight_gram} g</strong> {maternalSummary.birth_weight_gram < 2500 ? "(BBLR)" : "(Normal)"} &bull; IMD</span>
             ) : (
               "Kunjungan KN1–KN3, IMD & Pencegahan Hipotermia"
             )}
           </p>
-          <div className="mt-2 text-[11px] font-semibold text-label">
+          <div className="mt-2 text-xs font-semibold text-label">
             {isChild ? "Status Kelahiran Tervalidasi" : "Persiapan Kelahiran & IMD"}
           </div>
         </div>
@@ -146,12 +146,12 @@ const HpkTimelineStepper = ({
               <Sparkles className="w-4 h-4 text-sky-500" />
               Fase 3: Baduta (702 Hari)
             </span>
-            <span className="text-[10px] text-caption">Usia 1–24 Bulan</span>
+            <span className="text-xs text-caption">Usia 1–24 Bulan</span>
           </div>
-          <p className="text-[11px] text-caption leading-relaxed">
+          <p className="text-xs text-caption leading-relaxed">
             Penimbangan bulanan posyandu, ASI Eksklusif (0–6 bln), MP-ASI lokal Minut, Z-Score WHO PB/U.
           </p>
-          <div className="mt-2 text-[11px] font-semibold text-label">
+          <div className="mt-2 text-xs font-semibold text-label">
             {f3Visits.length} Kunjungan Posyandu
           </div>
         </div>
@@ -181,7 +181,7 @@ const HpkTimelineStepper = ({
             <div className="w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border-2 border-sky-600 shadow-md flex items-center justify-center animate-pulse">
               <span className="w-2 h-2 rounded-full bg-sky-600" />
             </div>
-            <div className="mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-sky-600 text-white shadow-xs whitespace-nowrap">
+            <div className="mt-1 px-2 py-0.5 rounded-md text-xs font-bold bg-sky-600 text-white shadow-xs whitespace-nowrap">
               Hari ke-{currentHpkDay}
             </div>
           </div>
@@ -191,12 +191,12 @@ const HpkTimelineStepper = ({
             <div className={`w-5 h-5 rounded-full border-2 shadow-md flex items-center justify-center ${isGraduated ? "bg-emerald-600 border-emerald-700 text-white" : "bg-card border-line text-caption"}`}>
               <GraduationCap className="w-3 h-3" />
             </div>
-            <span className="mt-1 text-[9px] font-bold text-caption">1.000 HPK</span>
+            <span className="mt-1 text-xs font-bold text-caption">1.000 HPK</span>
           </div>
         </div>
 
         {/* Label Batas Milestone Bawah */}
-        <div className="flex justify-between text-[10px] text-caption mt-6 px-1">
+        <div className="flex justify-between text-xs text-caption mt-6 px-1">
           <span>Hari 1 (Konsepsi)</span>
           <span className="text-center">Hari 270 (Lahir)</span>
           <span className="text-center">Hari 298 (Neonatus)</span>
@@ -221,7 +221,7 @@ const HpkTimelineStepper = ({
               title={`Kunjungan Kehamilan Trimester ${v.trimester || "-"} (${v.visit_date})`}
             >
               <span>ANC {v.trimester ? `T${v.trimester}` : `#${idx + 1}`}</span>
-              <span className="text-[10px] opacity-80">({new Date(v.visit_date).toLocaleDateString("id-ID", { month: "short", year: "2-digit" })})</span>
+              <span className="text-xs opacity-80">({new Date(v.visit_date).toLocaleDateString("id-ID", { month: "short", year: "2-digit" })})</span>
             </button>
           ))}
 
@@ -235,7 +235,7 @@ const HpkTimelineStepper = ({
             >
               <span>{v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : `K${idx + 1}`}</span>
               {v.weight_trend_kms && (
-                <span className={`px-1 py-0.2 rounded text-[10px] font-bold ${v.weight_trend_kms === "N" ? "bg-white/20 text-white" : "bg-white text-rose-700"}`}>
+                <span className={`px-1 py-0.2 rounded text-xs font-bold ${v.weight_trend_kms === "N" ? "bg-white/20 text-white" : "bg-white text-rose-700"}`}>
                   {v.weight_trend_kms}
                 </span>
               )}
@@ -253,7 +253,7 @@ const HpkTimelineStepper = ({
         <div className="p-4 bg-subtle border border-sky-300 dark:border-sky-800 rounded-xl space-y-3 animate-slide-up">
           <div className="flex items-center justify-between gap-2 border-b border-line-light pb-2">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-600 text-white">
+              <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-sky-600 text-white">
                 {activeVisitModal.phaseName}
               </span>
               <h4 className="text-xs sm:text-sm font-bold text-heading">
@@ -271,25 +271,25 @@ const HpkTimelineStepper = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
             {activeVisitModal.age_in_months !== undefined && activeVisitModal.age_in_months !== null && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Usia Baduta</span>
+                <span className="text-xs text-caption block">Usia Baduta</span>
                 <span className="font-bold text-heading">{activeVisitModal.age_in_months} Bulan</span>
               </div>
             )}
             {activeVisitModal.child_weight_kg && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Berat Badan</span>
+                <span className="text-xs text-caption block">Berat Badan</span>
                 <span className="font-bold text-heading">{activeVisitModal.child_weight_kg} kg</span>
               </div>
             )}
             {activeVisitModal.child_length_cm && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Panjang / Tinggi</span>
+                <span className="text-xs text-caption block">Panjang / Tinggi</span>
                 <span className="font-bold text-heading">{activeVisitModal.child_length_cm} cm</span>
               </div>
             )}
             {activeVisitModal.z_score_pbu !== null && activeVisitModal.z_score_pbu !== undefined && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Z-Score PB/U (Stunting)</span>
+                <span className="text-xs text-caption block">Z-Score PB/U (Stunting)</span>
                 <span className={`font-bold ${activeVisitModal.z_score_pbu < -2.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                   {activeVisitModal.z_score_pbu.toFixed(2)} SD ({activeVisitModal.pbu_category || (activeVisitModal.z_score_pbu < -2.0 ? "Stunting" : "Normal")})
                 </span>
@@ -297,7 +297,7 @@ const HpkTimelineStepper = ({
             )}
             {activeVisitModal.lila_cm && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">LiLA Ibu</span>
+                <span className="text-xs text-caption block">LiLA Ibu</span>
                 <span className={`font-bold ${activeVisitModal.lila_cm < 23.5 ? "text-rose-600" : "text-heading"}`}>
                   {activeVisitModal.lila_cm} cm {activeVisitModal.lila_cm < 23.5 ? "(KEK)" : ""}
                 </span>
@@ -305,7 +305,7 @@ const HpkTimelineStepper = ({
             )}
             {activeVisitModal.hb_level && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Hemoglobin</span>
+                <span className="text-xs text-caption block">Hemoglobin</span>
                 <span className={`font-bold ${activeVisitModal.hb_level < 11.0 ? "text-amber-600" : "text-heading"}`}>
                   {activeVisitModal.hb_level} g/dL {activeVisitModal.hb_level < 11.0 ? "(Anemia)" : ""}
                 </span>
@@ -313,13 +313,13 @@ const HpkTimelineStepper = ({
             )}
             {activeVisitModal.hpk_day && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Hari 1.000 HPK</span>
+                <span className="text-xs text-caption block">Hari 1.000 HPK</span>
                 <span className="font-bold text-sky-700 dark:text-sky-300">Hari ke-{activeVisitModal.hpk_day}</span>
               </div>
             )}
             {activeVisitModal.weight_trend_kms && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
-                <span className="text-[10px] text-caption block">Tren KMS</span>
+                <span className="text-xs text-caption block">Tren KMS</span>
                 <span className={`font-bold ${activeVisitModal.weight_trend_kms === "N" ? "text-emerald-600" : "text-rose-600"}`}>
                   {activeVisitModal.weight_trend_kms === "N" ? "Naik (N)" : "Tidak Naik (T)"}
                 </span>
