@@ -11,6 +11,7 @@ import InputKunjungan from "./pages/kader/InputKunjungan";
 import ValidasiLaporan from "./pages/kader/ValidasiLaporan";
 import DataPasien from "./pages/kader/DataPasien";
 import ArsipLaporan from "./pages/kader/ArsipLaporan";
+import MonitoringKia from "./pages/kader/MonitoringKia";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManagePasien from "./pages/admin/ManagePasien";
 import ManageKader from "./pages/admin/ManageKader";
@@ -81,6 +82,22 @@ function App() {
             element={
               <ProtectedLayout allowedRole="KADER">
                 <KaderDashboard />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/kader/monitoring-kia"
+            element={
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+                <MonitoringKia />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/monitoring-kia"
+            element={
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+                <MonitoringKia />
               </ProtectedLayout>
             }
           />

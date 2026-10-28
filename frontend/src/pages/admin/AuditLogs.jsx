@@ -7,9 +7,6 @@ import {
   RefreshCw,
   AlertTriangle,
   Trash2,
-  Activity,
-  ShieldCheck,
-  Clock,
   Cpu,
   ChevronRight,
   X,
@@ -120,23 +117,20 @@ const AuditLogs = () => {
       : 0;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-            Audit Log, Telemetri Lifetime & Konsumsi Token Multi-Agent AI
+            Audit Log
           </h1>
-          <p className="text-sm text-caption mt-1">
-            Bukti eksekusi Sequential Pipeline (Agent 1 → 2 → 3), Parallel Evaluator (ThreadPoolExecutor), Lifetime Ephemeral, dan penggunaan token per-agent.
-          </p>
         </div>
         <div className="flex items-center gap-2.5">
           {logs.length > 0 && (
             <button
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line text-heading hover:bg-subtle rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              className="btn-interactive flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line text-caption hover:text-rose-500 hover:bg-subtle rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-500" />
               <span>{clearingAll ? "Membersihkan..." : "Bersihkan Seluruh Log"}</span>
@@ -144,7 +138,7 @@ const AuditLogs = () => {
           )}
           <button
             onClick={fetchLogs}
-            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-subtle text-heading rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            className="btn-interactive flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line hover:bg-subtle text-caption hover:text-heading rounded-xl text-xs font-medium transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5 text-sky-500" />
             <span>Segarkan</span>
@@ -152,122 +146,31 @@ const AuditLogs = () => {
         </div>
       </div>
 
-      {/* ─── Ringkasan Hierarki Agent & Telemetri (Clean Minimalist Cards) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
-              <Activity className="w-4 h-4 text-rose-500" />
-            </div>
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-              Sequential Step #1
-            </span>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-              Paling Penting (Keselamatan Jiwa)
-            </p>
-            <p className="text-sm font-bold text-heading mt-0.5">
-              Agent 1: Deteksi Risiko
-            </p>
-            <p className="text-xs text-caption mt-1 leading-relaxed">
-              Safety Gatekeeper deterministik (Z-Score WHO, KSPR, LiLA, Hb, BBLR) mencegah false-negative.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
-              <Cpu className="w-4 h-4 text-amber-500" />
-            </div>
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-              Sequential Step #2
-            </span>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-              Paling Sulit (Multi-Hop ReAct)
-            </p>
-            <p className="text-sm font-bold text-heading mt-0.5">
-              Agent 2: Rekomendasi Klinis RAG
-            </p>
-            <p className="text-xs text-caption mt-1 leading-relaxed">
-              Penalaran ReAct otonom, kueri vektor ChromaDB, adaptasi menu lokal Minahasa & Care Plan.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            </div>
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-              Sequential Step #3
-            </span>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-              Paling Mudah / Terfokus
-            </p>
-            <p className="text-sm font-bold text-heading mt-0.5">
-              Agent 3: Verifikasi Grounding
-            </p>
-            <p className="text-xs text-caption mt-1 leading-relaxed">
-              Evaluasi keterhubungan tertutup (faithfulness 0.0–1.0) atau Single-Pass otomatis (0 token).
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-card rounded-2xl border border-line space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center">
-              <Clock className="w-4 h-4 text-sky-500" />
-            </div>
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-              Parallel Eval (3 Threads)
-            </span>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-              Total Konsumsi Token & Lifetime
-            </p>
-            <p className="text-sm font-bold text-heading font-mono mt-0.5">
-              {totalTokensAll.toLocaleString("id-ID")} <span className="font-sans font-normal text-xs text-caption">token</span>
-            </p>
-            <p className="text-xs text-caption mt-1 font-mono">
-              In: {totalInputTokensAll} &bull; Out: {totalOutputTokensAll} &bull; Avg: {avgLifetimeMs} ms (TERMINATED)
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-subtle border border-line rounded-2xl animate-fade-in">
-          <div className="flex items-center gap-2.5 text-xs font-semibold text-heading">
-            <span className="px-2.5 py-1 bg-card border border-line rounded-lg text-xs font-bold">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-subtle border border-line rounded-xl animate-fade-in text-xs">
+          <div className="flex items-center gap-2 text-heading font-medium">
+            <span className="px-2 py-0.5 bg-card border border-line rounded font-mono font-bold">
               {selectedIds.length}
             </span>
-            <span>Log audit terpilih untuk dihapus</span>
+            <span>log audit dipilih</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="btn-interactive px-3.5 py-1.5 rounded-xl text-xs font-medium text-caption hover:bg-muted hover:text-heading transition-colors cursor-pointer"
+              className="px-3 py-1 text-caption hover:text-heading transition-colors cursor-pointer"
             >
-              Batal Pilihan
+              Batal
             </button>
             <button
               type="button"
               onClick={handleBulkDelete}
               disabled={deletingBulk}
-              className="btn-interactive flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>{deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log Terpilih`}</span>
+              <span>{deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log`}</span>
             </button>
           </div>
         </div>
@@ -277,7 +180,7 @@ const AuditLogs = () => {
       <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-subtle text-caption text-xs font-semibold uppercase tracking-wider border-b border-line">
+            <thead className="bg-subtle text-caption text-xs font-medium uppercase tracking-wider border-b border-line">
               <tr>
                 <th className="p-3.5 w-10 text-center">
                   <input
@@ -288,25 +191,25 @@ const AuditLogs = () => {
                     aria-label="Pilih semua log"
                   />
                 </th>
-                <th className="p-3.5">ID & Laporan</th>
-                <th className="p-3.5">Agent & Urutan Eksekusi</th>
-                <th className="p-3.5">Lifetime (Selesai Tugas = Selesai Hidup)</th>
-                <th className="p-3.5">Konsumsi Token</th>
-                <th className="p-3.5">Kepatuhan</th>
-                <th className="p-3.5 text-right">Bukti Kerja</th>
+                <th className="p-3.5 font-medium">Log</th>
+                <th className="p-3.5 font-medium">Agent</th>
+                <th className="p-3.5 font-medium">Durasi</th>
+                <th className="p-3.5 font-medium">Token</th>
+                <th className="p-3.5 font-medium">Status</th>
+                <th className="p-3.5 text-right font-medium">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {loading ? (
                 <tr>
                   <td colSpan="7" className="p-8 text-center text-dim text-sm">
-                    Memuat catatan log audit dan telemetri agent...
+                    Memuat catatan log audit...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="p-8 text-center text-dim italic text-sm">
-                    Belum ada log evaluasi audit tersimpan.
+                    Belum ada log audit tersimpan.
                   </td>
                 </tr>
               ) : (
@@ -331,12 +234,12 @@ const AuditLogs = () => {
                       </td>
 
                       <td className="p-3.5">
-                        <p className="font-bold text-heading font-mono text-xs">Log #{log.id}</p>
+                        <p className="font-semibold text-heading font-mono text-xs">#{log.id}</p>
                         {log.report_id && (
                           <Link
                             to={`/kader/validasi/${log.report_id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline mt-0.5"
+                            className="inline-flex items-center gap-1 text-xs text-caption hover:text-sky-600 dark:hover:text-sky-400 mt-0.5"
                           >
                             <span>Laporan #{log.report_id}</span>
                             <ExternalLink className="w-3 h-3" />
@@ -344,50 +247,44 @@ const AuditLogs = () => {
                         )}
                       </td>
 
-                      <td className="p-3.5 space-y-1">
-                        <p className="font-bold text-heading text-sm">{log.agent_name}</p>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-subtle text-caption border border-line">
-                            Sequential Step #{log.execution_order || 1}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-xs font-mono bg-subtle text-caption border border-line">
-                            {log.parallel_worker || "ParallelEval"}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="p-3.5 font-mono text-xs space-y-0.5">
-                        <p className="text-heading font-semibold">
-                          {log.lifetime_ms ?? 0} ms &bull; TERMINATED
-                        </p>
-                        <p className="text-caption truncate max-w-[210px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
-                          {log.spawned_at ? log.spawned_at.slice(11, 23) : "-"} →{" "}
-                          {log.terminated_at ? log.terminated_at.slice(11, 23) : "-"}
+                      <td className="p-3.5">
+                        <p className="font-semibold text-heading text-xs sm:text-sm">{log.agent_name}</p>
+                        <p className="text-xs text-caption mt-0.5">
+                          Step #{log.execution_order || 1} &bull; {log.parallel_worker || "ParallelEval"}
                         </p>
                       </td>
 
-                      <td className="p-3.5 font-mono text-xs space-y-0.5">
-                        <p className="text-heading font-bold">
-                          {tok.total_tokens ?? 0} <span className="font-sans font-normal text-caption">token</span>
+                      <td className="p-3.5 font-mono text-xs">
+                        <p className="text-heading font-medium">
+                          {log.lifetime_ms ?? 0} ms
                         </p>
-                        <p className="text-caption">
+                        <p className="text-caption text-[11px] truncate max-w-[180px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
+                          {log.spawned_at ? log.spawned_at.slice(11, 19) : "-"}
+                        </p>
+                      </td>
+
+                      <td className="p-3.5 font-mono text-xs">
+                        <p className="text-heading font-medium">
+                          {(tok.total_tokens ?? 0).toLocaleString("id-ID")}
+                        </p>
+                        <p className="text-caption text-[11px]">
                           In: {tok.input_tokens ?? 0} &bull; Out: {tok.output_tokens ?? 0}
                         </p>
                       </td>
 
                       <td className="p-3.5">
                         {log.is_compliant === true ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Patuh (Valid)</span>
+                            <span>Patuh</span>
                           </span>
                         ) : log.is_compliant === false ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
                             <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                            <span>Ada Deviasi</span>
+                            <span>Deviasi</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-subtle text-heading border border-line rounded-lg text-xs font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                             <span>Menunggu</span>
                           </span>
@@ -401,9 +298,9 @@ const AuditLogs = () => {
                             e.stopPropagation();
                             setSelectedLogModal(log);
                           }}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-label hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer"
+                          className="inline-flex items-center gap-1 text-xs text-caption hover:text-heading cursor-pointer transition-colors"
                         >
-                          <span>Lihat bukti</span>
+                          <span>Detail</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </td>
@@ -413,6 +310,25 @@ const AuditLogs = () => {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ─── Total Konsumsi Token (Paling Bawah) ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-card rounded-2xl border border-line text-xs">
+        <div className="flex items-center gap-2">
+          <Cpu className="w-4 h-4 text-caption" />
+          <span className="text-caption font-medium">Total Konsumsi Token:</span>
+          <span className="font-mono font-bold text-heading text-sm">
+            {totalTokensAll.toLocaleString("id-ID")}
+          </span>
+          <span className="text-caption">token</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5 text-caption font-mono text-xs">
+          <span>Input: <strong className="text-heading font-medium">{totalInputTokensAll.toLocaleString("id-ID")}</strong></span>
+          <span className="text-line hidden sm:inline">&bull;</span>
+          <span>Output: <strong className="text-heading font-medium">{totalOutputTokensAll.toLocaleString("id-ID")}</strong></span>
+          <span className="text-line hidden sm:inline">&bull;</span>
+          <span>Rata-rata Durasi: <strong className="text-heading font-medium">{avgLifetimeMs} ms</strong></span>
         </div>
       </div>
 
@@ -432,7 +348,7 @@ const AuditLogs = () => {
             <div className="p-5 sm:p-6 border-b border-line flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-                  Log Audit #{selectedLogModal.id} &bull; Sequential Step #{selectedLogModal.execution_order || 1} &bull;{" "}
+                  Log Audit #{selectedLogModal.id} &bull; Step #{selectedLogModal.execution_order || 1} &bull;{" "}
                   {selectedLogModal.parallel_worker || "ParallelEval"}
                 </span>
                 <h3 id="audit-log-modal-title" className="text-lg sm:text-xl font-bold text-heading">
@@ -453,7 +369,7 @@ const AuditLogs = () => {
               {/* Klasifikasi Kompleksitas & Kepentingan */}
               <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Klasifikasi Peran & Tingkat Kesulitan/Kepentingan
+                  Peran & Tingkat Kesulitan/Kepentingan
                 </p>
                 <p className="text-sm font-bold text-heading">{selectedLogModal.complexity_rank}</p>
                 <p className="text-sm text-body leading-relaxed">{selectedLogModal.complexity_reason}</p>
@@ -463,7 +379,7 @@ const AuditLogs = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
                   <p className="font-bold uppercase tracking-wider text-caption">
-                    Bukti Lifetime (Selesai Tugas = Selesai Hidup)
+                    Durasi & Waktu Eksekusi
                   </p>
                   <p className="font-mono text-heading">
                     Spawn: <strong>{selectedLogModal.spawned_at || "-"}</strong>
@@ -472,22 +388,22 @@ const AuditLogs = () => {
                     Terminated: <strong>{selectedLogModal.terminated_at || "-"}</strong>
                   </p>
                   <p className="text-body">
-                    Durasi Hidup: <strong className="text-heading">{selectedLogModal.lifetime_ms ?? 0} ms</strong> (Status: Ephemeral TERMINATED)
+                    Durasi: <strong className="text-heading">{selectedLogModal.lifetime_ms ?? 0} ms</strong> (Ephemeral)
                   </p>
                 </div>
 
                 <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
                   <p className="font-bold uppercase tracking-wider text-caption">
-                    Konsumsi Token Agent
+                    Konsumsi Token
                   </p>
                   <p className="font-mono text-heading">
                     Input Prompt: <strong>{selectedLogModal.token_usage?.input_tokens ?? 0} token</strong>
                   </p>
                   <p className="font-mono text-heading">
-                    Output Completion: <strong>{selectedLogModal.token_usage?.output_tokens ?? 0} token</strong>
+                    Output: <strong>{selectedLogModal.token_usage?.output_tokens ?? 0} token</strong>
                   </p>
                   <p className="font-mono text-heading">
-                    Total Konsumsi: <strong>{selectedLogModal.token_usage?.total_tokens ?? 0} token</strong>
+                    Total: <strong>{selectedLogModal.token_usage?.total_tokens ?? 0} token</strong>
                   </p>
                 </div>
               </div>
@@ -496,7 +412,7 @@ const AuditLogs = () => {
               {Array.isArray(selectedLogModal.tools_invoked) && selectedLogModal.tools_invoked.length > 0 && (
                 <div className="p-4 bg-subtle rounded-xl border border-line space-y-2">
                   <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                    Tools & Kalkulator yang Dieksekusi Agent
+                    Tools yang Digunakan
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedLogModal.tools_invoked.map((tl, idx) => (
@@ -514,7 +430,7 @@ const AuditLogs = () => {
               {/* Instruksi Tugas Awal */}
               <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Instruksi Tugas Awal (Input Context)
+                  Instruksi Input Context
                 </p>
                 <p className="text-sm text-body leading-relaxed">{selectedLogModal.input_instruction}</p>
               </div>
@@ -522,7 +438,7 @@ const AuditLogs = () => {
               {/* Output yang Dihasilkan Agent */}
               <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Bukti Output Aktual yang Dihasilkan Agent
+                  Output Hasil Agent
                 </p>
                 <pre className="p-3 bg-card rounded-lg border border-line text-xs font-mono text-body overflow-x-auto whitespace-pre-wrap max-h-48">
                   {selectedLogModal.agent_output}
@@ -532,7 +448,7 @@ const AuditLogs = () => {
               {/* Catatan Evaluator Paralel */}
               <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Hasil Audit Evaluator Paralel & Jejak Timestamp
+                  Catatan Evaluator Paralel
                 </p>
                 <p className="text-sm text-body leading-relaxed">{selectedLogModal.evaluation_notes}</p>
               </div>

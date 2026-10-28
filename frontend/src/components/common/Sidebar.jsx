@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   FileEdit,
   X,
+  HeartPulse,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -47,6 +48,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const kaderLinks = [
     { to: "/kader/dashboard", label: "Dashboard Posyandu", icon: LayoutDashboard },
+    { to: "/kader/monitoring-kia", label: "Pusat Monitoring 1.000 HPK", icon: HeartPulse },
     { to: "/kader/input-kunjungan", label: "Input Kunjungan", icon: ClipboardList },
     { to: "/kader/data-pasien", label: "Data & Riwayat Pasien", icon: Users },
     { to: "/kader/laporan-kia", label: "Arsip Laporan KIA", icon: FileText },
@@ -54,6 +56,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const adminLinks = [
     { to: "/admin/dashboard", label: "Dashboard Agregat", icon: LayoutDashboard },
+    { to: "/admin/monitoring-kia", label: "Pusat Monitoring 1.000 HPK", icon: HeartPulse },
     { to: "/admin/reports", label: "Kelola Laporan Kunjungan", icon: FileText },
     { to: "/admin/manage-pasien", label: "Kelola Data Pasien", icon: Users },
     { to: "/admin/manage-kader", label: "Kelola Kader & Posyandu", icon: UserCheck },
