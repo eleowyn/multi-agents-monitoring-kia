@@ -11,11 +11,12 @@ import {
   FileEdit,
   X,
   HeartPulse,
+  LogOut,
 } from "lucide-react";
 import api from "../../services/api";
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { isKader, isAdmin } = useAuth();
+  const { isKader, isAdmin, logout } = useAuth();
   const [pendingRevisions, setPendingRevisions] = React.useState(0);
 
   useEffect(() => {
@@ -67,39 +68,58 @@ const Sidebar = ({ isOpen, onClose }) => {
   const links = isKader ? kaderLinks : adminLinks;
 
   const sidebarContent = (
-    <div className="space-y-1">
-      <p className="px-3 text-xs font-bold text-dim uppercase tracking-wider mb-3">
-        {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
-      </p>
-      {links.map((link) => {
-        const Icon = link.icon;
-        return (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-150 active:scale-[0.98] ${
-                isActive
-                  ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-xs border border-sky-200 dark:border-sky-800/50 translate-x-1"
-                  : "text-label hover:bg-muted hover:text-heading hover:translate-x-1"
-              }`
-            }
-            aria-label={link.label}
-          >
-            <Icon
-              className="w-[18px] h-[18px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
-              aria-hidden="true"
-            />
-            <span className="flex-1">{link.label}</span>
-            {link.count > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white">
-                {link.count}
-              </span>
-            )}
-          </NavLink>
-        );
-      })}
+    <div className="flex flex-col h-full justify-between overflow-hidden">
+      {/* Menu Navigasi Utama */}
+      <div className="space-y-1">
+        <p className="px-3 text-xs font-semibold text-caption mb-3">
+          {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
+        </p>
+        {links.map((link) => {
+          const Icon = link.icon;
+          return (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 active:scale-[0.98] ${
+                  isActive
+                    ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-xs border border-sky-200 dark:border-sky-800/50"
+                    : "text-label hover:bg-muted hover:text-heading"
+                }`
+              }
+              aria-label={link.label}
+            >
+              <Icon
+                className="w-[18px] h-[18px] shrink-0"
+                aria-hidden="true"
+              />
+              <span className="flex-1">{link.label}</span>
+              {link.count > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white">
+                  {link.count}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
+      </div>
+
+      {/* Tombol Logout: Pinned di Bawah Sidebar dengan Pemisah */}
+      <div className="pt-3 border-t border-line mt-auto">
+        <button
+          type="button"
+          onClick={() => {
+            if (onClose) onClose();
+            logout();
+          }}
+          className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl font-medium text-sm text-dim hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all duration-150 cursor-pointer"
+          aria-label="Logout dari aplikasi"
+        >
+          <LogOut className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-left">Logout</span>
+        </button>
+      </div>
     </div>
   );
 
@@ -113,18 +133,18 @@ const Sidebar = ({ isOpen, onClose }) => {
         />
       )}
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar: Menempel sticky, pas layar, tidak bisa di-scroll */}
       <aside
-        className="hidden lg:flex w-64 bg-card border-r border-line min-h-[calc(100vh-4rem)] p-4 flex-col justify-between"
+        className="hidden lg:flex w-64 bg-card border-r border-line sticky top-16 h-[calc(100vh-4rem)] p-4 flex-col justify-between overflow-hidden shrink-0"
         role="navigation"
         aria-label="Navigasi utama"
       >
         {sidebarContent}
       </aside>
 
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar: Drawer geser, tidak bisa di-scroll */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-line p-4 flex flex-col justify-between lg:hidden transform transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-line p-4 flex flex-col justify-between lg:hidden transform transition-transform duration-300 ease-out overflow-hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         role="navigation"

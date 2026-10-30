@@ -121,9 +121,12 @@ const AuditLogs = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-            Audit Log
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+            Log Audit Sistem
           </h1>
+          <p className="text-sm text-caption mt-1">
+            Rekam jejak eksekusi multi-agent AI, konsumsi token, dan latensi sistem
+          </p>
         </div>
         <div className="flex items-center gap-2.5">
           {logs.length > 0 && (

@@ -256,11 +256,14 @@ const ManageReports = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-line-light">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
             Kelola Laporan Kunjungan Posyandu
           </h1>
+          <p className="text-sm text-caption mt-1">
+            Daftar laporan hasil kunjungan posyandu se-Kecamatan Airmadidi untuk verifikasi dan validasi
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -288,44 +291,28 @@ const ManageReports = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Total Laporan Kunjungan</p>
-            <p className="text-2xl font-bold text-heading mt-1">{reports.length}</p>
-          </div>
-          <div className="p-3 bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 rounded-xl">
-            <FileText className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Total Laporan Kunjungan</p>
+          <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">{reports.length}</p>
+          <p className="text-xs text-caption">Semua wilayah binaan</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Laporan Tersahkan</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{totalApproved}</p>
-          </div>
-          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Laporan Tersahkan</p>
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{totalApproved}</p>
+          <p className="text-xs text-caption">Dokumen PDF diterbitkan</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Draf / Menunggu Review</p>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{totalDraft}</p>
-          </div>
-          <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
-            <Clock className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Draf / Menunggu Review</p>
+          <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">{totalDraft}</p>
+          <p className="text-xs text-caption">Perlu verifikasi admin</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Kasus Risiko Tinggi</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">{totalHighRisk}</p>
-          </div>
-          <div className="p-3 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-xl">
-            <AlertTriangle className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Kasus Risiko Tinggi</p>
+          <p className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">{totalHighRisk}</p>
+          <p className="text-xs text-caption">Prioritas intervensi</p>
         </div>
       </div>
 

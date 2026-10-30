@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 /* ============================================================
-   DESIGN TOKENS — Light Theme (default)
+   DESIGN TOKENS - Light Theme (default)
    ============================================================ */
 :root {
-  /* —— Surface / Background —— */
+  /* -- Surface / Background -- */
   --c-page: #f8fafc;
   --c-card: #ffffff;
   --c-subtle: #f8fafc;
   --c-muted: #f1f5f9;
 
-  /* —— Text / Content —— */
+  /* -- Text / Content -- */
   --c-heading: #1e293b;
   --c-body: #334155;
   --c-label: #475569;
   --c-caption: #64748b;
   --c-dim: #94a3b8;
 
-  /* —— Borders —— */
+  /* -- Borders -- */
   --c-line: #e2e8f0;
   --c-line-light: #f1f5f9;
 
-  /* —— Accent tinted surfaces —— */
+  /* -- Accent tinted surfaces -- */
   --c-accent-sky: #f0f9ff;
   --c-accent-pink: #fdf2f8;
   --c-accent-amber: #fffbeb;
@@ -32,15 +32,15 @@
   --c-accent-rose: #fff1f2;
   --c-accent-blue: #eff6ff;
 
-  /* —— Shadows —— */
+  /* -- Shadows -- */
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-prominent: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 
-  /* —— Modal overlay —— */
+  /* -- Modal overlay -- */
   --c-overlay: rgba(0, 0, 0, 0.5);
 
-  /* —— Spacing (4px grid) —— */
+  /* -- Spacing (4px grid) -- */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -52,19 +52,19 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* —— Border Radius —— */
+  /* -- Border Radius -- */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
   --radius-full: 9999px;
 
-  /* —— Transitions —— */
+  /* -- Transitions -- */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* —— Touch target minimum —— */
+  /* -- Touch target minimum -- */
   --touch-min: 2.75rem;
 }
 
@@ -368,4 +368,16 @@ html.theme-transitioning *::after {
    ============================================================ */
 @media print {
   .no-print { display: none !important; }
+}
+
+/* Standard custom dropdown arrow with 1rem (16px) inset from right border */
+select:not([multiple]):not([size]):not(.has-custom-chevron) {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem 1.25rem;
+  padding-right: 2.75rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }

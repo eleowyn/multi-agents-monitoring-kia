@@ -329,7 +329,7 @@ const ValidasiLaporan = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
               Rincian Lembar Pemantauan KIA
             </h1>
             {isAdmin && (
@@ -822,12 +822,12 @@ const ValidasiLaporan = () => {
             )}
           </div>
 
-          {/* Section II: Recommendations (Agent 2) — Clean Minimalist Cards */}
+          {/* Section II: Recommendations (Agent 2) ,  Clean Minimalist Cards */}
           <div className="space-y-4">
             <div>
               <h3 className="text-base font-bold text-heading flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-sky-500" />
-                <span>II. Rekomendasi Klinis, Gizi & Tindakan Kader (Agent 2 — RAG ChromaDB)</span>
+                <span>II. Rekomendasi Klinis, Gizi & Tindakan Kader (Agent 2 ,  RAG ChromaDB)</span>
               </h3>
               <p className="text-xs sm:text-sm text-caption mt-0.5">
                 Klik pada kartu rekomendasi untuk membaca rincian makanan, ASI/susu, stimulasi, dan langkah tindakan kader.
@@ -1086,7 +1086,7 @@ const ValidasiLaporan = () => {
             <div className="space-y-3.5">
               <h3 className="text-base font-bold text-heading flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>III. Verifikasi Grounding Sitasi (Agent 3 — ReAct)</span>
+                <span>III. Verifikasi Grounding Sitasi (Agent 3 ,  ReAct)</span>
               </h3>
 
               <div className="border border-line rounded-xl overflow-hidden">

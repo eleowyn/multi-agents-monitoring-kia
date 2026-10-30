@@ -5,7 +5,6 @@ import { useAuth } from "../../context/AuthContext";
 import {
   Baby,
   HeartPulse,
-  Sparkles,
   Search,
   PlusCircle,
   AlertTriangle,
@@ -68,14 +67,14 @@ const PatientSkeleton = () => (
 
 /* ─── Reusable Form Field ─── */
 const FormField = ({ id, label, hint, children }) => (
-  <div>
+  <div className="space-y-1.5">
     <label
       htmlFor={id}
-      className="block text-sm font-semibold text-label mb-1.5"
+      className="block text-xs font-semibold text-heading"
     >
       {label}
       {hint && (
-        <span className="text-red-500 dark:text-red-400 font-bold text-xs ml-1">{hint}</span>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs ml-1.5">{hint}</span>
       )}
     </label>
     {children}
@@ -83,7 +82,7 @@ const FormField = ({ id, label, hint, children }) => (
 );
 
 const INPUT_CLASS =
-  "w-full px-3.5 py-3 bg-subtle border border-line rounded-xl text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200";
+  "w-full h-10 px-3 bg-card dark:bg-slate-900/90 border border-line dark:border-slate-700 rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-150 shadow-2xs";
 
 const InputKunjungan = () => {
   const [patients, setPatients] = useState([]);
@@ -404,43 +403,43 @@ const InputKunjungan = () => {
       value: "IBU_HAMIL",
       label: "1. Fase Ibu Hamil",
       icon: HeartPulse,
-      activeClass: "bg-pink-600 text-white shadow-sm border-pink-600",
+      activeClass: "bg-pink-600 text-white shadow-xs border-pink-600 font-bold",
     },
     {
       value: "BAYI_BARU_LAHIR",
-      label: "2. Bayi Baru Lahir",
-      shortLabel: "2. BBL (0-28 Hari)",
+      label: "2. Bayi Baru Lahir (0-28 Hari)",
+      shortLabel: "2. Bayi Baru Lahir",
       icon: Baby,
-      activeClass: "bg-amber-600 text-white shadow-sm border-amber-600",
+      activeClass: "bg-amber-600 text-white shadow-xs border-amber-600 font-bold",
     },
     {
       value: "BADUTA",
-      label: "3. Fase Baduta (1-24 Bln)",
-      shortLabel: "3. Baduta (1-24 Bln)",
+      label: "3. Fase Baduta (1-24 Bulan)",
+      shortLabel: "3. Baduta (1-24 Bulan)",
       icon: Baby,
-      activeClass: "bg-sky-600 text-white shadow-sm border-sky-600",
+      activeClass: "bg-sky-600 text-white shadow-xs border-sky-600 font-bold",
     },
   ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading">
             Formulir Kunjungan Posyandu
           </h1>
-          <p className="text-xs sm:text-sm text-caption mt-1">
-            Pencatatan data antropometri & deteksi risiko 1.000 HPK berbasis Multi-Agent AI
+          <p className="text-xs sm:text-sm text-caption mt-0.5">
+            Pencatatan data antropometri & deteksi risiko 1.000 HPK terintegrasi
           </p>
         </div>
         <button
           onClick={() => setShowNewPatientModal(true)}
           aria-label="Registrasi pasien baru"
-          className="btn-interactive flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+          className="btn-interactive flex items-center gap-2 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-all duration-150 cursor-pointer self-start sm:self-auto"
         >
           <PlusCircle className="w-4 h-4" aria-hidden="true" />
-          Registrasi Pasien Baru
+          <span>Registrasi Pasien Baru</span>
         </button>
       </div>
 
@@ -465,34 +464,38 @@ const InputKunjungan = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* ═══ Left Col: Pilih Pasien ═══ */}
-        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-4">
-          <h3 className="text-sm font-bold text-heading flex items-center gap-2">
-            <Search className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-            Pilih Pasien Posyandu
-          </h3>
+        <div className="bg-card p-4 sm:p-5 rounded-xl border border-line shadow-card space-y-3.5">
+          <div className="space-y-0.5">
+            <h3 className="text-sm sm:text-base font-bold text-heading">
+              Pilih Pasien Posyandu
+            </h3>
+            <p className="text-xs text-caption">
+              Cari pasien untuk pencatatan kunjungan
+            </p>
+          </div>
 
           <div className="relative" role="search">
             <input
               type="text"
-              placeholder="Cari nama / NIK..."
+              placeholder="Cari nama atau NIK..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Cari pasien berdasarkan nama atau NIK"
-              className="w-full pl-10 pr-3 py-3 bg-subtle border border-line rounded-xl text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200"
+              className="w-full h-10 pl-9 pr-3 bg-subtle border border-line rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-150"
             />
             <Search
-              className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              className="w-4 h-4 text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
               aria-hidden="true"
             />
           </div>
 
-          <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-96 overflow-y-auto space-y-1.5 pr-1">
             {patientsLoading ? (
               [...Array(4)].map((_, i) => <PatientSkeleton key={i} />)
             ) : filteredPatients.length === 0 ? (
               <div className="text-center py-8 px-2">
                 <Users
-                  className="w-8 h-8 text-dim mx-auto mb-2"
+                  className="w-7 h-7 text-dim mx-auto mb-2 opacity-50"
                   aria-hidden="true"
                 />
                 <p className="text-xs text-caption font-medium">
@@ -500,15 +503,16 @@ const InputKunjungan = () => {
                     ? "Tidak ada pasien yang cocok"
                     : "Belum ada pasien terdaftar"}
                 </p>
-                <p className="text-xs text-dim mt-1">
+                <p className="text-xs text-caption mt-0.5">
                   {searchQuery
-                    ? "Coba ubah kata kunci"
-                    : "Klik tombol Registrasi Pasien Baru di atas"}
+                    ? "Coba ubah kata kunci pencarian"
+                    : "Klik tombol Registrasi Pasien Baru"}
                 </p>
               </div>
             ) : (
               filteredPatients.map((p) => {
                 const isSelected = selectedPatient?.id === p.id;
+                const isMother = p.patient_type === "MOTHER";
                 return (
                   <button
                     key={p.id}
@@ -516,33 +520,29 @@ const InputKunjungan = () => {
                     onClick={() => handleSelectPatient(p)}
                     aria-pressed={isSelected}
                     aria-label={`Pilih pasien ${p.name}`}
-                    className={`w-full text-left p-3.5 rounded-xl border text-sm transition-all duration-200 ${
+                    className={`w-full text-left p-3 rounded-lg border text-xs transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "border-sky-500 bg-accent-sky text-sky-900 dark:text-sky-200 shadow-sm"
-                        : "border-line hover:border-sky-300 dark:hover:border-sky-700 hover:bg-muted/50 text-body"
+                        ? "border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 text-heading shadow-xs ring-1 ring-sky-500/40"
+                        : "border-line hover:border-sky-300 dark:hover:border-sky-700 hover:bg-muted/30 text-body"
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <p
-                        className={`font-semibold ${isSelected ? "text-sky-800 dark:text-sky-300" : "text-heading"}`}
-                      >
+                    <div className="flex justify-between items-center gap-2">
+                      <p className={`font-bold text-xs sm:text-sm truncate ${isSelected ? "text-sky-700 dark:text-sky-300" : "text-heading"}`}>
                         {p.name}
                       </p>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          p.patient_type === "MOTHER"
-                            ? "bg-accent-pink text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800/50"
-                            : "bg-accent-blue text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
-                        }`}
-                      >
-                        {p.patient_type === "MOTHER" ? "Ibu" : "Anak"}
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 border ${
+                        isMother
+                          ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                          : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                      }`}>
+                        {isMother ? "Ibu Hamil" : "Baduta"}
                       </span>
                     </div>
-                    <p className="text-xs text-caption mt-1">
+                    <p className="text-xs text-body dark:text-slate-300 font-medium mt-1">
                       NIK: {p.nik}
                     </p>
-                    <p className="text-xs text-dim">
-                      Desa: {p.village_name || "Airmadidi"}
+                    <p className="text-xs text-caption font-medium">
+                      Posyandu: {p.village_name || "Airmadidi"}
                     </p>
                   </button>
                 );
@@ -551,26 +551,31 @@ const InputKunjungan = () => {
           </div>
 
           {selectedPatient && (
-            <div className="p-3.5 bg-accent-sky border border-sky-200 dark:border-sky-800/50 rounded-xl text-xs text-body space-y-1">
-              <p className="font-semibold text-caption">Pasien Terpilih:</p>
-              <p className="text-sky-700 dark:text-sky-300 font-bold text-sm">
+            <div className="p-3.5 bg-sky-50/50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-sky-700 dark:text-sky-300 font-bold block">Pasien Terpilih:</span>
+                <span className="px-1.5 py-0.2 rounded text-[11px] font-semibold bg-card border border-line text-caption">
+                  {selectedPatient.patient_type === "MOTHER" ? "Ibu Hamil" : "Baduta"}
+                </span>
+              </div>
+              <p className="text-heading font-bold text-sm">
                 {selectedPatient.name}
               </p>
-              <p className="text-xs text-caption">
-                Tgl Lahir: {selectedPatient.birth_date}
+              <p className="text-xs text-body dark:text-slate-200 font-medium">
+                Tanggal Lahir: {selectedPatient.birth_date}
               </p>
               {selectedPatient.mother_name && (
-                <p className="text-xs text-pink-700 dark:text-pink-300 font-semibold">
-                  Ibu Kandung: {selectedPatient.mother_name}
+                <p className="text-xs text-body dark:text-slate-200">
+                  Ibu: <strong className="text-heading font-bold">{selectedPatient.mother_name}</strong>
                 </p>
               )}
               {selectedPatient.hpk_status && (
-                <div className="pt-1.5 mt-1 border-t border-sky-200/70 dark:border-sky-800/50">
-                  <div className="flex justify-between text-xs font-bold text-sky-800 dark:text-sky-200 mb-1">
+                <div className="pt-2 mt-1.5 border-t border-sky-200/60 dark:border-sky-800/50">
+                  <div className="flex justify-between text-xs text-heading font-bold mb-1">
                     <span>Hari ke-{selectedPatient.hpk_status.hpk_day} / 1.000 HPK</span>
-                    <span>{selectedPatient.hpk_status.progress_percent}%</span>
+                    <span className="text-sky-600 dark:text-sky-400">{selectedPatient.hpk_status.progress_percent}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-sky-100 dark:bg-sky-950 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-line/40">
                     <div
                       className="h-full bg-sky-600 rounded-full transition-all"
                       style={{ width: `${Math.min(100, selectedPatient.hpk_status.progress_percent || 0)}%` }}
@@ -583,15 +588,14 @@ const InputKunjungan = () => {
         </div>
 
         {/* ═══ Right Col: Tab Input 3 Fase ═══ */}
-        <div className="lg:col-span-3 bg-card p-5 sm:p-6 rounded-2xl border border-line shadow-card space-y-5">
-          {/* Phase Selector Tabs */}
+        <div className="lg:col-span-3 bg-card p-5 sm:p-6 rounded-xl border border-line shadow-card space-y-5">
+          {/* Phase Selector Tabs dengan Warna Identitas Klinis */}
           <div
-            className="flex overflow-x-auto gap-2 pb-3 border-b border-line -mx-1 px-1 scrollbar-none"
+            className="inline-flex rounded-lg border border-line p-1 bg-muted/60 dark:bg-slate-900/60 overflow-x-auto gap-1"
             role="tablist"
             aria-label="Pilih fase kunjungan"
           >
             {phaseTabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = phase === tab.value;
               return (
                 <button
@@ -601,17 +605,14 @@ const InputKunjungan = () => {
                   aria-selected={isActive}
                   aria-controls={`panel-${tab.value}`}
                   onClick={() => setPhase(tab.value)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-shrink-0 border ${
+                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border ${
                     isActive
                       ? tab.activeClass
-                      : "bg-muted border-line text-caption hover:text-heading hover:bg-subtle"
+                      : "bg-transparent border-transparent text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                   }`}
                 >
-                  <Icon className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">
-                    {tab.shortLabel || tab.label}
-                  </span>
+                  <span className="sm:hidden">{tab.shortLabel || tab.label}</span>
                 </button>
               );
             })}
@@ -628,24 +629,18 @@ const InputKunjungan = () => {
                   max={todayStr}
                   value={visitDate}
                   onChange={(e) => setVisitDate(e.target.value)}
-                  className={`${INPUT_CLASS} sm:w-60 shrink-0`}
+                  className={`${INPUT_CLASS} sm:w-56 shrink-0`}
                 />
                 {hpkLiveInfo && (
-                  <div className="flex items-center gap-2 flex-wrap animate-fade-in">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {hpkLiveInfo.isInvalid ? (
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         <span>{hpkLiveInfo.error}</span>
                       </span>
                     ) : (
-                      <span
-                        className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                          hpkLiveInfo.isGraduation
-                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 shadow-xs"
-                            : "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
-                        }`}
-                      >
-                        <HeartPulse className="w-4 h-4 shrink-0" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-subtle border border-line text-heading">
+                        <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
                         <span>{hpkLiveInfo.label}</span>
                       </span>
                     )}
@@ -768,24 +763,23 @@ const InputKunjungan = () => {
                 </div>
 
                 {/* KSPR Screening */}
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-3">
-                  <p className="text-sm font-bold text-heading flex items-center gap-2">
-                    <Info className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                <div className="p-4 bg-muted/40 dark:bg-slate-900/50 rounded-xl border border-line space-y-2.5">
+                  <h4 className="text-xs font-bold text-heading">
                     Skrining Faktor Risiko KSPR (Poedji Rochjati)
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {KSPR_OPTIONS.map((opt) => (
                       <label
                         key={opt.key}
-                        className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-card transition-colors duration-150"
+                        className="flex items-start gap-2.5 cursor-pointer p-1.5 rounded-md hover:bg-card transition-colors duration-150"
                       >
                         <input
                           type="checkbox"
                           checked={ksprAnswers.includes(opt.key)}
                           onChange={() => toggleKspr(opt.key)}
-                          className="mt-0.5 w-4 h-4 rounded text-sky-600 bg-card border-line focus:ring-sky-500 cursor-pointer flex-shrink-0"
+                          className="mt-0.5 w-4 h-4 rounded text-sky-600 bg-card border-line focus:ring-sky-500 cursor-pointer shrink-0"
                         />
-                        <span className="text-xs text-body leading-relaxed">
+                        <span className="text-xs text-heading leading-relaxed">
                           {opt.label}
                         </span>
                       </label>
@@ -990,26 +984,26 @@ const InputKunjungan = () => {
               />
             </FormField>
 
-            {/* Submit */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || !selectedPatient}
               aria-label={
                 loading
-                  ? "Sedang menganalisis data"
-                  : "Jalankan analisis multi-agent AI"
+                  ? "Sedang memproses data kunjungan"
+                  : "Simpan & Proses Kunjungan"
               }
-              className="btn-interactive w-full py-3.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-sky-600 disabled:hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
+              className="btn-interactive w-full h-11 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs disabled:opacity-55 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <>
-                  <span className="spinner border-white/30 border-t-white" />
-                  <span>Multi-Agent AI Sedang Menganalisis...</span>
+                  <span className="spinner w-4 h-4 border-white/30 border-t-white" />
+                  <span>Sedang Memproses Data Klinis...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" aria-hidden="true" />
-                  <span>Jalankan Analisis Multi-Agent AI</span>
+                  <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>Simpan & Proses Kunjungan</span>
                 </>
               )}
             </button>
@@ -1031,7 +1025,7 @@ const InputKunjungan = () => {
           <div
             ref={modalRef}
             tabIndex={-1}
-            className="bg-card rounded-2xl max-w-md w-full p-6 border border-line shadow-prominent space-y-4 max-h-[90vh] overflow-y-auto animate-scale-in"
+            className="bg-card rounded-xl max-w-md w-full p-6 border border-line shadow-prominent space-y-4 max-h-[90vh] overflow-y-auto animate-scale-in"
           >
             <div className="flex justify-between items-center">
               <h3
@@ -1172,13 +1166,13 @@ const InputKunjungan = () => {
                 <button
                   type="button"
                   onClick={() => setShowNewPatientModal(false)}
-                  className="btn-interactive px-4 py-2.5 border border-line rounded-xl text-sm font-medium text-caption hover:bg-muted hover:text-heading transition-all duration-200 cursor-pointer"
+                  className="btn-interactive px-4 py-2 border border-line rounded-lg text-xs font-semibold text-caption hover:bg-muted hover:text-heading transition-all duration-150 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="btn-interactive px-5 py-2.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                  className="btn-interactive px-4 py-2 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-all duration-150 cursor-pointer"
                 >
                   Simpan Pasien
                 </button>
@@ -1188,34 +1182,32 @@ const InputKunjungan = () => {
         </div>
       )}
 
-      {/* ═══ Modal Loading Progress Multi-Agent AI ═══ */}
+      {/* ═══ Modal Loading Progress Kunjungan ═══ */}
       {loading && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in"
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-loading-title"
         >
-          <div className="bg-card rounded-2xl max-w-lg w-full p-6 sm:p-8 border border-line shadow-prominent space-y-6 text-center animate-scale-in">
-            {/* Header Icon */}
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 relative">
-              <Sparkles className="w-8 h-8 animate-pulse" />
-              <div className="absolute inset-0 rounded-2xl border-2 border-sky-500/40 animate-ping opacity-25" />
+          <div className="bg-card rounded-xl max-w-lg w-full p-6 sm:p-7 border border-line shadow-elevated space-y-5 text-center animate-scale-in">
+            <div className="w-12 h-12 mx-auto rounded-full bg-subtle border border-line flex items-center justify-center text-sky-600 dark:text-sky-400">
+              <span className="spinner w-6 h-6 border-sky-600 border-t-transparent" />
             </div>
 
             <div>
-              <h3 id="modal-loading-title" className="text-lg font-bold text-heading">
-                Multi-Agent AI Sedang Menganalisis
+              <h3 id="modal-loading-title" className="text-base sm:text-lg font-bold text-heading">
+                Sedang Memproses Kunjungan Posyandu
               </h3>
-              <p className="text-xs sm:text-sm text-caption mt-1">
-                Sistem 3 agen otonom sedang memproses data klinis pasien berdasarkan standar Kemenkes RI.
+              <p className="text-xs text-caption mt-1">
+                Data klinis pasien sedang dievaluasi berdasarkan pedoman Kemenkes RI dan Buku KIA.
               </p>
             </div>
 
             {/* Stepper */}
             <div className="space-y-3 text-left">
               {/* Step 1 */}
-              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
                 loadingStep === 1
                   ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
                   : loadingStep > 1
@@ -1243,7 +1235,7 @@ const InputKunjungan = () => {
               </div>
 
               {/* Step 2 */}
-              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
                 loadingStep === 2
                   ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
                   : loadingStep > 2
@@ -1271,7 +1263,7 @@ const InputKunjungan = () => {
               </div>
 
               {/* Step 3 */}
-              <div className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 ${
+              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
                 loadingStep === 3
                   ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
                   : loadingStep > 3

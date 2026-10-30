@@ -1,10 +1,10 @@
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { Activity, LogOut, User as UserIcon, Menu, Sun, Moon } from "lucide-react";
+import { Activity, User as UserIcon, Menu, Sun, Moon } from "lucide-react";
 
 const Navbar = ({ onToggleSidebar }) => {
-  const { user, logout, isKader } = useAuth();
+  const { user, isKader } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   return (
@@ -14,7 +14,7 @@ const Navbar = ({ onToggleSidebar }) => {
     >
       <div className="px-4 sm:px-6">
         <div className="flex justify-between h-16 items-center">
-          {/* Left: Hamburger + Logo */}
+          {/* Sisi Kiri: Tombol Hamburger Menu (Mobile) & Identitas Sistem */}
           <div className="flex items-center gap-3">
             <button
               onClick={onToggleSidebar}
@@ -33,15 +33,15 @@ const Navbar = ({ onToggleSidebar }) => {
                   Multi-Agent KIA
                 </h1>
                 <p className="text-xs text-caption font-medium">
-                  Posyandu Kec. Airmadidi &bull; 1.000 HPK
+                  Posyandu Kec. Airmadidi • 1.000 HPK
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Right: Theme Toggle + User + Logout */}
+          {/* Sisi Kanan: Theme Toggle & Profil Pengguna Aktif (Logout dipindah ke Sidebar) */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Theme toggle */}
+            {/* Tombol Pengubah Tema Terang / Gelap */}
             <button
               onClick={toggleTheme}
               aria-label={isDark ? "Beralih ke mode terang" : "Beralih ke mode gelap"}
@@ -55,7 +55,7 @@ const Navbar = ({ onToggleSidebar }) => {
               )}
             </button>
 
-            {/* User info */}
+            {/* Kartu Informasi Akun Pengguna Aktif */}
             <div className="flex items-center gap-2.5 bg-subtle px-3 py-1.5 rounded-xl border border-line">
               <div className="w-8 h-8 rounded-full bg-accent-sky flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
                 <UserIcon className="w-4 h-4" aria-hidden="true" />
@@ -71,16 +71,6 @@ const Navbar = ({ onToggleSidebar }) => {
                 </span>
               </div>
             </div>
-
-            {/* Logout */}
-            <button
-              onClick={logout}
-              aria-label="Keluar dari sistem"
-              title="Keluar"
-              className="btn-interactive p-2.5 text-dim hover:text-red-500 hover:bg-accent-red rounded-xl transition-colors duration-200 cursor-pointer"
-            >
-              <LogOut className="w-[18px] h-[18px]" aria-hidden="true" />
-            </button>
           </div>
         </div>
       </div>

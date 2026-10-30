@@ -187,8 +187,8 @@ const ArsipLaporan = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">Arsip Laporan KIA</h1>
-          <p className="text-xs sm:text-sm text-caption mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">Arsip Laporan KIA</h1>
+          <p className="text-sm text-caption mt-1">
             Direktori rekapitulasi analisis multi-agent AI, status validasi kader, dan arsip rujukan resmi
           </p>
         </div>
@@ -273,28 +273,28 @@ const ArsipLaporan = () => {
               <select
                 value={riskFilter}
                 onChange={(e) => setRiskFilter(e.target.value)}
-                className="w-full h-10 appearance-none pl-3.5 pr-10 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
+                className="w-full h-10 has-custom-chevron appearance-none pl-3.5 pr-11 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
               >
                 <option value="">Semua Status Risiko</option>
                 <option value="KONDISI_BAIK">Kondisi Baik</option>
                 <option value="PERLU_PERHATIAN">Perlu Perhatian</option>
                 <option value="RISIKO_TINGGI">Risiko Tinggi</option>
               </select>
-              <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             <div className="relative min-w-[200px]">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full h-10 appearance-none pl-3.5 pr-10 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
+                className="w-full h-10 has-custom-chevron appearance-none pl-3.5 pr-11 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
               >
                 <option value="">Semua Status Validasi</option>
                 <option value="DRAFT">Draft (Perlu Validasi)</option>
                 <option value="APPROVED">Disahkan</option>
                 <option value="REJECTED">Ditolak / Direvisi</option>
               </select>
-              <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
@@ -445,7 +445,7 @@ const ArsipLaporan = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-bold text-heading text-base">{r.patient_name || "Pasien"}</p>
-                        <p className="text-xs text-caption mt-0.5">NIK: {r.patient_nik || "-"} &bull; {r.phase ? r.phase.replace("_", " ") : "-"}</p>
+                        <p className="text-xs text-caption mt-0.5">NIK: {r.patient_nik || "-"} • {r.phase ? r.phase.replace("_", " ") : "-"}</p>
                       </div>
                       <div className="text-right">
                         <span className="text-xs text-caption font-semibold">#{r.id}</span>
@@ -524,14 +524,14 @@ const ArsipLaporan = () => {
               <select
                 value={revisionFilter}
                 onChange={(e) => setRevisionFilter(e.target.value)}
-                className="w-full h-10 appearance-none pl-3.5 pr-10 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
+                className="w-full h-10 has-custom-chevron appearance-none pl-3.5 pr-11 bg-card border border-line rounded-xl text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
               >
                 <option value="">Semua Status Validasi</option>
                 <option value="PENDING">Menunggu Validasi Admin</option>
                 <option value="APPROVED">Disetujui Admin</option>
                 <option value="REJECTED">Ditolak Admin</option>
               </select>
-              <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import KmsDigitalChart from "../../components/kader/KmsDigitalChart";
 import {
   HeartPulse,
   Users,
+  User,
   Search,
   Filter,
   RefreshCw,
@@ -20,6 +21,7 @@ import {
   GraduationCap,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   ShieldAlert,
   TrendingUp,
   BarChart3,
@@ -36,12 +38,21 @@ const MonitoringKia = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Primary Tab State: "agregat" | "personal"
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "agregat");
+  // Primary Tab State: Kader selalu personal, Admin bisa agregat / personal
+  const [activeTab, setActiveTab] = useState(
+    isKader ? "personal" : (searchParams.get("tab") || "agregat")
+  );
+
+  // Sinkronisasi tab saat peran terdeteksi
+  useEffect(() => {
+    if (isKader) {
+      setActiveTab("personal");
+    }
+  }, [isKader]);
 
   // State Monitoring Agregat
   const [aggregates, setAggregates] = useState(null);
-  const [loadingAggregates, setLoadingAggregates] = useState(true);
+  const [loadingAggregates, setLoadingAggregates] = useState(false);
   const [selectedVillageFilter, setSelectedVillageFilter] = useState("ALL");
 
   // State Monitoring Personal Pasien
@@ -57,10 +68,12 @@ const MonitoringKia = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. Ambil data agregat saat mount
+  // 1. Ambil data agregat hanya jika pengguna adalah Admin
   useEffect(() => {
-    fetchPosyanduAggregates();
-  }, []);
+    if (isAdmin) {
+      fetchPosyanduAggregates();
+    }
+  }, [isAdmin]);
 
   const fetchPosyanduAggregates = async (isManual = false) => {
     try {
@@ -166,45 +179,40 @@ const MonitoringKia = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* ═══ Header Pusat Monitoring KIA ═══ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="p-2 bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 rounded-xl border border-sky-200 dark:border-sky-800/50">
-              <HeartPulse className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-              Pusat Monitoring KIA 1.000 HPK
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Monitoring Aktif
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-caption mt-1">
-            Pemantauan agregat posyandu se-Kecamatan Airmadidi &amp; rekam jejak longitudinal 1.000 HPK
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+            {isKader ? "Pemantauan Pasien KIA 1.000 HPK" : "Pusat Monitoring KIA 1.000 HPK"}
+          </h1>
+          <p className="text-sm text-caption mt-1">
+            {isKader ? (
+              <span>Posyandu {user?.village_name || "Airmadidi Atas"} • Pemantauan tumbuh kembang, grafik KMS digital & 1.000 HPK</span>
+            ) : (
+              <span>UPTD Puskesmas Airmadidi • Pemantauan agregat 9 wilayah kerja posyandu & rekam jejak pasien</span>
+            )}
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => {
-              if (activeTab === "agregat") fetchPosyanduAggregates(true);
+              if (activeTab === "agregat" && isAdmin) fetchPosyanduAggregates(true);
               else if (selectedPatientId) fetchPatientLongitudinal(selectedPatientId, true);
             }}
             disabled={loadingAggregates || loadingLongitudinal || refreshing}
-            className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-card border border-line hover:bg-muted text-label hover:text-heading rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer"
+            title={refreshing ? "Sedang menyegarkan data..." : "Segarkan data"}
+            aria-label="Segarkan data"
+            className="btn-interactive w-9 h-9 flex items-center justify-center bg-card border border-line hover:border-line-hover text-caption hover:text-heading rounded-lg transition-all duration-150 cursor-pointer shadow-xs hover:-translate-y-px"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${refreshing ? "animate-spin" : ""}`} />
-            <span>{refreshing ? "Menyegarkan..." : "Segarkan"}</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-sky-500" : ""}`} />
           </button>
 
           {isKader && (
             <button
               onClick={() => navigate("/kader/input-kunjungan")}
-              className="btn-interactive flex items-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer shadow-xs"
+              className="btn-interactive h-9 flex items-center gap-1.5 px-3.5 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer shadow-xs hover:-translate-y-px"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Input Kunjungan</span>
+              <span>+ Input Kunjungan</span>
             </button>
           )}
         </div>
@@ -229,79 +237,81 @@ const MonitoringKia = () => {
         </div>
       )}
 
-      {/* ═══ TAB SWITCHER: Agregat Posyandu vs Personal Pasien ═══ */}
-      <div className="flex items-center justify-between gap-3 p-1.5 bg-subtle border border-line rounded-2xl">
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          <button
-            onClick={() => setActiveTab("agregat")}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "agregat"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "text-caption hover:text-heading hover:bg-card/60"
-            }`}
-          >
-            <span>Agregat Posyandu &amp; Wilayah Kerja</span>
-          </button>
+      {/* ═══ TAB SWITCHER: Khusus Admin (Kader langsung ke personal pasien) ═══ */}
+      {isAdmin && (
+        <div className="flex items-center justify-between border-b border-line gap-4 animate-fade-in">
+          <div className="flex items-center gap-6 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("agregat")}
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap cursor-pointer ${
+                activeTab === "agregat"
+                  ? "text-sky-600 dark:text-sky-400 border-b-2 border-sky-600 dark:border-sky-400"
+                  : "text-caption hover:text-heading border-b-2 border-transparent"
+              }`}
+            >
+              Agregat Posyandu & Wilayah (9 Desa)
+            </button>
 
-          <button
-            onClick={() => setActiveTab("personal")}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "personal"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "text-caption hover:text-heading hover:bg-card/60"
-            }`}
-          >
-            <span>Monitoring Personal Pasien (KMS &amp; 1.000 HPK)</span>
-          </button>
-        </div>
-
-        {activeTab === "agregat" && (
-          <div className="hidden lg:flex items-center gap-2 text-xs text-caption px-2 font-medium">
-            <span>UPTD Puskesmas Airmadidi &bull; 9 Kelurahan/Desa Binaan</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("personal")}
+              className={`pb-3 text-sm font-semibold transition-all relative whitespace-nowrap cursor-pointer ${
+                activeTab === "personal"
+                  ? "text-sky-600 dark:text-sky-400 border-b-2 border-sky-600 dark:border-sky-400"
+                  : "text-caption hover:text-heading border-b-2 border-transparent"
+              }`}
+            >
+              Monitoring Personal Pasien (KMS & 1.000 HPK)
+            </button>
           </div>
-        )}
-      </div>
+
+          <div className="hidden lg:flex items-center gap-2 text-xs text-caption pb-3 font-medium">
+            <span>UPTD Puskesmas Airmadidi • 9 Desa Binaan</span>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          TAB 1: MONITORING AGREGAT POSYANDU & WILAYAH
+          TAB 1: MONITORING AGREGAT POSYANDU & WILAYAH (KHUSUS ADMIN)
           ═══════════════════════════════════════════════════════════════════════ */}
-      {activeTab === "agregat" && (
+      {isAdmin && activeTab === "agregat" && (
         <div className="space-y-6 animate-fade-in">
           {/* Filter Bar Wilayah Posyandu */}
-          <div className="bg-card rounded-2xl border border-line shadow-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-card rounded-xl border border-line shadow-card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Filter className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-              <div>
-                <label htmlFor="village-filter" className="text-xs font-bold text-caption uppercase tracking-wider block">
-                  Pilih Wilayah Kerja Posyandu:
-                </label>
+              <label htmlFor="village-filter" className="text-xs font-medium text-caption shrink-0">
+                Wilayah Kerja:
+              </label>
+              <div className="relative inline-block min-w-[250px]">
                 <select
                   id="village-filter"
                   value={selectedVillageFilter}
                   onChange={(e) => setSelectedVillageFilter(e.target.value)}
-                  className="mt-1 px-3 py-1.5 bg-subtle border border-line rounded-xl text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer min-w-[220px]"
+                  className="has-custom-chevron w-full h-9 appearance-none pl-3.5 pr-11 bg-subtle border border-line rounded-lg text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer"
                 >
-                  <option value="ALL">Semua Wilayah Kerja (9 Kelurahan/Desa)</option>
+                  <option value="ALL">Semua Wilayah Kerja (9 Desa Binaan)</option>
                   {AIRMADIDI_VILLAGES_FALLBACK.map((v) => (
                     <option key={v} value={v}>
                       Posyandu {v}
                     </option>
                   ))}
                 </select>
+                <ChevronDown className="w-4 h-4 text-caption absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             {/* Context Badge Role */}
             <div className="flex items-center gap-2 self-start sm:self-auto">
               {isKader ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium bg-subtle border border-line text-heading">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
-                  <span>Posyandu Anda: <strong>{user?.village_name || "Airmadidi Atas"}</strong></span>
-                </span>
+                  <span>Posyandu Anda: <strong className="font-semibold">{user?.village_name || "Airmadidi Atas"}</strong></span>
+                </div>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-subtle border border-line text-caption">
-                  <span>Mode Admin: <strong>9 Desa Binaan Puskesmas Airmadidi</strong></span>
-                </span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium bg-subtle border border-line text-caption">
+                  <span>Mode Administrator: <strong className="text-heading font-semibold">9 Desa Binaan Puskesmas Airmadidi</strong></span>
+                </div>
               )}
             </div>
           </div>
@@ -309,90 +319,70 @@ const MonitoringKia = () => {
           {/* 4 Ringkasan KPI Agregat 1.000 HPK */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Total Sasaran 1.000 HPK */}
-            <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-                  Total Sasaran 1.000 HPK
-                </p>
-                <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-100 dark:border-sky-900/30">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
+            <div className="bg-card p-5 rounded-xl border border-line shadow-card space-y-1">
+              <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+                Total Sasaran 1.000 HPK
+              </p>
               <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">
                 {loadingAggregates ? "..." : (summary?.total_target_all || 0)}
               </p>
               <p className="text-xs text-caption">
-                {summary?.total_mothers_all || 0} Ibu Hamil &bull; {summary?.total_children_all || 0} Anak Baduta
+                {summary?.total_mothers_all || 0} Ibu Hamil • {summary?.total_children_all || 0} Anak Baduta
               </p>
             </div>
 
             {/* Card 2: Tren Pertumbuhan KMS (N vs T) */}
-            <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-                  Rasio Pertumbuhan KMS (N)
-                </p>
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-              </div>
+            <div className="bg-card p-5 rounded-xl border border-line shadow-card space-y-1">
+              <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+                Rasio Pertumbuhan KMS (N)
+              </p>
               <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">
                 {loadingAggregates ? "..." : `${summary?.kms_naik_percent || 0}%`}
               </p>
-              <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden my-1">
                 <div
                   className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, summary?.kms_naik_percent || 0)}%` }}
                 />
               </div>
               <p className="text-xs text-caption">
-                {summary?.total_kms_naik || 0} Naik (N) &bull; {summary?.total_kms_tidak_naik || 0} Tidak Naik (T)
+                {summary?.total_kms_naik || 0} Naik (N) • {summary?.total_kms_tidak_naik || 0} Tidak Naik (T)
               </p>
             </div>
 
             {/* Card 3: Kelulusan 1.000 HPK (Usia 24 Bulan) */}
-            <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-                  Kelulusan 1.000 HPK
-                </p>
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-              </div>
+            <div className="bg-card p-5 rounded-xl border border-line shadow-card space-y-1">
+              <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+                Kelulusan 1.000 HPK
+              </p>
               <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">
                 {loadingAggregates ? "..." : `${summary?.graduation_rate || 100}%`}
               </p>
               <p className="text-xs text-caption">
-                {summary?.total_graduated_optimal || 0} Lulus Optimal &bull; {summary?.total_graduated_evaluasi || 0} Perhatian Khusus
+                {summary?.total_graduated_optimal || 0} Lulus Optimal • {summary?.total_graduated_evaluasi || 0} Perhatian Khusus
               </p>
             </div>
 
             {/* Card 4: Deteksi Kasus Berisiko */}
-            <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-caption uppercase tracking-wider">
-                  Kasus Berisiko 1.000 HPK
-                </p>
-                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/30">
-                  <ShieldAlert className="w-4 h-4" />
-                </div>
-              </div>
-              <p className={`text-2xl sm:text-3xl font-bold tabular-nums ${(summary?.total_stunting_all || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
+            <div className="bg-card p-5 rounded-xl border border-line shadow-card space-y-1">
+              <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+                Kasus Berisiko 1.000 HPK
+              </p>
+              <p className={`text-2xl sm:text-3xl font-bold tabular-nums ${(summary?.total_stunting_all || 0) > 0 ? "text-red-600 dark:text-red-400" : "text-heading"}`}>
                 {loadingAggregates ? "..." : `${summary?.total_stunting_all || 0} Stunting`}
               </p>
               <p className="text-xs text-caption">
-                {summary?.total_kek_all || 0} Ibu KEK &bull; {summary?.total_anemia_all || 0} Anemia
+                {summary?.total_kek_all || 0} Ibu KEK • {summary?.total_anemia_all || 0} Anemia
               </p>
             </div>
           </div>
 
           {/* Tabel Komparasi Seluruh Posyandu di Kecamatan Airmadidi */}
-          <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
+          <div className="bg-card rounded-xl border border-line shadow-card overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/30">
               <div>
                 <h2 className="text-sm sm:text-base font-bold text-heading">
-                  Status &amp; Kinerja Monitoring Tiap Posyandu (Kecamatan Airmadidi)
+                  Status & Kinerja Monitoring Tiap Posyandu (Kecamatan Airmadidi)
                 </h2>
                 <p className="text-xs text-caption mt-0.5">
                   Klik tombol "Lihat Pasien" pada baris posyandu untuk menelusuri rekam jejak personal baduta/ibu di wilayah tersebut
@@ -407,14 +397,14 @@ const MonitoringKia = () => {
               <table className="w-full text-xs sm:text-sm text-left">
                 <thead className="bg-muted text-caption border-b border-line text-xs font-semibold uppercase tracking-wider">
                   <tr>
-                    <th className="p-3.5">Posyandu &amp; Desa</th>
-                    <th className="p-3.5 text-center">Sasaran (Ibu/Anak)</th>
-                    <th className="p-3.5 text-center">Tren KMS (N / T)</th>
-                    <th className="p-3.5 text-center">Stunting (PB/U)</th>
-                    <th className="p-3.5 text-center">KEK / Anemia</th>
-                    <th className="p-3.5 text-center">Risiko Tinggi</th>
-                    <th className="p-3.5 text-center">Status Wilayah</th>
-                    <th className="p-3.5 text-right pr-5">Aksi Drill-Down</th>
+                    <th className="p-3.5 sm:p-4">Posyandu & Desa</th>
+                    <th className="p-3.5 sm:p-4 text-center">Sasaran (Ibu / Anak)</th>
+                    <th className="p-3.5 sm:p-4 text-center">Tren KMS (N / T)</th>
+                    <th className="p-3.5 sm:p-4 text-center">Stunting (PB/U)</th>
+                    <th className="p-3.5 sm:p-4 text-center">KEK / Anemia</th>
+                    <th className="p-3.5 sm:p-4 text-center">Risiko Tinggi</th>
+                    <th className="p-3.5 sm:p-4 text-center">Status Wilayah</th>
+                    <th className="p-3.5 sm:p-4 text-right pr-5">Aksi Drill-Down</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-light">
@@ -438,9 +428,9 @@ const MonitoringKia = () => {
                           key={v.village_name}
                           className={`hover:bg-subtle/70 transition-colors ${isMyVillage ? "bg-accent-sky/30 dark:bg-sky-950/20" : ""}`}
                         >
-                          <td className="p-3.5">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${isMyVillage ? "bg-sky-500 animate-pulse" : "bg-zinc-400"}`} />
+                          <td className="p-3.5 sm:p-4">
+                            <div className="flex items-center gap-2.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${isMyVillage ? "bg-sky-500 animate-pulse" : "bg-zinc-400"}`} />
                               <div>
                                 <p className="font-bold text-heading text-xs sm:text-sm">
                                   {v.posyandu_name}
@@ -452,69 +442,72 @@ const MonitoringKia = () => {
                             </div>
                           </td>
 
-                          <td className="p-3.5 text-center tabular-nums">
+                          <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             <span className="font-bold text-heading">{v.total_patients}</span>
                             <span className="text-caption block text-xs">
-                              {v.total_mothers} Ibu &bull; {v.total_children} Anak
+                              {v.total_mothers} Ibu • {v.total_children} Anak
                             </span>
                           </td>
 
-                          <td className="p-3.5 text-center tabular-nums">
+                          <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold">{v.kms_naik_count} N</span>
                             <span className="text-dim mx-1">/</span>
                             <span className="text-amber-600 dark:text-amber-400 font-bold">{v.kms_tidak_naik_count} T</span>
                           </td>
 
-                          <td className="p-3.5 text-center tabular-nums">
+                          <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.stunting_count > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
                                 {v.stunting_count} Kasus
                               </span>
                             ) : (
-                              <span className="text-dim">0</span>
+                              <span className="text-dim font-mono">-</span>
                             )}
                           </td>
 
-                          <td className="p-3.5 text-center tabular-nums">
+                          <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.kek_count + v.anemia_count > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                {v.kek_count} KEK &bull; {v.anemia_count} Anemia
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                                {v.kek_count} KEK • {v.anemia_count} Anemia
                               </span>
                             ) : (
-                              <span className="text-dim">0</span>
+                              <span className="text-dim font-mono">-</span>
                             )}
                           </td>
 
-                          <td className="p-3.5 text-center tabular-nums">
+                          <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.high_risk_count > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
                                 {v.high_risk_count} Kasus
                               </span>
                             ) : (
-                              <span className="text-dim">0</span>
+                              <span className="text-dim font-mono">-</span>
                             )}
                           </td>
 
-                          <td className="p-3.5 text-center">
+                          <td className="p-3.5 sm:p-4 text-center">
                             {v.status_color === "rose" ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                                 Prioritas
                               </span>
                             ) : v.status_color === "amber" ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 Waspada
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 Aman
                               </span>
                             )}
                           </td>
 
-                          <td className="p-3.5 text-right pr-5">
+                          <td className="p-3.5 sm:p-4 text-right pr-5">
                             <button
                               onClick={() => handleDrillDownToVillage(v.village_name)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 border border-transparent hover:border-sky-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 border border-line hover:border-sky-300 dark:hover:border-sky-700 transition-colors cursor-pointer"
                               title={`Buka pemantauan personal untuk pasien di ${v.posyandu_name}`}
                             >
                               <span>Lihat Pasien</span>
@@ -534,98 +527,129 @@ const MonitoringKia = () => {
 
       {/* ═══════════════════════════════════════════════════════════════════════
           TAB 2: MONITORING PERSONAL PASIEN (KMS & 1.000 HPK)
+          Kader langsung melihat bagian ini, Admin melihat saat tab personal dipilih
           ═══════════════════════════════════════════════════════════════════════ */}
-      {activeTab === "personal" && (
-        <div className="space-y-6 animate-fade-in">
+      {(isKader || activeTab === "personal") && (
+        <div className="space-y-6 animate-slide-up">
           {/* Bilah Pemilih Pasien Cepat (Quick Patient Selector) */}
-          <div className="bg-card rounded-2xl border border-line shadow-card p-4 space-y-3">
+          <div className="bg-card rounded-xl border border-line dark:border-slate-800 shadow-card hover:border-line-hover transition-all duration-200 p-4 sm:p-5 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               {/* Kolom Pencarian */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Cari pasien berdasarkan nama, NIK, atau Desa/Posyandu..."
+                  placeholder={isKader ? "Cari nama atau NIK pasien di posyandu..." : "Cari nama, NIK, atau desa pasien..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-subtle border border-line rounded-xl text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500"
+                  className="w-full h-10 pl-9 pr-4 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-200"
                 />
               </div>
 
-              {/* Filter Jenis Pasien */}
-              <div className="inline-flex rounded-xl border border-line p-0.5 bg-subtle shrink-0">
+              {/* Filter Jenis Pasien: Kontras Tinggi & Warna Tematis Jelas */}
+              <div className="h-10 inline-flex items-center rounded-lg border border-line dark:border-slate-800 p-1 bg-muted/60 dark:bg-slate-900/60 shrink-0 gap-1">
                 <button
+                  type="button"
                   onClick={() => setFilterType("")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${filterType === "" ? "bg-sky-600 text-white" : "text-caption hover:text-heading"}`}
+                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    filterType === ""
+                      ? "bg-sky-600 text-white shadow-xs"
+                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                  }`}
                 >
-                  Semua ({patients.length})
+                  Semua
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterType("CHILD")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${filterType === "CHILD" ? "bg-sky-600 text-white" : "text-caption hover:text-heading"}`}
+                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    filterType === "CHILD"
+                      ? "bg-sky-600 text-white shadow-xs"
+                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                  }`}
                 >
                   Baduta (Anak)
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterType("MOTHER")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${filterType === "MOTHER" ? "bg-pink-600 text-white" : "text-caption hover:text-heading"}`}
+                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    filterType === "MOTHER"
+                      ? "bg-pink-600 text-white shadow-xs"
+                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                  }`}
                 >
                   Ibu Hamil
                 </button>
               </div>
             </div>
 
-            {/* Pemilih Pasien Dropdown */}
-            <div>
-              <label htmlFor="patient-select-input" className="text-xs font-bold text-caption uppercase tracking-wider block mb-1">
-                Pilih Sasaran Pasien yang Dipantau:
+            {/* Pemilih Pasien Dropdown: Custom Chevron dengan Padding Kanan Proporsional */}
+            <div className="space-y-1.5">
+              <label htmlFor="patient-select-input" className="block text-xs font-medium text-heading">
+                Pilih Pasien untuk Ditampilkan:
               </label>
-              <select
-                id="patient-select-input"
-                value={selectedPatientId}
-                onChange={(e) => setSelectedPatientId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-card border border-line rounded-xl text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer"
-              >
-                {filteredPatients.length === 0 ? (
-                  <option value="">Tidak ada pasien yang sesuai filter</option>
-                ) : (
-                  filteredPatients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.patient_type === "CHILD" ? "Anak / Baduta" : "Ibu Hamil"}) &bull; NIK: {p.nik} &bull; {p.village_name || "Airmadidi"}
-                    </option>
-                  ))
-                )}
-              </select>
+              <div className="relative">
+                <select
+                  id="patient-select-input"
+                  value={selectedPatientId}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
+                  className="has-custom-chevron w-full h-10 appearance-none pl-3.5 pr-11 bg-card dark:bg-slate-900/80 border border-line dark:border-slate-700 rounded-lg text-xs font-medium text-heading focus:outline-none focus:ring-1 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-200 cursor-pointer shadow-xs"
+                >
+                  {filteredPatients.length === 0 ? (
+                    <option value="">Tidak ada pasien yang sesuai filter</option>
+                  ) : (
+                    filteredPatients.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.patient_type === "CHILD" ? "Anak / Baduta" : "Ibu Hamil"}) • NIK: {p.nik} • {p.village_name || "Airmadidi"}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <ChevronDown className="w-4 h-4 text-caption absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
 
-          {/* Kartu Profil Pasien Terpilih */}
+          {/* Kartu Profil Pasien Terpilih: Kontras Tinggi & Aksen Warna Tegas */}
           {selectedPatient && (
-            <div className="bg-card rounded-2xl border border-line shadow-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+            <div className={`rounded-xl border shadow-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-up border-l-4 transition-all duration-200 ${
+              isChild
+                ? "bg-sky-50/40 dark:bg-sky-950/25 border-sky-200 dark:border-sky-800/80 border-l-sky-500"
+                : "bg-pink-50/40 dark:bg-pink-950/25 border-pink-200 dark:border-pink-800/80 border-l-pink-500"
+            }`}>
               <div className="flex items-center gap-3.5">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${isChild ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 border-sky-200 dark:border-sky-800" : "bg-pink-50 dark:pink-950/40 text-pink-600 border-pink-200 dark:border-pink-800"}`}>
-                  {isChild ? <Baby className="w-6 h-6" /> : <Heart className="w-6 h-6" />}
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border shadow-xs ${
+                  isChild
+                    ? "bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700"
+                    : "bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300 border-pink-300 dark:border-pink-700"
+                }`}>
+                  {isChild ? <Baby className="w-5 h-5" /> : <Heart className="w-5 h-5" />}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-base sm:text-lg font-bold text-heading">
-                      {selectedPatient.name}
-                    </h2>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${isChild ? "bg-sky-100 text-sky-800 border-sky-200" : "bg-pink-100 text-pink-800 border-pink-200"}`}>
-                      {isChild ? "Fase 3: Baduta (1-24 Bln)" : "Fase 1: Ibu Hamil"}
+                  <h2 className="text-base sm:text-lg font-bold text-heading">
+                    {selectedPatient.name}
+                  </h2>
+                  <p className="text-xs text-body dark:text-slate-200 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                      isChild
+                        ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700"
+                        : "bg-pink-100 dark:bg-pink-900/60 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700"
+                    }`}>
+                      {isChild ? "Baduta (1-24 Bulan)" : "Ibu Hamil"}
                     </span>
+                    <span>•</span>
+                    <span>NIK: <strong className="font-mono text-heading font-bold">{selectedPatient.nik}</strong></span>
+                    <span>•</span>
+                    <span>Posyandu: <strong className="text-heading font-bold">{selectedPatient.village_name || "Airmadidi"}</strong></span>
+                    <span>•</span>
+                    <span>Total Kunjungan: <strong className="text-sky-600 dark:text-sky-400 font-bold">{visits.length} Kali</strong></span>
                     {hpkStatus?.is_graduation_milestone && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        🎓 Lulus 1.000 HPK
-                      </span>
+                      <>
+                        <span>•</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Lulus 1.000 HPK</span>
+                      </>
                     )}
-                  </div>
-                  <p className="text-xs text-caption mt-0.5 flex items-center gap-2 flex-wrap">
-                    <span>NIK: <strong>{selectedPatient.nik}</strong></span>
-                    <span>&bull;</span>
-                    <span>Desa: <strong>{selectedPatient.village_name || "Airmadidi"}</strong></span>
-                    <span>&bull;</span>
-                    <span>Jumlah Kunjungan: <strong>{visits.length} Kali</strong></span>
                   </p>
                 </div>
               </div>
@@ -634,10 +658,9 @@ const MonitoringKia = () => {
                 {isKader && (
                   <button
                     onClick={() => navigate(`/kader/data-pasien`)}
-                    className="btn-interactive inline-flex items-center gap-1.5 px-3 py-2 bg-subtle border border-line rounded-xl text-xs font-semibold text-caption hover:text-heading transition-colors cursor-pointer"
+                    className="btn-interactive h-9 inline-flex items-center gap-1.5 px-3.5 bg-subtle hover:bg-muted border border-line dark:border-slate-700 rounded-lg text-xs font-semibold text-caption hover:text-heading transition-all duration-150 cursor-pointer shadow-xs hover:-translate-y-px"
                   >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Buka Profil Penuh</span>
+                    <span>Lihat Profil Lengkap</span>
                   </button>
                 )}
               </div>

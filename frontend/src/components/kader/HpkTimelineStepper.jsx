@@ -38,12 +38,21 @@ const HpkTimelineStepper = ({
 
   const getVisitRiskTone = (v) => {
     // Cek risiko stunting / KEK / anemia / BBLR
-    if (v.z_score_pbu !== null && v.z_score_pbu < -2.0) return "bg-rose-500 border-rose-600 text-white";
-    if (v.lila_cm !== null && v.lila_cm < 23.5) return "bg-rose-500 border-rose-600 text-white";
-    if (v.hb_level !== null && v.hb_level < 11.0) return "bg-amber-500 border-amber-600 text-white";
-    if (v.weight_trend_kms === "T" || v.weight_trend_kms === "BGM") return "bg-rose-500 border-rose-600 text-white";
-    if (v.birth_weight_gram !== null && v.birth_weight_gram < 2500) return "bg-rose-500 border-rose-600 text-white";
-    return "bg-emerald-500 border-emerald-600 text-white";
+    const isHighRisk =
+      (v.z_score_pbu !== null && v.z_score_pbu < -2.0) ||
+      (v.lila_cm !== null && v.lila_cm < 23.5) ||
+      (v.weight_trend_kms === "T" || v.weight_trend_kms === "BGM") ||
+      (v.birth_weight_gram !== null && v.birth_weight_gram < 2500);
+
+    const isWarning = v.hb_level !== null && v.hb_level < 11.0;
+
+    if (isHighRisk) {
+      return "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-pink-700 dark:text-pink-300 hover:bg-rose-100";
+    }
+    if (isWarning) {
+      return "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100";
+    }
+    return "bg-card hover:bg-subtle border-line text-heading hover:border-line-hover";
   };
 
   const handleDotClick = (v, phaseName) => {
@@ -52,151 +61,190 @@ const HpkTimelineStepper = ({
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-line shadow-card p-5 sm:p-6 space-y-6">
-      {/* ─── Header Stepper ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider text-caption flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-sky-500" />
-              Kontinuitas Garis Waktu 1.000 HPK
-            </span>
-            {isGraduated ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
-                <GraduationCap className="w-3.5 h-3.5" />
-                Lulus Periode Emas
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300">
-                <Clock className="w-3.5 h-3.5" />
-                Hari ke-{currentHpkDay} ({progressPercent}%)
-              </span>
-            )}
-          </div>
+    <div className="bg-card rounded-xl border border-line shadow-card p-5 sm:p-6 space-y-6">
+      {/* Header Stepper */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
+        <div>
           <h3 className="text-base sm:text-lg font-bold text-heading">
-            {patient?.name || "Pasien KIA"} &bull; {isChild ? "Pemantauan Tumbuh Kembang Baduta" : "Pemantauan Kehamilan Ibu"}
+            Garis Waktu 1.000 Hari Pertama Kehidupan (HPK)
           </h3>
+          <p className="text-xs text-caption mt-0.5">
+            {isGraduated
+              ? "Periode emas 1.000 HPK tuntas (Usia 24 Bulan)"
+              : `Posisi saat ini: Hari ke-${currentHpkDay} dari 1.000 Hari (${progressPercent}%)`}
+          </p>
         </div>
 
         {/* Legend Warna Titik Kunjungan */}
         <div className="flex items-center gap-3 text-xs text-caption self-start sm:self-auto">
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-            Normal / Baik
+            Normal
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-            Berisiko (Stunting/KEK/2T)
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+            Perhatian / Risiko
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse inline-block" />
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block" />
             Posisi Saat Ini
           </span>
         </div>
       </div>
 
-      {/* ─── 3 Blok Segmentasi 1.000 HPK ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* 3 Blok Segmentasi 1.000 HPK: Warna Tematik Kontras & Teks Mudah Dibaca */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Blok Fase 1: Kehamilan */}
-        <div className={`p-3.5 rounded-xl border transition-all ${currentHpkDay <= 270 ? "bg-pink-50/70 dark:bg-pink-950/20 border-pink-300 dark:border-pink-800" : "bg-card border-line"}`}>
-          <div className="flex items-center justify-between text-xs font-bold text-heading mb-1">
-            <span className="flex items-center gap-1.5 text-pink-700 dark:text-pink-300">
-              <Heart className="w-4 h-4 text-pink-500" />
-              Fase 1: Kehamilan (270 Hari)
+        <div className={`p-4 sm:p-5 rounded-xl border transition-all ${
+          currentHpkDay <= 270
+            ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-400 dark:border-pink-700 shadow-xs ring-1 ring-pink-400/40"
+            : "bg-card border-line hover:border-line-hover"
+        }`}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={`text-sm sm:text-base font-bold ${currentHpkDay <= 270 ? "text-pink-700 dark:text-pink-300" : "text-heading"}`}>
+              Fase 1: Kehamilan
+            </h4>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded border shrink-0 ${
+              currentHpkDay <= 270
+                ? "bg-pink-100 dark:bg-pink-900/60 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700"
+                : "bg-muted text-caption border-line"
+            }`}>
+              270 Hari
             </span>
-            <span className="text-xs text-caption">Trimester 1–3</span>
           </div>
-          <p className="text-xs text-caption leading-relaxed">
+          <p className="text-sm text-body dark:text-slate-200 leading-relaxed mt-2.5">
             {isChild && maternalSummary?.mother_name ? (
-              <span>Ibu: <strong>{maternalSummary.mother_name}</strong> {maternalSummary.is_kek ? "(Riwayat KEK)" : "(Gizi Normal)"}</span>
+              <span>
+                Ibu: <strong className="text-heading font-bold">{maternalSummary.mother_name}</strong>{" "}
+                <span className={maternalSummary.is_kek ? "text-red-600 dark:text-red-400 font-semibold" : "text-emerald-600 dark:text-emerald-400 font-semibold"}>
+                  {maternalSummary.is_kek ? "(Riwayat KEK)" : "(Gizi Normal)"}
+                </span>
+              </span>
             ) : (
-              "Pemantauan LiLA, Hb, Tensi & KSPR Kemenkes"
+              "Pemantauan LiLA, Hb, tekanan darah, dan kepatuhan konsumsi tablet tambah darah."
             )}
           </p>
-          <div className="mt-2 text-xs font-semibold text-label">
-            {f1Visits.length} Kunjungan Tercatat
+          <div className="mt-3.5 pt-2.5 border-t border-line/60 flex items-center justify-between text-xs sm:text-sm font-semibold text-heading">
+            <span>Riwayat ANC</span>
+            <span className="font-bold text-sky-600 dark:text-sky-400">{f1Visits.length} Kunjungan</span>
           </div>
         </div>
 
         {/* Blok Fase 2: Neonatus */}
-        <div className={`p-3.5 rounded-xl border transition-all ${currentHpkDay > 270 && currentHpkDay <= 298 ? "bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" : "bg-card border-line"}`}>
-          <div className="flex items-center justify-between text-xs font-bold text-heading mb-1">
-            <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
-              <Baby className="w-4 h-4 text-amber-500" />
-              Fase 2: Neonatus (28 Hari)
+        <div className={`p-4 sm:p-5 rounded-xl border transition-all ${
+          currentHpkDay > 270 && currentHpkDay <= 298
+            ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 shadow-xs ring-1 ring-amber-400/40"
+            : "bg-card border-line hover:border-line-hover"
+        }`}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={`text-sm sm:text-base font-bold ${currentHpkDay > 270 && currentHpkDay <= 298 ? "text-amber-800 dark:text-amber-300" : "text-heading"}`}>
+              Fase 2: Neonatus
+            </h4>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded border shrink-0 ${
+              currentHpkDay > 270 && currentHpkDay <= 298
+                ? "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                : "bg-muted text-caption border-line"
+            }`}>
+              28 Hari
             </span>
-            <span className="text-xs text-caption">0–28 Hari</span>
           </div>
-          <p className="text-xs text-caption leading-relaxed">
+          <p className="text-sm text-body dark:text-slate-200 leading-relaxed mt-2.5">
             {isChild && maternalSummary?.birth_weight_gram ? (
-              <span>Lahir: <strong>{maternalSummary.birth_weight_gram} g</strong> {maternalSummary.birth_weight_gram < 2500 ? "(BBLR)" : "(Normal)"} &bull; IMD</span>
+              <span>
+                Lahir: <strong className="text-heading font-bold">{maternalSummary.birth_weight_gram} g</strong>{" "}
+                <span className={maternalSummary.birth_weight_gram < 2500 ? "text-red-600 dark:text-red-400 font-semibold" : "text-emerald-600 dark:text-emerald-400 font-semibold"}>
+                  {maternalSummary.birth_weight_gram < 2500 ? "(BBLR)" : "(Normal)"}
+                </span>{" "}
+                • IMD & KN1-KN3
+              </span>
             ) : (
-              "Kunjungan KN1–KN3, IMD & Pencegahan Hipotermia"
+              "Kunjungan neonatal KN1-KN3, Inisiasi Menyusu Dini (IMD), dan pencegahan hipotermia."
             )}
           </p>
-          <div className="mt-2 text-xs font-semibold text-label">
-            {isChild ? "Status Kelahiran Tervalidasi" : "Persiapan Kelahiran & IMD"}
+          <div className="mt-3.5 pt-2.5 border-t border-line/60 flex items-center justify-between text-xs sm:text-sm font-semibold text-heading">
+            <span>Status Neonatal</span>
+            <span className="font-bold text-amber-700 dark:text-amber-400">
+              {isChild ? "Kelahiran Tervalidasi" : "Persiapan Kelahiran"}
+            </span>
           </div>
         </div>
 
         {/* Blok Fase 3: Baduta */}
-        <div className={`p-3.5 rounded-xl border transition-all ${currentHpkDay > 298 ? "bg-sky-50/70 dark:bg-sky-950/20 border-sky-300 dark:border-sky-800" : "bg-card border-line"}`}>
-          <div className="flex items-center justify-between text-xs font-bold text-heading mb-1">
-            <span className="flex items-center gap-1.5 text-sky-700 dark:text-sky-300">
-              <Sparkles className="w-4 h-4 text-sky-500" />
-              Fase 3: Baduta (702 Hari)
+        <div className={`p-4 sm:p-5 rounded-xl border transition-all ${
+          currentHpkDay > 298
+            ? "bg-sky-50/70 dark:bg-sky-950/40 border-sky-400 dark:border-sky-700 shadow-xs ring-1 ring-sky-400/40"
+            : "bg-card border-line hover:border-line-hover"
+        }`}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={`text-sm sm:text-base font-bold ${currentHpkDay > 298 ? "text-sky-700 dark:text-sky-300" : "text-heading"}`}>
+              Fase 3: Baduta
+            </h4>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded border shrink-0 ${
+              currentHpkDay > 298
+                ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700"
+                : "bg-muted text-caption border-line"
+            }`}>
+              702 Hari (1-24 Bln)
             </span>
-            <span className="text-xs text-caption">Usia 1–24 Bulan</span>
           </div>
-          <p className="text-xs text-caption leading-relaxed">
-            Penimbangan bulanan posyandu, ASI Eksklusif (0–6 bln), MP-ASI lokal Minut, Z-Score WHO PB/U.
+          <p className="text-sm text-body dark:text-slate-200 leading-relaxed mt-2.5">
+            Penimbangan rutin posyandu, ASI Eksklusif 6 bulan, MP-ASI bergizi seimbang, dan pemantauan PB/U.
           </p>
-          <div className="mt-2 text-xs font-semibold text-label">
-            {f3Visits.length} Kunjungan Posyandu
+          <div className="mt-3.5 pt-2.5 border-t border-line/60 flex items-center justify-between text-xs sm:text-sm font-semibold text-heading">
+            <span>Riwayat Posyandu</span>
+            <span className="font-bold text-sky-600 dark:text-sky-400">{f3Visits.length} Kunjungan</span>
           </div>
         </div>
       </div>
 
-      {/* ─── Timeline Bar Interaktif ─── */}
+      {/* Timeline Bar: Efek Pelangi Kontinu Standar Pertumbuhan 1.000 HPK */}
       <div className="pt-4 pb-2">
         <div className="relative">
-          {/* Batang Background Utama */}
-          <div className="w-full h-3 bg-muted/70 rounded-full overflow-hidden flex">
-            <div className="w-[27%] bg-pink-200 dark:bg-pink-900/40 border-r border-white/50" title="Fase 1: Kehamilan (270 Hari)" />
-            <div className="w-[3%] bg-amber-200 dark:bg-amber-900/40 border-r border-white/50" title="Fase 2: Neonatus (28 Hari)" />
-            <div className="w-[70%] bg-sky-200 dark:bg-sky-900/40" title="Fase 3: Baduta (702 Hari)" />
+          {/* Batang Background Utama dengan Segmen Fase */}
+          <div className="w-full h-3 bg-muted rounded-full overflow-hidden flex border border-line/50">
+            <div className="w-[27%] bg-pink-500/20 border-r border-line" title="Fase 1: Kehamilan (Hari 1-270)" />
+            <div className="w-[3%] bg-amber-500/25 border-r border-line" title="Fase 2: Neonatus (Hari 271-298)" />
+            <div className="w-[70%] bg-sky-500/20" title="Fase 3: Baduta (Hari 299-1000)" />
           </div>
 
-          {/* Bar Progress Pengisian Real-time */}
+          {/* Bar Progress Pengisian Real-time dengan Efek Pelangi (Pink -> Amber -> Sky) */}
           <div
-            className="absolute top-0 left-0 h-3 bg-gradient-to-r from-pink-500 via-amber-500 to-sky-600 rounded-full transition-all duration-500 opacity-80"
+            className="absolute top-0 left-0 h-3 rounded-full transition-all duration-500 bg-gradient-to-r from-pink-500 via-amber-400 to-sky-500 shadow-xs"
             style={{ width: `${progressPercent}%` }}
           />
 
-          {/* Pin Posisi Saat Ini */}
-          <div
-            className="absolute -top-3 transform -translate-x-1/2 flex flex-col items-center cursor-pointer group"
-            style={{ left: `${progressPercent}%` }}
-          >
-            <div className="w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border-2 border-sky-600 shadow-md flex items-center justify-center animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-sky-600" />
+          {/* Pin Posisi Saat Ini (ditampilkan jika belum mendekati akhir 990 hari untuk cegah tabrakan) */}
+          {!isGraduated && currentHpkDay < 990 && (
+            <div
+              className="absolute -top-2.5 transform -translate-x-1/2 flex flex-col items-center pointer-events-none"
+              style={{ left: `${Math.min(94, Math.max(6, progressPercent))}%` }}
+            >
+              <div className="w-4 h-4 rounded-full bg-card border-2 border-sky-600 shadow-xs flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />
+              </div>
+              <div className="mt-1 px-2 py-0.5 rounded text-xs font-semibold bg-card border border-line text-heading shadow-xs whitespace-nowrap">
+                Hari ke-{currentHpkDay}
+              </div>
             </div>
-            <div className="mt-1 px-2 py-0.5 rounded-md text-xs font-bold bg-sky-600 text-white shadow-xs whitespace-nowrap">
-              Hari ke-{currentHpkDay}
-            </div>
-          </div>
+          )}
 
-          {/* Pin Kelulusan Hari ke-1000 */}
-          <div className="absolute -top-3 right-0 transform translate-x-1/2 flex flex-col items-center">
-            <div className={`w-5 h-5 rounded-full border-2 shadow-md flex items-center justify-center ${isGraduated ? "bg-emerald-600 border-emerald-700 text-white" : "bg-card border-line text-caption"}`}>
-              <GraduationCap className="w-3 h-3" />
+          {/* Pin Milestone Hari ke-1.000 */}
+          <div className="absolute -top-2.5 right-0 transform translate-x-1/2 flex flex-col items-center">
+            <div className={`w-4 h-4 rounded-full border-2 shadow-xs flex items-center justify-center ${
+              isGraduated ? "bg-emerald-600 border-emerald-600 text-white" : "bg-card border-line text-caption"
+            }`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
             </div>
-            <span className="mt-1 text-xs font-bold text-caption">1.000 HPK</span>
+            <span className={`mt-1 text-xs font-semibold whitespace-nowrap ${
+              isGraduated ? "text-emerald-600 dark:text-emerald-400" : "text-caption"
+            }`}>
+              {isGraduated ? "Lulus 1.000 HPK" : "1.000 HPK"}
+            </span>
           </div>
         </div>
 
         {/* Label Batas Milestone Bawah */}
-        <div className="flex justify-between text-xs text-caption mt-6 px-1">
+        <div className="flex justify-between text-xs font-semibold text-body dark:text-slate-200 mt-7 px-1">
           <span>Hari 1 (Konsepsi)</span>
           <span className="text-center">Hari 270 (Lahir)</span>
           <span className="text-center">Hari 298 (Neonatus)</span>
@@ -204,11 +252,10 @@ const HpkTimelineStepper = ({
         </div>
       </div>
 
-      {/* ─── Titik Kunjungan Interaktif (Clickable Dots) ─── */}
+      {/* Titik Kunjungan Interaktif */}
       <div className="pt-2">
-        <p className="text-xs font-semibold text-caption mb-2.5 flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5 text-sky-500" />
-          <span>Klik salah satu titik kunjungan di bawah untuk melihat rincian klinis dan status pertumbuhan:</span>
+        <p className="text-xs font-medium text-caption mb-2">
+          Pilih riwayat pemeriksaan untuk melihat rincian klinis:
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -217,7 +264,7 @@ const HpkTimelineStepper = ({
             <button
               key={`f1-${v.id || idx}`}
               onClick={() => handleDotClick(v, "Fase 1: Kehamilan")}
-              className={`btn-interactive px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 cursor-pointer shadow-2xs ${getVisitRiskTone(v)}`}
+              className={`btn-interactive px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 cursor-pointer shadow-xs ${getVisitRiskTone(v)}`}
               title={`Kunjungan Kehamilan Trimester ${v.trimester || "-"} (${v.visit_date})`}
             >
               <span>ANC {v.trimester ? `T${v.trimester}` : `#${idx + 1}`}</span>
@@ -230,12 +277,12 @@ const HpkTimelineStepper = ({
             <button
               key={`f3-${v.id || idx}`}
               onClick={() => handleDotClick(v, "Fase 3: Baduta")}
-              className={`btn-interactive px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 cursor-pointer shadow-2xs ${getVisitRiskTone(v)}`}
+              className={`btn-interactive px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 cursor-pointer shadow-xs ${getVisitRiskTone(v)}`}
               title={`Posyandu Usia ${v.age_in_months ?? idx} Bln (${v.visit_date})`}
             >
               <span>{v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : `K${idx + 1}`}</span>
               {v.weight_trend_kms && (
-                <span className={`px-1 py-0.2 rounded text-xs font-bold ${v.weight_trend_kms === "N" ? "bg-white/20 text-white" : "bg-white text-rose-700"}`}>
+                <span className={`px-1 py-0.2 rounded text-xs font-bold ${v.weight_trend_kms === "N" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                   {v.weight_trend_kms}
                 </span>
               )}
@@ -248,7 +295,7 @@ const HpkTimelineStepper = ({
         </div>
       </div>
 
-      {/* ─── Modal Popup Detail Kunjungan yang Diklik ─── */}
+      {/* Modal Popup Detail Kunjungan yang Diklik */}
       {activeVisitModal && (
         <div className="p-4 bg-subtle border border-sky-300 dark:border-sky-800 rounded-xl space-y-3 animate-slide-up">
           <div className="flex items-center justify-between gap-2 border-b border-line-light pb-2">
@@ -290,7 +337,7 @@ const HpkTimelineStepper = ({
             {activeVisitModal.z_score_pbu !== null && activeVisitModal.z_score_pbu !== undefined && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
                 <span className="text-xs text-caption block">Z-Score PB/U (Stunting)</span>
-                <span className={`font-bold ${activeVisitModal.z_score_pbu < -2.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                <span className={`font-bold ${activeVisitModal.z_score_pbu < -2.0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                   {activeVisitModal.z_score_pbu.toFixed(2)} SD ({activeVisitModal.pbu_category || (activeVisitModal.z_score_pbu < -2.0 ? "Stunting" : "Normal")})
                 </span>
               </div>
@@ -298,7 +345,7 @@ const HpkTimelineStepper = ({
             {activeVisitModal.lila_cm && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
                 <span className="text-xs text-caption block">LiLA Ibu</span>
-                <span className={`font-bold ${activeVisitModal.lila_cm < 23.5 ? "text-rose-600" : "text-heading"}`}>
+                <span className={`font-bold ${activeVisitModal.lila_cm < 23.5 ? "text-red-600" : "text-heading"}`}>
                   {activeVisitModal.lila_cm} cm {activeVisitModal.lila_cm < 23.5 ? "(KEK)" : ""}
                 </span>
               </div>
@@ -320,7 +367,7 @@ const HpkTimelineStepper = ({
             {activeVisitModal.weight_trend_kms && (
               <div className="p-2.5 bg-card border border-line rounded-lg">
                 <span className="text-xs text-caption block">Tren KMS</span>
-                <span className={`font-bold ${activeVisitModal.weight_trend_kms === "N" ? "text-emerald-600" : "text-rose-600"}`}>
+                <span className={`font-bold ${activeVisitModal.weight_trend_kms === "N" ? "text-emerald-600" : "text-red-600"}`}>
                   {activeVisitModal.weight_trend_kms === "N" ? "Naik (N)" : "Tidak Naik (T)"}
                 </span>
               </div>
@@ -333,4 +380,3 @@ const HpkTimelineStepper = ({
 };
 
 export default HpkTimelineStepper;
-

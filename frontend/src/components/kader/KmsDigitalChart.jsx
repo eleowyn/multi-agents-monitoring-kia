@@ -17,12 +17,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
-  Layers,
 } from "lucide-react";
 
 /**
  * KmsDigitalChart: Grafik Pertumbuhan Pita Warna Standar KMS Kemenkes RI
- * Mendukung 3 zona pita warna:
+ * Mendukung 3 zona pita warna standar:
  * - Hijau (Normal / Gizi Baik): Z-Score >= -2 SD
  * - Kuning (Garis Waspada / Gizi Kurang / Pendek): -3 SD s.d. -2 SD
  * - Merah (Bawah Garis Merah / BGM / Stunting Berat): < -3 SD
@@ -37,7 +36,7 @@ const KmsDigitalChart = ({
   // Tab pilihan metrik
   const [metricTab, setMetricTab] = useState(isChild ? "z_pbu" : "lila");
 
-  // Sinkronkan tab metrik otomatis saat tipe pasien berganti (Anak -> Ibu Hamil / sebaliknya)
+  // Sinkronkan tab metrik otomatis saat tipe pasien berganti
   useEffect(() => {
     setMetricTab(isChild ? "z_pbu" : "lila");
   }, [isChild, patient?.id]);
@@ -54,7 +53,9 @@ const KmsDigitalChart = ({
     if (!visits || visits.length === 0) return [];
 
     return visits.map((v, idx) => {
-      const ageLabel = !isChild ? (v.gestational_age_weeks ? `${v.gestational_age_weeks} Mgg` : (v.trimester ? `Tri ${v.trimester}` : formatDate(v.visit_date))) : (v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : formatDate(v.visit_date));
+      const ageLabel = !isChild
+        ? (v.gestational_age_weeks ? `${v.gestational_age_weeks} Mgg` : (v.trimester ? `Tri ${v.trimester}` : formatDate(v.visit_date)))
+        : (v.age_in_months !== null && v.age_in_months !== undefined ? `${v.age_in_months} Bln` : formatDate(v.visit_date));
       const prevVisit = idx > 0 ? visits[idx - 1] : null;
 
       // Hitung delta berat badan
@@ -87,20 +88,20 @@ const KmsDigitalChart = ({
         trimester: v.trimester ?? null,
       };
     });
-  }, [visits]);
+  }, [visits, isChild]);
 
   // Konfigurasi visual berdasarkan metrik
   const metricConfig = useMemo(() => {
     if (metricTab === "z_pbu") {
       return {
         key: "z_pbu",
-        title: "Kurva Z-Score Panjang Badan / Umur (PB/U — Deteksi Stunting)",
+        title: "Kurva Z-Score Panjang Badan / Umur (PB/U, Deteksi Stunting)",
         unit: "SD",
         yDomain: [-4, 3],
         zones: [
-          { y1: -2, y2: 3, fill: "#22c55e", opacity: 0.14, label: "Pita Hijau: Normal (Bebas Stunting)" },
-          { y1: -3, y2: -2, fill: "#eab308", opacity: 0.18, label: "Pita Kuning: Waspada / Pendek (Stunting Ringan/Sedang)" },
-          { y1: -4, y2: -3, fill: "#ef4444", opacity: 0.22, label: "Pita Merah BGM: Sangat Pendek (Stunting Berat)" },
+          { y1: -2, y2: 3, fill: "#22c55e", opacity: 0.16, label: "Pita Hijau: Normal (Bebas Stunting)" },
+          { y1: -3, y2: -2, fill: "#eab308", opacity: 0.20, label: "Pita Kuning: Waspada / Pendek" },
+          { y1: -4, y2: -3, fill: "#ef4444", opacity: 0.24, label: "Pita Merah BGM: Sangat Pendek (Stunting Berat)" },
         ],
         thresholds: [
           { y: -2.0, color: "#eab308", label: "Batas Stunting (-2 SD)" },
@@ -131,12 +132,12 @@ const KmsDigitalChart = ({
     if (metricTab === "lila") {
       return {
         key: "lila",
-        title: "Kurva Lingkar Lengan Atas (LiLA Ibu Hamil — Deteksi KEK)",
+        title: "Kurva Lingkar Lengan Atas (LiLA Ibu Hamil, Deteksi KEK)",
         unit: "cm",
         yDomain: [18, 32],
         zones: [
-          { y1: 23.5, y2: 32, fill: "#22c55e", opacity: 0.14, label: "Zona Normal (Bebas KEK)" },
-          { y1: 18, y2: 23.5, fill: "#ef4444", opacity: 0.20, label: "Zona Merah KEK (< 23,5 cm)" },
+          { y1: 23.5, y2: 32, fill: "#22c55e", opacity: 0.16, label: "Zona Normal (Bebas KEK)" },
+          { y1: 18, y2: 23.5, fill: "#ef4444", opacity: 0.22, label: "Zona Merah KEK (< 23,5 cm)" },
         ],
         thresholds: [{ y: 23.5, color: "#ef4444", label: "Batas Ambang KEK (23,5 cm)" }],
       };
@@ -144,12 +145,12 @@ const KmsDigitalChart = ({
     if (metricTab === "hb") {
       return {
         key: "hb",
-        title: "Kurva Kadar Hemoglobin (Hb Ibu Hamil — Deteksi Anemia)",
+        title: "Kurva Kadar Hemoglobin (Hb Ibu Hamil, Deteksi Anemia)",
         unit: "g/dL",
         yDomain: [7, 16],
         zones: [
-          { y1: 11.0, y2: 16, fill: "#22c55e", opacity: 0.14, label: "Zona Normal (Bebas Anemia)" },
-          { y1: 7, y2: 11.0, fill: "#f97316", opacity: 0.20, label: "Zona Anemia (< 11,0 g/dL)" },
+          { y1: 11.0, y2: 16, fill: "#22c55e", opacity: 0.16, label: "Zona Normal (Bebas Anemia)" },
+          { y1: 7, y2: 11.0, fill: "#f97316", opacity: 0.22, label: "Zona Anemia (< 11,0 g/dL)" },
         ],
         thresholds: [{ y: 11.0, color: "#ea580c", label: "Batas Ambang Anemia (11,0 g/dL)" }],
       };
@@ -170,35 +171,30 @@ const KmsDigitalChart = ({
   const totalDelta = activePoints.length > 1 && lastVal !== undefined && firstVal !== undefined ? +(lastVal - firstVal).toFixed(2) : 0;
 
   return (
-    <div className="bg-card rounded-2xl border border-line shadow-card p-5 sm:p-6 space-y-5">
-      {/* ─── Header & Pilihan Metrik ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
-              <Layers className="w-4 h-4" />
-            </span>
-            <h3 className="text-sm sm:text-base font-bold text-heading">
-              {isChild ? "Grafik Pertumbuhan Pita Warna KMS Digital" : "Grafik Pemantauan Kesehatan Ibu Hamil (LiLA & Hb)"}
-            </h3>
-          </div>
-          <p className="text-xs text-caption">
+    <div className="bg-card rounded-xl border border-line shadow-card p-5 sm:p-6 space-y-6">
+      {/* Header & Pilihan Metrik */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
+        <div>
+          <h3 className="text-base sm:text-lg font-bold text-heading">
+            {isChild ? "Grafik Pertumbuhan Pita Warna KMS Digital" : "Grafik Pemantauan Kesehatan Ibu Hamil (LiLA & Hb)"}
+          </h3>
+          <p className="text-xs text-caption mt-0.5">
             {isChild
               ? "Standar Kurva Pertumbuhan WHO Anthro & Pedoman Buku KIA Kemenkes RI"
-              : "Pemantauan Risiko KEK (< 23.5 cm) & Anemia (< 11.0 g/dL) Standar Buku KIA Kemenkes RI"}
+              : "Pemantauan Risiko KEK (< 23,5 cm) & Anemia (< 11,0 g/dL) Standar Buku KIA Kemenkes RI"}
           </p>
         </div>
 
         {/* Tab Pilihan Metrik */}
-        <div className="inline-flex rounded-xl border border-line p-1 bg-subtle self-start sm:self-auto flex-wrap gap-1" role="tablist">
+        <div className="inline-flex rounded-lg border border-line p-1 bg-muted/60 dark:bg-slate-900/60 self-start sm:self-auto flex-wrap gap-1" role="tablist">
           {isChild ? (
             <>
               <button
                 role="tab"
                 aria-selected={metricTab === "z_pbu"}
                 onClick={() => setMetricTab("z_pbu")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "z_pbu" ? "bg-sky-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "z_pbu" ? "bg-sky-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 Pita Z-Score PB/U (Stunting)
@@ -207,8 +203,8 @@ const KmsDigitalChart = ({
                 role="tab"
                 aria-selected={metricTab === "weight"}
                 onClick={() => setMetricTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "weight" ? "bg-sky-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "weight" ? "bg-sky-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 KMS Berat Badan (N/T)
@@ -217,8 +213,8 @@ const KmsDigitalChart = ({
                 role="tab"
                 aria-selected={metricTab === "length"}
                 onClick={() => setMetricTab("length")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "length" ? "bg-sky-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "length" ? "bg-sky-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 Panjang Badan (cm)
@@ -230,8 +226,8 @@ const KmsDigitalChart = ({
                 role="tab"
                 aria-selected={metricTab === "lila"}
                 onClick={() => setMetricTab("lila")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "lila" ? "bg-pink-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "lila" ? "bg-pink-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 LiLA Ibu (Batas KEK)
@@ -240,8 +236,8 @@ const KmsDigitalChart = ({
                 role="tab"
                 aria-selected={metricTab === "hb"}
                 onClick={() => setMetricTab("hb")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "hb" ? "bg-pink-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "hb" ? "bg-pink-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 Hemoglobin (Anemia)
@@ -250,8 +246,8 @@ const KmsDigitalChart = ({
                 role="tab"
                 aria-selected={metricTab === "maternal_weight"}
                 onClick={() => setMetricTab("maternal_weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  metricTab === "maternal_weight" ? "bg-pink-600 text-white shadow-xs" : "text-caption hover:text-heading"
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                  metricTab === "maternal_weight" ? "bg-pink-600 text-white shadow-xs" : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
                 }`}
               >
                 Kenaikan BB Ibu (kg)
@@ -261,21 +257,21 @@ const KmsDigitalChart = ({
         </div>
       </div>
 
-      {/* ─── Baris Ringkasan Nilai Terakhir & Legenda Pita KMS ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-subtle p-3 rounded-xl border border-line">
+      {/* Baris Ringkasan Nilai Terakhir & Legenda Pita KMS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/40 dark:bg-slate-900/60 p-3.5 rounded-xl border border-line">
         <div className="flex items-center gap-3">
-          <span className="text-caption">Nilai Terakhir:</span>
-          <span className="text-base font-bold text-heading tabular-nums">
+          <span className="text-xs text-body dark:text-slate-300 font-semibold">Nilai Terakhir:</span>
+          <span className="text-base sm:text-lg font-bold text-heading tabular-nums">
             {lastVal !== undefined ? `${lastVal} ${metricConfig.unit}` : "-"}
           </span>
           {activePoints.length > 1 && (
             <span
-              className={`inline-flex items-center gap-0.5 font-bold tabular-nums ${
+              className={`inline-flex items-center gap-1 text-xs font-semibold tabular-nums ${
                 totalDelta > 0
                   ? "text-emerald-600 dark:text-emerald-400"
                   : totalDelta < 0
                   ? "text-rose-600 dark:text-rose-400"
-                  : "text-dim"
+                  : "text-caption"
               }`}
             >
               {totalDelta > 0 ? (
@@ -298,27 +294,27 @@ const KmsDigitalChart = ({
           )}
         </div>
 
-        {/* Legenda Pita Warna Resmi */}
+        {/* Legenda Pita Warna Standar KMS */}
         {metricConfig.zones.length > 0 && (
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <span className="text-caption font-semibold">Legenda Pita:</span>
+            <span className="text-caption font-medium">Legenda Pita:</span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-emerald-500/30 border border-emerald-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
               Hijau (Normal)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-yellow-400/40 border border-yellow-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
               Kuning (Waspada)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
               Merah (BGM / Risiko)
             </span>
           </div>
         )}
       </div>
 
-      {/* ─── Area Render Grafik Recharts ─── */}
+      {/* Area Render Grafik Recharts dengan Garis Efek Pelangi */}
       <div className="h-72 w-full text-caption">
         {loading ? (
           <div className="h-full w-full bg-muted/40 rounded-xl animate-pulse" />
@@ -330,16 +326,25 @@ const KmsDigitalChart = ({
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 12, right: 20, left: -10, bottom: 0 }}>
+              {/* Definisikan Gradient Garis Pelangi (Rainbow Line) */}
+              <defs>
+                <linearGradient id="kmsRainbowCurve" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#ec4899" />
+                  <stop offset="50%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#0284c7" />
+                </linearGradient>
+              </defs>
+
               <CartesianGrid stroke="currentColor" strokeOpacity={0.12} vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "currentColor", fontSize: 11 }}
+                tick={{ fill: "currentColor", fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 domain={metricConfig.yDomain}
-                tick={{ fill: "currentColor", fontSize: 11 }}
+                tick={{ fill: "currentColor", fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
                 unit={metricConfig.unit === "SD" ? " SD" : ""}
@@ -356,7 +361,7 @@ const KmsDigitalChart = ({
                       </p>
                       <p className="text-body flex items-center justify-between gap-4">
                         <span className="text-caption">Hasil Ukur:</span>
-                        <strong className="text-sky-600 dark:text-sky-400 tabular-nums">
+                        <strong className="text-sky-600 dark:text-sky-400 tabular-nums font-semibold">
                           {val} {metricConfig.unit}
                         </strong>
                       </p>
@@ -405,21 +410,21 @@ const KmsDigitalChart = ({
                   label={{
                     value: t.label,
                     fill: t.color,
-                    fontSize: 10,
+                    fontSize: 11,
                     position: "insideTopRight",
                   }}
                 />
               ))}
 
-              {/* Garis Kurva Pertumbuhan Pasien */}
+              {/* Garis Kurva Pertumbuhan Pasien dengan Efek Pelangi */}
               <Line
                 type="monotone"
                 dataKey={metricConfig.key}
                 name={metricConfig.title}
-                stroke="#0284c7"
-                strokeWidth={2.5}
-                dot={{ r: 4, strokeWidth: 2, fill: "#ffffff", stroke: "#0284c7" }}
-                activeDot={{ r: 6, fill: "#0284c7" }}
+                stroke="url(#kmsRainbowCurve)"
+                strokeWidth={3}
+                dot={{ r: 4.5, strokeWidth: 2, fill: "#ffffff", stroke: "#0284c7" }}
+                activeDot={{ r: 6.5, fill: "#0284c7", stroke: "#ffffff", strokeWidth: 2 }}
                 animationDuration={600}
               />
             </ComposedChart>
@@ -427,32 +432,32 @@ const KmsDigitalChart = ({
         )}
       </div>
 
-      {/* ─── Tabel Kohort Riwayat Penimbangan Bulanan ─── */}
+      {/* Tabel Kohort Riwayat Penimbangan Bulanan */}
       <div className="pt-2">
-        <h4 className="text-xs font-bold text-heading uppercase tracking-wide mb-2 flex items-center gap-1.5">
-          <span>Rekapitulasi Kohort Penimbangan Posyandu</span>
+        <h4 className="text-sm sm:text-base font-bold text-heading mb-2.5">
+          Rekapitulasi Kohort Penimbangan Posyandu
         </h4>
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-xs text-left">
-            <thead className="bg-subtle text-caption border-b border-line text-xs">
+            <thead className="bg-muted/70 dark:bg-slate-800 text-heading font-bold border-b border-line text-xs">
               <tr>
-                <th className="p-2.5">Tanggal</th>
-                <th className="p-2.5">{isChild ? "Usia" : "Trimester"}</th>
-                <th className="p-2.5">Berat</th>
-                <th className="p-2.5">{isChild ? "Panjang" : "LiLA"}</th>
-                {isChild && <th className="p-2.5">Z-Score PB/U</th>}
-                <th className="p-2.5 text-center">Status KMS</th>
+                <th className="p-3">Tanggal</th>
+                <th className="p-3">{isChild ? "Usia" : "Trimester"}</th>
+                <th className="p-3">Berat</th>
+                <th className="p-3">{isChild ? "Panjang" : "LiLA"}</th>
+                {isChild && <th className="p-3">Z-Score PB/U</th>}
+                <th className="p-3 text-center">Status KMS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {chartData.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-muted/30 transition-colors">
-                  <td className="p-2.5 font-medium text-heading">{row.date}</td>
-                  <td className="p-2.5 text-body">{isChild ? `${row.age_in_months ?? "-"} Bulan` : `Trimester ${row.trimester ?? "-"}`}</td>
-                  <td className="p-2.5 text-body font-semibold">{row.weight ? `${row.weight} kg` : "-"}</td>
-                  <td className="p-2.5 text-body">{isChild ? (row.length ? `${row.length} cm` : "-") : (row.lila ? `${row.lila} cm` : "-")}</td>
+                  <td className="p-3 font-medium text-heading">{row.date}</td>
+                  <td className="p-3 text-body dark:text-slate-200 font-medium">{isChild ? `${row.age_in_months ?? "-"} Bulan` : `Trimester ${row.trimester ?? "-"}`}</td>
+                  <td className="p-3 text-body font-semibold">{row.weight ? `${row.weight} kg` : "-"}</td>
+                  <td className="p-3 text-body dark:text-slate-200 font-medium">{isChild ? (row.length ? `${row.length} cm` : "-") : (row.lila ? `${row.lila} cm` : "-")}</td>
                   {isChild && (
-                    <td className="p-2.5 font-semibold">
+                    <td className="p-3 font-semibold">
                       {row.z_pbu !== null ? (
                         <span className={row.z_pbu < -2.0 ? "text-rose-600 font-bold" : "text-emerald-600"}>
                           {row.z_pbu} SD {row.z_pbu < -2.0 ? "(Stunting)" : "(Normal)"}
@@ -460,9 +465,9 @@ const KmsDigitalChart = ({
                       ) : "-"}
                     </td>
                   )}
-                  <td className="p-2.5 text-center">
+                  <td className="p-3 text-center">
                     {row.kms_code ? (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${row.kms_code === "N" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${row.kms_code === "N" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"}`}>
                         {row.kms_code === "N" ? "N (Naik)" : "T (Tidak Naik)"}
                       </span>
                     ) : (
@@ -480,4 +485,3 @@ const KmsDigitalChart = ({
 };
 
 export default KmsDigitalChart;
-

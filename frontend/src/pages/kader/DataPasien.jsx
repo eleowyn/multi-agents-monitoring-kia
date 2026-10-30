@@ -51,7 +51,7 @@ const SkeletonCard = () => (
 );
 
 const PHASE_BADGE = {
-  IBU_HAMIL: { label: "Fase 1: Ibu Hamil", cls: "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50" },
+  IBU_HAMIL: { label: "Fase 1: Ibu Hamil", cls: "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800" },
   BAYI_BARU_LAHIR: { label: "Fase 2: Bayi Baru Lahir (0-28 Hr)", cls: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50" },
   BADUTA: { label: "Fase 3: Baduta (1-24 Bln)", cls: "bg-accent-sky text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/50" },
 };
@@ -160,7 +160,7 @@ const DataPasien = () => {
   const filterButtons = [
     { value: "", label: "Semua", activeClass: "bg-sky-600 text-white border-sky-600" },
     { value: "MOTHER", label: "Ibu Hamil", activeClass: "bg-pink-600 text-white border-pink-600" },
-    { value: "CHILD", label: "Anak / Baduta (1-24 Bln)", activeClass: "bg-blue-600 text-white border-blue-600" },
+    { value: "CHILD", label: "Anak / Baduta (1-24 Bln)", activeClass: "bg-sky-600 text-white border-sky-600" },
   ];
 
   // Data untuk grafik di dalam modal longitudinal
@@ -232,8 +232,8 @@ const DataPasien = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="pb-3 border-b border-line-light">
-        <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">Direktori & Monitoring Longitudinal 1.000 HPK</h1>
-        <p className="text-xs sm:text-sm text-caption mt-1">Pelacakan rekam medis berkelanjutan ibu hamil, bayi baru lahir, dan baduta (1-24 bulan) di Posyandu</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">Direktori & Monitoring 1.000 HPK</h1>
+        <p className="text-sm text-caption mt-1">Pelacakan rekam medis berkelanjutan ibu hamil, bayi baru lahir, dan baduta (1-24 bulan) di Posyandu</p>
       </div>
 
       {error && (
@@ -328,8 +328,8 @@ const DataPasien = () => {
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${p.patient_type === "MOTHER"
-                        ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
-                        : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
+                        ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                        : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
                         }`}>
                         {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
                       </span>
@@ -406,8 +406,8 @@ const DataPasien = () => {
                   <p className="text-xs text-caption font-mono mt-0.5">NIK: {p.nik}</p>
                 </div>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${p.patient_type === "MOTHER"
-                  ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
-                  : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
+                  ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                  : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
                   }`}>
                   {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
                 </span>
@@ -580,7 +580,7 @@ const DataPasien = () => {
               <div className="p-4 bg-accent-sky border border-sky-200 dark:border-sky-800/50 rounded-xl space-y-2">
                 <p className="font-bold text-xs sm:text-sm text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
                   <Baby className="w-4 h-4 text-sky-600" />
-                  <span>Rantai Kelanjutan 1.000 HPK — Anak Kandung Terhubung ({selectedLongitudinal.children.length})</span>
+                  <span>Rantai Kelanjutan 1.000 HPK ,  Anak Kandung Terhubung ({selectedLongitudinal.children.length})</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {selectedLongitudinal.children.map((ch) => (

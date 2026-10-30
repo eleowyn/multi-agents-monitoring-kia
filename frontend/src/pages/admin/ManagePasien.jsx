@@ -198,16 +198,16 @@ const ManagePasien = () => {
     "w-full h-11 px-3.5 bg-subtle border border-line rounded-xl text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200";
 
   const SELECT_CLASS =
-    "w-full h-11 pl-3.5 pr-10 bg-subtle border border-line rounded-xl text-sm text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200 appearance-none cursor-pointer";
+    "w-full h-11 pl-3.5 pr-11 bg-subtle border border-line rounded-xl text-sm text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 focus:bg-card transition-all duration-200 has-custom-chevron appearance-none cursor-pointer";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
             Kelola Data Pasien (Admin Puskesmas)
           </h1>
-          <p className="text-xs text-caption mt-0.5">
+          <p className="text-sm text-caption mt-1">
             Manajemen direktori pasien, relasi Ibu-Anak lintas fase, dan progres monitoring 1.000 HPK
           </p>
         </div>
@@ -236,7 +236,7 @@ const ManagePasien = () => {
           <select
             value={villageFilter}
             onChange={(e) => setVillageFilter(e.target.value)}
-            className="w-full h-10 appearance-none pl-3.5 pr-10 bg-card border border-line rounded-xl text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
+            className="w-full h-10 has-custom-chevron appearance-none pl-3.5 pr-11 bg-card border border-line rounded-xl text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all cursor-pointer"
           >
             <option value="">Semua Desa</option>
             <option value="Airmadidi Atas">Airmadidi Atas</option>
@@ -249,7 +249,7 @@ const ManagePasien = () => {
             <option value="Sampiri">Sampiri</option>
             <option value="Tanggari">Tanggari</option>
           </select>
-          <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
@@ -302,8 +302,8 @@ const ManagePasien = () => {
                   />
                 </th>
                 <th className="p-3.5">ID</th>
-                <th className="p-3.5">Nama &amp; NIK</th>
-                <th className="p-3.5">Tipe &amp; Relasi Ibu-Anak</th>
+                <th className="p-3.5">Nama & NIK</th>
+                <th className="p-3.5">Tipe & Relasi Ibu-Anak</th>
                 <th className="p-3.5">Progres 1.000 HPK</th>
                 <th className="p-3.5">Tanggal Lahir</th>
                 <th className="p-3.5">Desa / Posyandu</th>
@@ -362,8 +362,8 @@ const ManagePasien = () => {
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                             p.patient_type === "MOTHER"
-                              ? "bg-accent-pink text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50"
-                              : "bg-accent-blue text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
+                              ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                              : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
                           }`}
                         >
                           {p.patient_type === "MOTHER"
@@ -523,7 +523,7 @@ const ManagePasien = () => {
                         <option value="L">Laki-laki (L)</option>
                         <option value="P">Perempuan (P)</option>
                       </select>
-                      <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 )}
@@ -547,7 +547,7 @@ const ManagePasien = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
               )}
@@ -573,7 +573,7 @@ const ManagePasien = () => {
                       <option value="Sampiri">Sampiri</option>
                       <option value="Tanggari">Tanggari</option>
                     </select>
-                    <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
                 <div>
@@ -650,7 +650,7 @@ const ManagePasien = () => {
                       <option value="CHILD">Anak / Bayi</option>
                       <option value="MOTHER">Ibu Hamil</option>
                     </select>
-                    <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
                 <div>
@@ -711,7 +711,7 @@ const ManagePasien = () => {
                         <option value="L">Laki-laki (L)</option>
                         <option value="P">Perempuan (P)</option>
                       </select>
-                      <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -731,7 +731,7 @@ const ManagePasien = () => {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -758,7 +758,7 @@ const ManagePasien = () => {
                       <option value="Sampiri">Sampiri</option>
                       <option value="Tanggari">Tanggari</option>
                     </select>
-                    <ChevronDown className="w-4 h-4 text-dim absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-dim absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
                 <div>

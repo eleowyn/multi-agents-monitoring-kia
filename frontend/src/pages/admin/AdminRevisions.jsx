@@ -176,19 +176,22 @@ const AdminRevisions = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-line-light">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line-light">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
               Persetujuan Revisi Data Kunjungan
             </h1>
             {pendingCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 {pendingCount} Menunggu
               </span>
             )}
           </div>
+          <p className="text-sm text-caption mt-1">
+            Verifikasi dan persetujuan perubahan atau permohonan pembatalan rekam kunjungan posyandu
+          </p>
         </div>
         <button
           onClick={fetchRevisions}
@@ -202,44 +205,28 @@ const AdminRevisions = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Total Pengajuan</p>
-            <p className="text-2xl font-bold text-heading mt-1">{revisions.length}</p>
-          </div>
-          <div className="p-3 bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 rounded-xl">
-            <FileEdit className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Total Pengajuan</p>
+          <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">{revisions.length}</p>
+          <p className="text-xs text-caption">Semua posyandu</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Menunggu Validasi</p>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">{pendingCount}</p>
-          </div>
-          <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
-            <Clock className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Menunggu Validasi</p>
+          <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">{pendingCount}</p>
+          <p className="text-xs text-caption">Perlu aksi admin</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Disetujui Admin</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{approvedCount}</p>
-          </div>
-          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Disetujui Admin</p>
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{approvedCount}</p>
+          <p className="text-xs text-caption">Re-analisis selesai</p>
         </div>
 
-        <div className="bg-card p-4 rounded-2xl border border-line shadow-card flex items-center justify-between">
-          <div>
-            <p className="text-xs text-caption font-medium">Ditolak</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">{rejectedCount}</p>
-          </div>
-          <div className="p-3 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-xl">
-            <XCircle className="w-5 h-5" />
-          </div>
+        <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">Ditolak</p>
+          <p className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">{rejectedCount}</p>
+          <p className="text-xs text-caption">Data asal dipertahankan</p>
         </div>
       </div>
 

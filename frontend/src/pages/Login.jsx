@@ -67,7 +67,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-page">
-      {/* ——— LEFT: Branding Panel (desktop only) ——— */}
+      {/* , , ,  LEFT: Branding Panel (desktop only) , , ,  */}
       <div
         className="hidden lg:flex lg:w-[48%] xl:w-[45%] relative flex-col justify-between overflow-hidden"
         style={{
@@ -144,7 +144,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* ——— RIGHT: Login Form ——— */}
+      {/* , , ,  RIGHT: Login Form , , ,  */}
       <div className="flex-1 flex items-center justify-center p-5 sm:p-8 relative">
         {/* Theme toggle (floating) */}
         <button

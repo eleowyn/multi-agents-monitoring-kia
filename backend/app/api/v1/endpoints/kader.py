@@ -31,6 +31,21 @@ class PriorityPatientItem(BaseModel):
     posyandu_name: Optional[str] = None
 
 
+class PhaseBreakdown(BaseModel):
+    mothers: int
+    newborns: int
+    toddlers: int
+
+
+class MonthlyTrendItem(BaseModel):
+    month: str
+    label: str
+    visits: int
+    stunting: int
+    kek: int
+    anemia: int
+
+
 class KaderDashboardSummary(BaseModel):
     posyandu_name: str
     village_name: str
@@ -40,6 +55,8 @@ class KaderDashboardSummary(BaseModel):
     monthly_visits: int
     pending_validation: int
     high_risk_count: int
+    phase_breakdown: Optional[PhaseBreakdown] = None
+    monthly_trend: Optional[List[MonthlyTrendItem]] = []
     priority_patients: List[PriorityPatientItem]
 
 
@@ -63,6 +80,26 @@ def get_kader_dashboard_summary(
     total_patients = patient_q.count()
     total_mothers = patient_q.filter(Patient.patient_type == "MOTHER").count()
     total_children = patient_q.filter(Patient.patient_type == "CHILD").count()
+
+    # Hitung distribusi 3 fase
+    today = date.today()
+    newborns_count = 0
+    toddlers_count = 0
+    for child in patient_q.filter(Patient.patient_type == "CHILD").all():
+        if child.birth_date:
+            age_days = (today - child.birth_date).days
+            if age_days <= 28:
+                newborns_count += 1
+            else:
+                toddlers_count += 1
+        else:
+            toddlers_count += 1
+
+    phase_data = PhaseBreakdown(
+        mothers=total_mothers,
+        newborns=newborns_count,
+        toddlers=toddlers_count
+    )
 
     # Kunjungan bulan berjalan
     now = datetime.now()
@@ -88,6 +125,51 @@ def get_kader_dashboard_summary(
 
     pending_validation = report_q.filter(Report.status == ReportStatus.DRAFT).count()
     high_risk_count = report_q.filter(Report.overall_status == "RISIKO_TINGGI").count()
+
+    # Tren bulanan (6 bulan terakhir) untuk posyandu kader
+    BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+    months = []
+    y, m = today.year, today.month
+    for _ in range(6):
+        months.insert(0, (y, m))
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+
+    buckets = {ym: {"stunting": set(), "kek": set(), "anemia": set(), "visits": 0} for ym in months}
+
+    for v in visit_q.all():
+        if v.visit_date:
+            v_key = (v.visit_date.year, v.visit_date.month)
+            if v_key in buckets:
+                buckets[v_key]["visits"] += 1
+
+    for r in report_q.all():
+        if not r.visit or not r.visit.visit_date:
+            continue
+        key = (r.visit.visit_date.year, r.visit.visit_date.month)
+        if key not in buckets:
+            continue
+        for f in (r.risk_flags or []):
+            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
+            if "STUNTING" in f_name:
+                buckets[key]["stunting"].add(r.patient_id)
+            if "KEK" in f_name:
+                buckets[key]["kek"].add(r.patient_id)
+            if "ANEMIA" in f_name:
+                buckets[key]["anemia"].add(r.patient_id)
+
+    monthly_trend = [
+        MonthlyTrendItem(
+            month=f"{yy}-{mm:02d}",
+            label=f"{BULAN_ID[mm - 1]} {str(yy)[2:]}",
+            visits=buckets[(yy, mm)]["visits"],
+            stunting=len(buckets[(yy, mm)]["stunting"]),
+            kek=len(buckets[(yy, mm)]["kek"]),
+            anemia=len(buckets[(yy, mm)]["anemia"]),
+        )
+        for (yy, mm) in months
+    ]
 
     # Daftar radar pasien prioritas berisiko tinggi / perlu perhatian (maksimal 8 terbaru)
     priority_reports = (
@@ -146,5 +228,7 @@ def get_kader_dashboard_summary(
         monthly_visits=monthly_visits,
         pending_validation=pending_validation,
         high_risk_count=high_risk_count,
+        phase_breakdown=phase_data,
+        monthly_trend=monthly_trend,
         priority_patients=priority_items,
     )

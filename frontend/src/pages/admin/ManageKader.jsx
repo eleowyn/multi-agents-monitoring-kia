@@ -168,9 +168,12 @@ const ManageKader = () => {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line-light">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
             Kelola Kader Posyandu
           </h1>
+          <p className="text-sm text-caption mt-1">
+            Manajemen akun, wilayah tugas posyandu, dan status operasional kader
+          </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
