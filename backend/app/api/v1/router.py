@@ -1,9 +1,10 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, patients, visits, reports, admin, revisions, kader
+from app.api.v1.endpoints import auth, patients, visits, reports, admin, revisions, kader, doctor
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Autentikasi"])
+api_router.include_router(doctor.router, prefix="/doctor", tags=["Portal Dokter Puskesmas"])
 api_router.include_router(kader.router, prefix="/kader", tags=["Dashboard Kader"])
 api_router.include_router(patients.router, prefix="/patients", tags=["Data Pasien"])
 api_router.include_router(visits.router, prefix="/visits", tags=["Kunjungan & Analisis AI"])

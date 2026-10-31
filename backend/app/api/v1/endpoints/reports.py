@@ -640,3 +640,45 @@ def bulk_delete_reports(
     deleted_count = db.query(Report).filter(Report.id.in_(req.ids)).delete(synchronize_session=False)
     db.commit()
     return {"deleted_count": deleted_count, "message": f"{deleted_count} laporan berhasil dihapus."}
+
+
+from pydantic import BaseModel, Field
+
+class ReportRatingRequest(BaseModel):
+    rating: int = Field(..., ge=1, le=5, description="Skala penilaian kepuasan kader (1 s.d. 5)")
+    feedback_notes: Optional[str] = Field(default=None, description="Catatan ulasan kader")
+
+
+@router.post("/{report_id}/rate")
+def rate_report_by_kader(
+    report_id: int,
+    rate_req: ReportRatingRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Menyimpan penilaian rating 1-5 bintang dari kader terhadap hasil analisis AI.
+    Rating 4-5 disimpan sebagai few-shot memory (exemplar), rating 1-2 di-flag ke Dokter.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Laporan tidak ditemukan.")
+
+    final_json = dict(report.final_report_json or {})
+    final_json["kader_rating"] = rate_req.rating
+    final_json["kader_feedback_notes"] = rate_req.feedback_notes
+    final_json["is_exemplar"] = (rate_req.rating >= 4)
+    final_json["needs_doctor_review"] = (rate_req.rating <= 2)
+    final_json["rated_at"] = datetime.utcnow().isoformat()
+    final_json["rated_by"] = current_user.full_name
+
+    report.final_report_json = final_json
+    db.commit()
+    db.refresh(report)
+
+    return {
+        "status": "success",
+        "message": f"Rating {rate_req.rating}/5 berhasil disimpan.",
+        "is_exemplar": final_json["is_exemplar"],
+        "needs_doctor_review": final_json["needs_doctor_review"]
+    }

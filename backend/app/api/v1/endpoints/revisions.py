@@ -18,8 +18,8 @@ router = APIRouter()
 
 
 def _require_admin(user: User = Depends(get_current_user)):
-    if user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Akses dibatasi khusus Administrator Puskesmas.")
+    if user.role not in (UserRole.ADMIN, UserRole.DOKTER):
+        raise HTTPException(status_code=403, detail="Akses dibatasi khusus Administrator Puskesmas atau Dokter.")
     return user
 
 

@@ -18,6 +18,7 @@ import ManageKader from "./pages/admin/ManageKader";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminRevisions from "./pages/admin/AdminRevisions";
 import ManageReports from "./pages/admin/ManageReports";
+import DoctorMonitoring from "./pages/doctor/DoctorMonitoring";
 
 const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -45,12 +46,10 @@ const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
     : true;
 
   if (!isAllowed) {
-    return (
-      <Navigate
-        to={user.role === "KADER" ? "/kader/dashboard" : "/admin/dashboard"}
-        replace
-      />
-    );
+    let redirectPath = "/admin/dashboard";
+    if (user.role === "KADER") redirectPath = "/kader/dashboard";
+    if (user.role === "DOKTER") redirectPath = "/doctor/monitoring";
+    return <Navigate to={redirectPath} replace />;
   }
 
   return (
@@ -88,7 +87,7 @@ function App() {
           <Route
             path="/kader/monitoring-kia"
             element={
-              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN", "DOKTER"]}>
                 <MonitoringKia />
               </ProtectedLayout>
             }
@@ -96,7 +95,7 @@ function App() {
           <Route
             path="/admin/monitoring-kia"
             element={
-              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN", "DOKTER"]}>
                 <MonitoringKia />
               </ProtectedLayout>
             }
@@ -112,7 +111,7 @@ function App() {
           <Route
             path="/kader/validasi-laporan/:reportId"
             element={
-              <ProtectedLayout allowedRoles={["KADER", "ADMIN"]}>
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN", "DOKTER"]}>
                 <ValidasiLaporan />
               </ProtectedLayout>
             }
@@ -168,7 +167,7 @@ function App() {
           <Route
             path="/admin/revisions"
             element={
-              <ProtectedLayout allowedRole="ADMIN">
+              <ProtectedLayout allowedRoles={["ADMIN", "DOKTER"]}>
                 <AdminRevisions />
               </ProtectedLayout>
             }
@@ -178,6 +177,14 @@ function App() {
             element={
               <ProtectedLayout allowedRole="ADMIN">
                 <ManageReports />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/doctor/monitoring"
+            element={
+              <ProtectedLayout allowedRoles={["DOKTER", "ADMIN"]}>
+                <DoctorMonitoring />
               </ProtectedLayout>
             }
           />

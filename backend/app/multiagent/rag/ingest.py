@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from pypdf import PdfReader
 from app.core.config import settings
 from app.multiagent.rag.vectorstore import get_or_create_collection
@@ -119,12 +119,83 @@ def chunk_text(text: str, size: int, overlap: int) -> List[str]:
     return [c for c in chunks if c]
 
 
+def chunk_markdown_file(
+    file_path: str,
+    doc_source: str,
+    doc_prefix: str,
+    default_category: str = "GENERAL_KIA"
+) -> List[Dict[str, Any]]:
+    """
+    Memotong berkas Markdown (.md) berbasis struktur heading (#, ##, ###),
+    mempertahankan tabel dan daftar secara utuh, serta memperkirakan nomor halaman.
+    """
+    if not os.path.exists(file_path):
+        return []
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    sections = re.split(r"\n(?=#{1,4}\s+)", content)
+    chunks: List[Dict[str, Any]] = []
+    current_page = 1
+    page_re = re.compile(r"(?:KIA 2024 Book 2\.17\.5\s+(\d+)|-\s*(\d+)\s*-)")
+
+    for sec_idx, sec in enumerate(sections):
+        sec_text = sec.strip()
+        if not sec_text or len(sec_text) < 40:
+            continue
+        p_match = page_re.search(sec_text)
+        if p_match:
+            current_page = int(p_match.group(1) or p_match.group(2))
+
+        first_line = sec_text.split("\n")[0]
+        header = re.sub(r"^[#\s]+", "", first_line).strip()
+        header = re.sub(r"<[^>]+>", "", header).strip()
+        clean_text = re.sub(r"!\[.*?\]\(.*?\)", "", sec_text).strip()
+        if len(clean_text) < 50:
+            continue
+
+        cat = default_category
+        lower_h = (header + " " + clean_text[:200]).lower()
+        if "stunting" in lower_h or "gizi buruk" in lower_h or "gizi kurang" in lower_h:
+            cat = "STUNTING_GIZI"
+        elif "ibu hamil" in lower_h or "trimester" in lower_h or "kek" in lower_h or "anemia" in lower_h or "ttd" in lower_h or "lila" in lower_h:
+            cat = "MATERNAL_KEK_ANEMIA"
+        elif "bayi baru lahir" in lower_h or "bblr" in lower_h or "neonatus" in lower_h or "metode kanguru" in lower_h:
+            cat = "NEONATAL_BBLR"
+        elif "mp-asi" in lower_h or "asi" in lower_h or "baduta" in lower_h or "kms" in lower_h:
+            cat = "BADUTA_GIZI"
+
+        if len(clean_text) <= 1200:
+            chunks.append({
+                "id": f"{doc_prefix}_{sec_idx}_0",
+                "source": doc_source,
+                "section": header or f"Bagian {sec_idx}",
+                "page": current_page,
+                "category": cat,
+                "origin": "MARKDOWN_DOC",
+                "content": clean_text
+            })
+        else:
+            parts = [clean_text[i:i + 1000] for i in range(0, len(clean_text), 850)]
+            for p_idx, part in enumerate(parts):
+                chunks.append({
+                    "id": f"{doc_prefix}_{sec_idx}_{p_idx}",
+                    "source": doc_source,
+                    "section": f"{header} (Bagian {p_idx + 1})",
+                    "page": current_page,
+                    "category": cat,
+                    "origin": "MARKDOWN_DOC",
+                    "content": part
+                })
+    return chunks
+
+
 def _collect_documents() -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
     documents: List[str] = []
     metadatas: List[Dict[str, Any]] = []
     ids: List[str] = []
 
-    # 1. Ringkasan pedoman terkurasi
+    # 1. Ringkasan pedoman terkurasi baku
     for item in DEFAULT_CLINICAL_GUIDELINES:
         documents.append(item["content"])
         metadatas.append({
@@ -136,34 +207,110 @@ def _collect_documents() -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
         })
         ids.append(item["id"])
 
-    # 2. PDF di knowledge_base/ (kecuali file yang dikecualikan, mis. tabel angka WHO)
-    excluded = {f.strip().lower() for f in settings.RAG_EXCLUDED_FILES.split(",") if f.strip()}
-    for filename in sorted(os.listdir(KNOWLEDGE_BASE_DIR)):
-        if not filename.lower().endswith(".pdf") or filename.lower() in excluded:
-            continue
-        pdf_path = os.path.join(KNOWLEDGE_BASE_DIR, filename)
-        try:
-            reader = PdfReader(pdf_path)
-        except Exception as e:
-            print(f"[INGEST ERROR] Gagal membaca PDF {filename}: {e}")
-            continue
-        for page_idx, page in enumerate(reader.pages):
-            text = page.extract_text() or ""
-            if len(text.strip()) <= 100:
-                continue
-            for chunk_idx, chunk in enumerate(
-                chunk_text(text, settings.RAG_CHUNK_SIZE, settings.RAG_CHUNK_OVERLAP)
-            ):
-                documents.append(chunk)
+    # 2. Prioritas 1: Dokumen Markdown (.md) resmi di knowledge_base/
+    md_files = [f for f in sorted(os.listdir(KNOWLEDGE_BASE_DIR)) if f.lower().endswith(".md")]
+    has_markdown = len(md_files) > 0
+
+    if has_markdown:
+        for filename in md_files:
+            file_path = os.path.join(KNOWLEDGE_BASE_DIR, filename)
+            doc_prefix = "md_kia24" if "kia" in filename.lower() else "md_pnpk22"
+            doc_source = (
+                "Buku KIA 2024 (Kemenkes RI)"
+                if "kia" in filename.lower()
+                else "Pedoman Nasional Pelayanan Kedokteran Tata Laksana Stunting (KMK No. HK.01.07/Menkes/1928/2022)"
+            )
+            md_chunks = chunk_markdown_file(file_path, doc_source, doc_prefix)
+            for c in md_chunks:
+                documents.append(c["content"])
                 metadatas.append({
-                    "source": filename,
-                    "section": f"Halaman {page_idx + 1}",
-                    "page": page_idx + 1,
-                    "category": "GENERAL_KIA",
-                    "origin": "PDF",
+                    "source": c["source"],
+                    "section": c["section"],
+                    "page": c["page"],
+                    "category": c["category"],
+                    "origin": c["origin"],
                 })
-                ids.append(f"pdf_{filename}_{page_idx + 1}_{chunk_idx}")
+                ids.append(c["id"])
+
+    # 3. Prioritas 2 (Fallback): PDF di knowledge_base/ jika tidak ada markdown
+    if not has_markdown:
+        excluded = {f.strip().lower() for f in settings.RAG_EXCLUDED_FILES.split(",") if f.strip()}
+        for filename in sorted(os.listdir(KNOWLEDGE_BASE_DIR)):
+            if not filename.lower().endswith(".pdf") or filename.lower() in excluded:
+                continue
+            pdf_path = os.path.join(KNOWLEDGE_BASE_DIR, filename)
+            try:
+                reader = PdfReader(pdf_path)
+            except Exception as e:
+                print(f"[INGEST ERROR] Gagal membaca PDF {filename}: {e}")
+                continue
+            for page_idx, page in enumerate(reader.pages):
+                text = page.extract_text() or ""
+                if len(text.strip()) <= 100:
+                    continue
+                for chunk_idx, chunk in enumerate(
+                    chunk_text(text, settings.RAG_CHUNK_SIZE, settings.RAG_CHUNK_OVERLAP)
+                ):
+                    documents.append(chunk)
+                    metadatas.append({
+                        "source": filename,
+                        "section": f"Halaman {page_idx + 1}",
+                        "page": page_idx + 1,
+                        "category": "GENERAL_KIA",
+                        "origin": "PDF",
+                    })
+                    ids.append(f"pdf_{filename}_{page_idx + 1}_{chunk_idx}")
+
     return documents, metadatas, ids
+
+
+def get_all_knowledge_chunks(
+    search: Optional[str] = None,
+    source: Optional[str] = None,
+    category: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    """
+    Menyediakan daftar seluruh chunk rujukan klinis untuk ditampilkan
+    pada antarmuka web Dokter, Kader, dan pembuktian sidang dosen.
+    """
+    documents, metadatas, ids = _collect_documents()
+    items = []
+    for i in range(len(ids)):
+        m = metadatas[i]
+        c = documents[i]
+        c_id = ids[i]
+
+        if source and source.lower() not in m.get("source", "").lower():
+            continue
+        if category and category.upper() != m.get("category", "").upper():
+            continue
+        if search:
+            s_low = search.lower()
+            if s_low not in c.lower() and s_low not in m.get("section", "").lower() and s_low not in m.get("source", "").lower():
+                continue
+
+        items.append({
+            "id": c_id,
+            "source": m.get("source"),
+            "section": m.get("section"),
+            "page": m.get("page"),
+            "category": m.get("category"),
+            "origin": m.get("origin"),
+            "content": c,
+            "char_count": len(c),
+            "estimated_tokens": max(1, len(c) // 4)
+        })
+
+    total = len(items)
+    paged = items[skip:skip + limit]
+    return {
+        "total_chunks": total,
+        "skip": skip,
+        "limit": limit,
+        "chunks": paged
+    }
 
 
 def ingest_knowledge_base() -> int:
@@ -210,4 +357,3 @@ def ingest_knowledge_base() -> int:
 
 if __name__ == "__main__":
     ingest_knowledge_base()
-

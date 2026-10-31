@@ -19,6 +19,7 @@ import {
   MapPin,
   Printer,
   Sparkles,
+  Star,
   ClipboardList,
   Utensils,
   Droplets,
@@ -135,6 +136,10 @@ const ValidasiLaporan = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [detailModal, setDetailModal] = useState(null);
+  const [ratingScore, setRatingScore] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
+
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const rejectModalRef = useRef(null);
@@ -148,7 +153,11 @@ const ValidasiLaporan = () => {
       setLoading(true);
       setError("");
       const res = await api.get(`/reports/${reportId}`);
-      setReport(res.data);
+            setReport(res.data);
+      if (res.data?.kader_rating) {
+        setRatingScore(res.data.kader_rating);
+        setRatingSubmitted(true);
+      }
     } catch (err) {
       console.error(err);
       setError("Gagal memuat detail laporan hasil analisis AI.");
@@ -304,6 +313,7 @@ const ValidasiLaporan = () => {
   const comparisonItems = longitudinalSummary?.comparison_items || [];
   const carePlan = finalJson.care_plan || visitData.care_plan || null;
   const agentTelemetry = finalJson.agent_telemetry || null;
+  const confidence = finalJson.confidence || null;
 
   const statusConfig = {
     KONDISI_BAIK: {
@@ -442,6 +452,22 @@ const ValidasiLaporan = () => {
               {revisionCount} / 1 kali revisi
             </p>
           </div>
+          {confidence && (
+            <div>
+              <p className="text-xs text-caption font-medium">Confidence Score AI</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                  confidence.confidence_label === "TINGGI"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                    : confidence.confidence_label === "SEDANG"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
+                }`}>
+                  {confidence.confidence_score}% &bull; {confidence.confidence_label}
+                </span>
+              </div>
+            </div>
+          )}
           <div>
             <p className="text-xs text-caption font-medium">Dokumen Cetak PDF</p>
             <p className="text-sm sm:text-base font-semibold mt-1">
@@ -875,6 +901,12 @@ const ValidasiLaporan = () => {
                       <p className="text-sm text-caption leading-relaxed line-clamp-2">
                         {rec.recommendation_text}
                       </p>
+                      {rec.longitudinal_progress && (
+                        <div className="p-2 bg-subtle rounded-lg text-xs text-body border border-line">
+                          <span className="font-semibold text-heading">Tren Kunjungan: </span>
+                          <span>{rec.longitudinal_progress}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-line-light flex items-center justify-between gap-2 text-xs">
@@ -1135,141 +1167,6 @@ const ValidasiLaporan = () => {
             </div>
           )}
 
-          {/* ═══ Bukti Kerja, Lifetime, Sequential vs Parallel & Konsumsi Token 3 Agent ═══ */}
-          {agentTelemetry && agentTelemetry.agents && (
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-sky-500" />
-                  <h3 className="text-sm font-bold text-heading uppercase tracking-wider">
-                    Bukti Kerja, Lifetime & Konsumsi Token Multi-Agent AI
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDetailModal({
-                      type: "pipeline_telemetry",
-                      badge: "Telemetri Arsitektur Multi-Agent",
-                      title: "Bukti Sequential Pipeline vs Parallel Evaluator & Lifetime Agent",
-                      telemetry: agentTelemetry,
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-subtle hover:bg-muted text-heading border border-line transition-colors cursor-pointer self-start sm:self-auto"
-                >
-                  <span>Lihat Bukti Sequential vs Parallel</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-sky-500" />
-                </button>
-              </div>
-
-              {/* 4-Metric Summary Strip */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
-                  <p className="text-xs text-caption font-medium">Alur Pipeline Utama</p>
-                  <p className="text-sm font-bold text-heading">Sequential (Step 1 → 2 → 3)</p>
-                  <p className="text-xs text-dim">
-                    Total Durasi: {agentTelemetry.summary_metrics?.total_pipeline_lifetime_ms ?? 0} ms
-                  </p>
-                </div>
-
-                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
-                  <p className="text-xs text-caption font-medium">Alur Evaluator Audit</p>
-                  <p className="text-sm font-bold text-heading">Parallel (3 Worker Threads)</p>
-                  <p className="text-xs text-dim">
-                    {Array.isArray(agentTelemetry.parallel_evaluator_logs)
-                      ? `${agentTelemetry.parallel_evaluator_logs.length} Thread Evaluator Konkuren`
-                      : "ThreadPoolExecutor Aktif"}
-                  </p>
-                </div>
-
-                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
-                  <p className="text-xs text-caption font-medium">Siklus Hidup (Agent Lifetime)</p>
-                  <p className="text-sm font-bold text-heading">Ephemeral (TERMINATED)</p>
-                  <p className="text-xs text-dim truncate" title={agentTelemetry.architecture_pattern?.thread_checkpoint_status}>
-                    {report.status === "APPROVED"
-                      ? "Thread Selesai Permanen (CLOSED)"
-                      : "Selesai Tugas = Selesai Hidup"}
-                  </p>
-                </div>
-
-                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
-                  <p className="text-xs text-caption font-medium">Total Konsumsi Token (3 Agent)</p>
-                  <p className="text-sm font-bold text-heading font-mono">
-                    {agentTelemetry.summary_metrics?.total_tokens ?? 0} <span className="font-sans font-normal text-xs text-caption">token</span>
-                  </p>
-                  <p className="text-xs text-dim font-mono">
-                    In: {agentTelemetry.summary_metrics?.total_input_tokens ?? 0} &bull; Out:{" "}
-                    {agentTelemetry.summary_metrics?.total_output_tokens ?? 0}
-                  </p>
-                </div>
-              </div>
-
-              {/* 3 Agent Telemetry Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {["agent_1", "agent_2", "agent_3"].map((aKey, idx) => {
-                  const ag = agentTelemetry.agents[aKey];
-                  if (!ag) return null;
-                  const tok = ag.token_usage || {};
-                  const iconColors = ["text-rose-500", "text-amber-500", "text-emerald-500"];
-                  const rankShort =
-                    idx === 0
-                      ? "Paling Penting (Keselamatan Jiwa)"
-                      : idx === 1
-                        ? "Paling Sulit (Multi-Hop ReAct & RAG)"
-                        : "Paling Mudah (Grounding Judge)";
-                  return (
-                    <div
-                      key={aKey}
-                      onClick={() =>
-                        setDetailModal({
-                          type: "agent_telemetry",
-                          badge: `Sequential Step #${ag.execution_order || idx + 1} • ${ag.mode || "ACTIVE"}`,
-                          title: ag.agent_name,
-                          agent: ag,
-                        })
-                      }
-                      className="group card-interactive cursor-pointer p-4 bg-subtle rounded-xl border border-line flex flex-col justify-between gap-4"
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="w-9 h-9 rounded-lg bg-card border border-line flex items-center justify-center shrink-0">
-                            <Activity className={`w-4 h-4 ${iconColors[idx]}`} />
-                          </div>
-                          <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-card text-caption border border-line">
-                            Step #{ag.execution_order || idx + 1} &bull; {ag.lifetime_ms ?? 0} ms
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-heading leading-snug">{ag.agent_name}</h4>
-                          <p className="text-xs font-semibold text-label">{rankShort}</p>
-                        </div>
-
-                        <div className="p-2.5 bg-card rounded-lg border border-line space-y-1 text-xs font-mono">
-                          <div className="flex items-center justify-between text-caption">
-                            <span>Lifetime:</span>
-                            <span className="text-heading font-semibold">TERMINATED ({ag.lifetime_ms ?? 0} ms)</span>
-                          </div>
-                          <div className="flex items-center justify-between text-caption">
-                            <span>Token:</span>
-                            <span className="text-heading font-semibold">
-                              {tok.total_tokens ?? 0} (In:{tok.input_tokens ?? 0} / Out:{tok.output_tokens ?? 0})
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2.5 border-t border-line flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                        <span>Lihat bukti kerja & log</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Validation Notice / Rejection Reason Display */}
           {report.status === "REJECTED" && report.rejection_reason && (
             <div className="p-4 bg-subtle border border-line rounded-xl space-y-1">
@@ -1341,6 +1238,61 @@ const ValidasiLaporan = () => {
         </div>
       </div>
 
+            {/* ─── Kader Rating Widget (1 - 5 Bintang) ─── */}
+      {report.status === "APPROVED" && (
+        <div className="p-5 bg-card border border-line rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-heading flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-500" />
+              <span>Evaluasi Kualitas Analisis Multi-Agent AI oleh Kader</span>
+            </h4>
+            <p className="text-xs text-caption">
+              Berikan penilaian 1 - 5 bintang terhadap ketepatan saran AI. Penilaian &ge; 4 disimpan sebagai contoh pembelajaran acuan, sedangkan &le; 2 ditandai untuk evaluasi supervisi dokter.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  disabled={ratingLoading || ratingSubmitted}
+                  onClick={async () => {
+                    try {
+                      setRatingLoading(true);
+                      await api.post(`/reports/${report.id}/rate`, {
+                        score: star,
+                        feedback: `Rating ${star} dari Kader Posyandu`,
+                      });
+                      setRatingScore(star);
+                      setRatingSubmitted(true);
+                    } catch (err) {
+                      console.error("Gagal mengirim rating:", err);
+                      alert(getErrorMessage(err, "Gagal menyimpan rating"));
+                    } finally {
+                      setRatingLoading(false);
+                    }
+                  }}
+                  className={`p-1.5 rounded-lg transition-transform ${
+                    star <= ratingScore
+                      ? "text-amber-500 scale-110"
+                      : "text-gray-300 dark:text-gray-600 hover:text-amber-400"
+                  } cursor-pointer disabled:cursor-default`}
+                  title={`Beri rating ${star} dari 5`}
+                >
+                  <Star className="w-6 h-6 fill-current" />
+                </button>
+              ))}
+            </div>
+            {ratingSubmitted && (
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                Tersimpan ({ratingScore}/5)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ═══ Clean Minimalist Detail Modal Pop-up ═══ */}
       {detailModal && (
         <div
@@ -1381,6 +1333,39 @@ const ValidasiLaporan = () => {
                       {detailModal.rec.recommendation_text}
                     </p>
                   </div>
+
+                  {detailModal.rec.longitudinal_progress && (
+                    <div className="p-3.5 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-xl space-y-1">
+                      <span className="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wide">
+                        Tren Kunjungan Sebelumnya (Longitudinal):
+                      </span>
+                      <p className="text-sm text-body">{detailModal.rec.longitudinal_progress}</p>
+                    </div>
+                  )}
+
+                  {detailModal.rec.evidence_quote && (
+                    <div className="p-4 bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 rounded-xl space-y-1.5">
+                      <p className="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                        <span>Kutipan Teks Dokumen Resmi Rujukan ({cleanCitation(detailModal.rec.citation?.source)}, Hal. {detailModal.rec.citation?.page || "-"}):</span>
+                      </p>
+                      <p className="text-xs sm:text-sm text-body italic leading-relaxed pl-3 border-l-2 border-sky-500">
+                        "{detailModal.rec.evidence_quote}"
+                      </p>
+                    </div>
+                  )}
+
+                  {detailModal.rec.ai_insight && (
+                    <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1.5">
+                      <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Wawasan Tambahan AI (Perlu Konfirmasi Petugas / Evaluasi Kontekstual):</span>
+                      </p>
+                      <p className="text-xs sm:text-sm text-body leading-relaxed">
+                        {detailModal.rec.ai_insight}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {detailModal.rec.food_guide && (

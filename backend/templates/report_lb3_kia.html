@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rekapitulasi Laporan Bulanan KIA (LB3-KIA) - Puskesmas Airmadidi</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 12mm 15mm 12mm 15mm;
+        @bottom-right {
+          content: "Hal. " counter(page) " dari " counter(pages);
+          font-size: 8pt;
+          color: #64748b;
+          font-family: Arial, sans-serif;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: #0f172a;
+        background-color: #ffffff;
+        line-height: 1.4;
+        font-size: 8.5pt;
+        margin: 0;
+        padding: 0;
+      }
+
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+      }
+
+      .kop-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 6px;
+      }
+
+      .kop-table td {
+        border: none;
+        padding: 0;
+      }
+
+      .kop-logo {
+        width: 65px;
+        text-align: center;
+      }
+
+      .kop-logo img {
+        width: 58px;
+        height: 58px;
+      }
+
+      .kop-text {
+        text-align: center;
+        padding: 0 10px;
+      }
+
+      .kop-line-1 {
+        margin: 0;
+        font-size: 10.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #0f172a;
+        letter-spacing: 0.5px;
+      }
+
+      .kop-line-2 {
+        margin: 1px 0;
+        font-size: 12pt;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #0369a1;
+        letter-spacing: 0.8px;
+      }
+
+      .kop-line-3 {
+        margin: 1px 0;
+        font-size: 8pt;
+        color: #334155;
+      }
+
+      .kop-divider {
+        margin-top: 4px;
+        margin-bottom: 12px;
+      }
+
+      .line-thick {
+        height: 2px;
+        background-color: #0f172a;
+        margin-bottom: 1px;
+      }
+
+      .line-thin {
+        height: 0.8px;
+        background-color: #0f172a;
+      }
+
+      .report-title-box {
+        text-align: center;
+        margin-bottom: 12px;
+        padding: 6px;
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+      }
+
+      .report-title-box h1 {
+        margin: 0;
+        font-size: 11pt;
+        font-weight: 800;
+        color: #0f172a;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .report-title-box p {
+        margin: 2px 0 0 0;
+        font-size: 8.5pt;
+        color: #475569;
+      }
+
+      .meta-grid {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 8.5pt;
+      }
+
+      .meta-grid td {
+        padding: 2px 4px;
+        border: none;
+      }
+
+      .section-heading {
+        font-size: 9pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #0369a1;
+        border-bottom: 1.5px solid #0369a1;
+        padding-bottom: 2px;
+        margin: 10px 0 6px 0;
+      }
+
+      table.data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+        font-size: 8pt;
+      }
+
+      table.data-table th,
+      table.data-table td {
+        border: 1px solid #cbd5e1;
+        padding: 4px 6px;
+      }
+
+      table.data-table th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+      }
+
+      table.data-table tr:nth-child(even) td {
+        background-color: #f8fafc;
+      }
+
+      .badge-danger {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+
+      .badge-warning {
+        color: #b45309;
+        font-weight: 700;
+      }
+
+      .badge-success {
+        color: #15803d;
+        font-weight: 700;
+      }
+
+      .signature-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        page-break-inside: avoid;
+      }
+
+      .signature-table td {
+        border: none;
+        padding: 0 15px;
+        vertical-align: top;
+      }
+
+      .sign-box {
+        text-align: center;
+      }
+
+      .sign-space {
+        height: 60px;
+      }
+
+      .sign-name {
+        font-weight: 700;
+        text-decoration: underline;
+        color: #0f172a;
+      }
+
+      .sign-nip {
+        font-size: 8pt;
+        color: #475569;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Kop Surat Resmi Kedinasan Puskesmas Airmadidi -->
+    <table class="kop-table">
+      <tr>
+        <td class="kop-logo">
+          {% if logo_minut_data_uri %}
+          <img src="{{ logo_minut_data_uri }}" alt="Logo Minahasa Utara" />
+          {% endif %}
+        </td>
+        <td class="kop-text">
+          <div class="kop-line-1">Pemerintah Kabupaten Minahasa Utara</div>
+          <div class="kop-line-2">Dinas Kesehatan &bull; UPTD Puskesmas Airmadidi</div>
+          <div class="kop-line-3">Kompleks Pasar Airmadidi, Kel. Sarongsong I, Kec. Airmadidi, Minahasa Utara 95371 &bull; Telp: 0813-4076-0004</div>
+          <div class="kop-line-3">Pelayanan Kesehatan Ibu dan Anak 1.000 Hari Pertama Kehidupan (1.000 HPK)</div>
+        </td>
+        <td class="kop-logo">
+          {% if logo_puskesmas_data_uri %}
+          <img src="{{ logo_puskesmas_data_uri }}" alt="Logo Puskesmas Airmadidi" />
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    <div class="kop-divider">
+      <div class="line-thick"></div>
+      <div class="line-thin"></div>
+    </div>
+
+    <!-- Judul Laporan -->
+    <div class="report-title-box">
+      <h1>Rekapitulasi Laporan Bulanan KIA (LB3-KIA) & Pemantauan 1.000 HPK</h1>
+      <p>Standar Pelaporan Fasilitas Pelayanan Kesehatan Tingkat Pertama (Kemenkes RI)</p>
+    </div>
+
+    <!-- Metadata Laporan -->
+    <table class="meta-grid">
+      <tr>
+        <td style="width: 18%; font-weight: 700;">Wilayah Pelayanan:</td>
+        <td style="width: 32%;">{{ posyandu_label }} (Kecamatan Airmadidi)</td>
+        <td style="width: 18%; font-weight: 700;">Periode Laporan:</td>
+        <td style="width: 32%;">{{ period_label }}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: 700;">Total Pasien Terpantau:</td>
+        <td>{{ total_patients }} Pasien ({{ total_visits }} Kunjungan)</td>
+        <td style="font-weight: 700;">Tanggal Cetak:</td>
+        <td>{{ printed_at }}</td>
+      </tr>
+    </table>
+
+    <!-- Bagian I: Rekapitulasi Kasus Gizi Balita & Risiko Ibu Hamil -->
+    <div class="section-heading">I. Rekapitulasi Indikator Klinis Kritis (Stunting, KEK, Anemia, KSPR)</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Kelompok Indikator</th>
+          <th>Kriteria Medis Baku (Permenkes No. 2/2020 & Kemenkes)</th>
+          <th>Jumlah Kasus</th>
+          <th>Prevalensi (%)</th>
+          <th>Status Rujukan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center;">1</td>
+          <td><strong>Stunting Berat (Severely Stunted)</strong></td>
+          <td>Panjang / Tinggi Badan menurut Usia (PB/U atau TB/U &lt; -3.0 SD)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-danger">{{ severe_stunting_count }}</td>
+          <td style="text-align: center;">{{ severe_stunting_pct }}%</td>
+          <td style="text-align: center;" class="badge-danger">Rujuk Dokter Spesialis / RS</td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">2</td>
+          <td><strong>Stunting (Stunted)</strong></td>
+          <td>Panjang / Tinggi Badan menurut Usia (-3.0 SD &le; Z &lt; -2.0 SD)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-warning">{{ stunting_count }}</td>
+          <td style="text-align: center;">{{ stunting_pct }}%</td>
+          <td style="text-align: center;">Poli Gizi / Dokter Puskesmas</td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">3</td>
+          <td><strong>Gizi Buruk / Wasting Akut</strong></td>
+          <td>Berat Badan menurut Panjang Badan (BB/PB &lt; -3.0 SD)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-danger">{{ wasting_count }}</td>
+          <td style="text-align: center;">{{ wasting_pct }}%</td>
+          <td style="text-align: center;" class="badge-danger">TFC / Rujuk Rawat Inap</td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">4</td>
+          <td><strong>Ibu Hamil KEK</strong></td>
+          <td>Lingkar Lengan Atas (LiLA &lt; 23.5 cm)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-warning">{{ kek_count }}</td>
+          <td style="text-align: center;">{{ kek_pct }}%</td>
+          <td style="text-align: center;">PMT Pemulihan 90 Hari</td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">5</td>
+          <td><strong>Ibu Hamil Anemia</strong></td>
+          <td>Hemoglobin Hb &lt; 11.0 g/dL (Trimester 1 &amp; 3) atau &lt; 10.5 g/dL (Trimester 2)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-warning">{{ anemia_count }}</td>
+          <td style="text-align: center;">{{ anemia_pct }}%</td>
+          <td style="text-align: center;">Evaluasi TTD &amp; Lab Puskesmas</td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">6</td>
+          <td><strong>Kehamilan Risiko Tinggi (KRT/KRST)</strong></td>
+          <td>Skoring Poedji Rochjati (KSPR &ge; 6)</td>
+          <td style="text-align: center; font-weight: 700;" class="badge-danger">{{ high_kspr_count }}</td>
+          <td style="text-align: center;">{{ high_kspr_pct }}%</td>
+          <td style="text-align: center;" class="badge-danger">Pemeriksaan Dokter PONED</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Bagian II: Daftar Kasus Risiko Tinggi yang Memerlukan Rujukan -->
+    <div class="section-heading">II. Daftar Pasien Risiko Tinggi Memerlukan Konfirmasi &amp; Tata Laksana Dokter</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25px;">No</th>
+          <th>Nama Pasien &amp; NIK</th>
+          <th>Fase</th>
+          <th>Posyandu &amp; Desa</th>
+          <th>Temuan Antropometri / Klinis</th>
+          <th>Diagnosis ICD-10</th>
+          <th>Rekomendasi Tindakan Segera</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if risky_cases %}
+        {% for c in risky_cases %}
+        <tr>
+          <td style="text-align: center;">{{ loop.index }}</td>
+          <td>
+            <strong>{{ c.patient_name }}</strong><br />
+            <span style="color: #64748b;">NIK: {{ c.nik }}</span>
+          </td>
+          <td style="text-align: center;">{{ c.phase }}</td>
+          <td>{{ c.posyandu }} ({{ c.village }})</td>
+          <td>{{ c.findings }}</td>
+          <td><span style="font-family: monospace; font-size: 7.5pt;">{{ c.icd_codes }}</span></td>
+          <td>{{ c.action_plan }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 12px; color: #15803d; font-weight: 600;">
+            Tidak ditemukan kasus risiko tinggi pada periode dan wilayah ini. Seluruh pasien berada dalam kondisi baik.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- Bagian III: Pengesahan & Tanda Tangan Resmi -->
+    <table class="signature-table">
+      <tr>
+        <td style="width: 50%;">
+          <div class="sign-box">
+            <p>Mengetahui / Mengompilasi:<br /><strong>Bidan Koordinator KIA Puskesmas</strong></p>
+            <div class="sign-space"></div>
+            <p class="sign-name">Bd. Marietje Rumambi, S.Tr.Keb</p>
+            <p class="sign-nip">NIP. 19780512 200501 2 008</p>
+          </div>
+        </td>
+        <td style="width: 50%;">
+          <div class="sign-box">
+            <p>Airmadidi, {{ printed_date }}<br />Disahkan Oleh:<br /><strong>Dokter Penanggung Jawab / Kepala UPTD</strong></p>
+            <div class="sign-space"></div>
+            <p class="sign-name">{{ doctor_name }}</p>
+            <p class="sign-nip">NIP. 19820315 201001 1 014</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+

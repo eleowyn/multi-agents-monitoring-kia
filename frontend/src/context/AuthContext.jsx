@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         isKader: user?.role === "KADER",
         isAdmin: user?.role === "ADMIN",
+        isDokter: user?.role === "DOKTER",
       }}
     >
       {children}
@@ -53,4 +54,3 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-

@@ -270,13 +270,16 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
             revision_count=revision_count,
             agent_telemetry=consolidated_telemetry,
         )
-        return {
+        from app.multiagent.terminal_logger import print_pipeline_terminal_banner
+        res_single = {
             "overall_status": overall_status,
             "verification_details": [],
             "verifier_mode": MODE_SINGLE_PASS,
             "final_report_json": final_report_json,
             "agent_telemetry": consolidated_telemetry,
         }
+        print_pipeline_terminal_banner({**state, **res_single})
+        return res_single
 
     # ------------------------------------------------------------------------
     # 2. Penentuan Tingkat Keparahan Risiko
@@ -501,13 +504,16 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
         agent_telemetry=consolidated_telemetry,
     )
 
-    return {
+    from app.multiagent.terminal_logger import print_pipeline_terminal_banner
+    res_final = {
         "overall_status": overall_status,
         "verification_details": verification_details,
         "verifier_mode": verifier_mode,
         "final_report_json": final_report_json,
         "agent_telemetry": consolidated_telemetry,
     }
+    print_pipeline_terminal_banner({**state, **res_final})
+    return res_final
 
 
 def _lexical_grounding_check(
@@ -578,6 +584,46 @@ def _build_final_report_json(
         risk_flags=risk_flags,
         deterministic_results=det,
     )
+
+    # Hitung Hybrid Confidence Score (0 - 100%)
+    plausibility = det.get("plausibility", {})
+    c_input = 30.0 if plausibility.get("is_plausible", True) else 15.0
+    if not risk_flags:
+        c_rag = 40.0
+    else:
+        scores = [v.get("grounding_score", 1.0) for v in (verification_summary or [])]
+        c_rag = round((sum(scores) / max(1, len(scores))) * 40.0, 1)
+
+    prev_cnt = longitudinal_summary.get("total_previous_visits", 0)
+    has_mat = bool(longitudinal_summary.get("maternal_history"))
+    if prev_cnt >= 2:
+        c_long = 30.0
+    elif prev_cnt == 1:
+        c_long = 24.0
+    else:
+        c_long = 20.0 if has_mat else 16.0
+
+    conf_score = round(min(100.0, max(0.0, c_input + c_rag + c_long)), 1)
+    if conf_score >= 85.0:
+        conf_label = "TINGGI"
+        conf_desc = "Rekomendasi sangat solid, didukung data lengkap dan pedoman baku Kemenkes."
+    elif conf_score >= 70.0:
+        conf_label = "SEDANG"
+        conf_desc = "Rekomendasi valid, pemantauan riwayat berkala dianjurkan."
+    else:
+        conf_label = "BUTUH_KONFIRMASI_DOKTER"
+        conf_desc = "Terdapat anomali data atau nilai rujukan yang membutuhkan konfirmasi dokter."
+
+    confidence_dict = {
+        "confidence_score": conf_score,
+        "confidence_label": conf_label,
+        "confidence_description": conf_desc,
+        "components": {
+            "input_validity_pct": round(c_input / 30.0 * 100, 1),
+            "rag_grounding_pct": round(c_rag / 40.0 * 100, 1),
+            "longitudinal_completeness_pct": round(c_long / 30.0 * 100, 1),
+        }
+    }
     return {
         "metadata": {
             "phase": phase,
@@ -589,6 +635,8 @@ def _build_final_report_json(
             "hpk_day": hpk_status.get("hpk_day"),
             "hpk_progress_percent": hpk_status.get("progress_percent"),
             "hpk_summary_label": hpk_status.get("summary_label"),
+            "confidence_score": conf_score,
+            "confidence_label": conf_label,
         },
         "hpk_status": hpk_status,
         "longitudinal_summary": longitudinal_summary,
@@ -601,5 +649,6 @@ def _build_final_report_json(
         },
         "recommendations": recommendations,
         "verification_summary": verification_summary,
+        "confidence": confidence_dict,
         "agent_telemetry": agent_telemetry or {},
     }

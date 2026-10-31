@@ -221,3 +221,37 @@ def generate_visit_report_pdf(
     except Exception as e:
         print(f"[PDF SERVICE WARNING] Gagal membuat PDF: {e}. Cadangan HTML: {html_filepath}")
         return html_filepath
+
+
+def generate_lb3_kia_pdf(
+    report_context: Dict[str, Any],
+    filename: str = "Laporan_LB3_KIA_Puskesmas_Airmadidi.pdf"
+) -> str:
+    """
+    Menghasilkan dokumen PDF Rekapitulasi Laporan Bulanan KIA (LB3-KIA)
+    standar Kemenkes RI untuk disahkan oleh Dokter Kepala Puskesmas.
+    """
+    env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+    logo_minut_data_uri = _load_logo_data_uri("logo_minahasa_utara.png")
+    logo_puskesmas_data_uri = _load_logo_data_uri("logo_puskesmas_airmadidi.png")
+
+    template = env.get_template("report_lb3_kia.html")
+    html_out = template.render(
+        **report_context,
+        logo_minut_data_uri=logo_minut_data_uri,
+        logo_puskesmas_data_uri=logo_puskesmas_data_uri,
+    )
+
+    if not filename.lower().endswith(".pdf"):
+        filename = f"{os.path.splitext(filename)[0]}.pdf"
+    pdf_filepath = os.path.join(OUTPUT_PDF_DIR, filename)
+    html_filepath = os.path.splitext(pdf_filepath)[0] + ".html"
+
+    with open(html_filepath, "w", encoding="utf-8") as f:
+        f.write(html_out)
+
+    try:
+        return write_pdf_strict(html_out, filename)
+    except Exception as e:
+        print(f"[PDF LB3-KIA WARNING] WeasyPrint error: {e}. Menggunakan cadangan HTML: {html_filepath}")
+        return html_filepath

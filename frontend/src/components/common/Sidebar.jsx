@@ -16,17 +16,17 @@ import {
 import api from "../../services/api";
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { isKader, isAdmin, logout } = useAuth();
+  const { isKader, isAdmin, isDokter, logout } = useAuth();
   const [pendingRevisions, setPendingRevisions] = React.useState(0);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin || isDokter) {
       api
         .get("/revisions/", { params: { status: "PENDING" } })
         .then((res) => setPendingRevisions(res.data?.length || 0))
         .catch(() => {});
     }
-  }, [isAdmin, isOpen]);
+  }, [isAdmin, isDokter, isOpen]);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -65,14 +65,26 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/admin/audit-logs", label: "Audit Log Evaluator AI", icon: ShieldAlert },
   ];
 
-  const links = isKader ? kaderLinks : adminLinks;
+  const doctorLinks = [
+    { to: "/doctor/monitoring", label: "Monitoring & Validasi KIA", icon: HeartPulse, count: pendingRevisions },
+  ];
+
+  let links = adminLinks;
+  let menuTitle = "Menu Administrator";
+  if (isKader) {
+    links = kaderLinks;
+    menuTitle = "Menu Pelayanan Kader";
+  } else if (isDokter) {
+    links = doctorLinks;
+    menuTitle = "Menu Dokter Puskesmas";
+  }
 
   const sidebarContent = (
     <div className="flex flex-col h-full justify-between overflow-hidden">
       {/* Menu Navigasi Utama */}
       <div className="space-y-1">
         <p className="px-3 text-xs font-semibold text-caption mb-3">
-          {isKader ? "Menu Pelayanan Kader" : "Menu Administrator"}
+          {menuTitle}
         </p>
         {links.map((link) => {
           const Icon = link.icon;

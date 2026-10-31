@@ -35,7 +35,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 
 def seed_default_users(db: Session):
-    """Seed akun awal Kader dan Admin jika database masih kosong."""
+    """Seed akun awal Kader, Admin, dan Dokter jika belum ada."""
     if db.query(User).count() == 0:
         kader = User(
             username="kader1",
@@ -58,6 +58,22 @@ def seed_default_users(db: Session):
         db.add_all([kader, admin])
         db.commit()
         print(" [SEED] Akun demo Kader (kader1 / kader123) dan Admin (admin / admin123) berhasil dibuat.")
+
+    # Pastikan akun Dokter Puskesmas selalu tersedia
+    dokter_exist = db.query(User).filter(User.username == "dokter").first()
+    if not dokter_exist:
+        dokter = User(
+            username="dokter",
+            email="dokter@puskesmas-airmadidi.go.id",
+            hashed_password=get_password_hash("dokter123"),
+            full_name="dr. Penanggung Jawab KIA",
+            role=UserRole.DOKTER,
+            posyandu_name="Puskesmas Airmadidi",
+            village_name="Kecamatan Airmadidi"
+        )
+        db.add(dokter)
+        db.commit()
+        print(" [SEED] Akun demo Dokter (dokter / dokter123) berhasil dibuat.")
 
 
 @router.post("/login", response_model=Token)

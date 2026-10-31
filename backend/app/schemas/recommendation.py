@@ -10,6 +10,7 @@ class CitationModel(BaseModel):
     section: Optional[str] = Field(default="", description="Nama bab atau bagian pedoman")
     page: Optional[Union[int, str]] = Field(default=1, description="Nomor halaman")
     chunk_id: Optional[str] = Field(default=None, description="ID chunk dari ChromaDB")
+    quote: Optional[str] = Field(default=None, description="Kutipan teks asli dari dokumen rujukan")
 
 
 class RecommendationItem(BaseModel):
@@ -19,7 +20,7 @@ class RecommendationItem(BaseModel):
         description="Kategori intervensi: GIZI, MEDIS, EDUKASI, RUJUKAN, NEONATAL, GIZI_MATERNAL",
     )
     recommendation_text: str = Field(
-        ..., description="Uraian rekomendasi tindakan praktis untuk kader dan keluarga"
+        ..., description="Uraian rekomendasi tindakan praktis utama untuk kader dan keluarga"
     )
     food_guide: Optional[str] = Field(
         default=None,
@@ -35,5 +36,17 @@ class RecommendationItem(BaseModel):
     )
     action_steps: List[str] = Field(
         default_factory=list, description="Langkah-langkah aksi konkret bagi Kader Posyandu & Keluarga"
+    )
+    longitudinal_progress: Optional[str] = Field(
+        default=None,
+        description="Evaluasi perkembangan dibanding kunjungan sebelumnya (misal kenaikan BB/TB, perubahan status KMS)",
+    )
+    ai_insight: Optional[str] = Field(
+        default=None,
+        description="Wawasan klinis tambahan dari sintesis LLM (dipisahkan tegas dari pedoman resmi RAG)",
+    )
+    evidence_quote: Optional[str] = Field(
+        default=None,
+        description="Kutipan kalimat asli dari Buku KIA / PNPK Stunting sebagai bukti pendukung",
     )
     citation: CitationModel = Field(..., description="Sitasi dokumen resmi")

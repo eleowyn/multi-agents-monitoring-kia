@@ -843,11 +843,16 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
                     f"Anda WAJIB mengakomodasi catatan ini (misalnya mencari menu/intervensi alternatif).\n"
                 )
 
+            longitudinal_summary = deterministic_results.get("longitudinal_summary", {})
+            comp_items = longitudinal_summary.get("comparison_items", [])
+            comp_str = "; ".join([f"{c.get('metric')}: {c.get('previous')} -> {c.get('current')} ({c.get('delta')}, {c.get('status')})" for c in comp_items]) if comp_items else "Kunjungan pemantauan pertama / data awal."
+
             initial_user_prompt = f"""Konteks Pasien:
 - Fase: {phase}
 - Data Kunjungan: {json.dumps(visit_data, ensure_ascii=False, default=str)}
 - Temuan Narasi Klinis: {risk_narrative}
 - Daftar Flag Risiko Aktif: {json.dumps(risk_flags, ensure_ascii=False)}
+- Riwayat Evaluasi Longitudinal Kunjungan Sebelumnya: {comp_str}
 - Referensi Care Plan 1.000 HPK: {json.dumps(care_plan, ensure_ascii=False, default=str)}
 {feedback_note}
 
@@ -940,6 +945,20 @@ Tugas Anda:
                         "chunk_id": None,
                     }
                 item = _enrich_recommendation_item_fields(item, care_plan)
+                # Auto-populate evidence quote & longitudinal progress if empty
+                default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
+                target_chunk = seen_chunks.get(item.get("citation", {}).get("chunk_id")) or default_chunk
+                if not item.get("evidence_quote") and target_chunk:
+                    raw_c = target_chunk.get("content", "").strip()
+                    item["evidence_quote"] = raw_c[:350] + ("..." if len(raw_c) > 350 else "")
+                if not item.get("longitudinal_progress"):
+                    item["longitudinal_progress"] = comp_str if comp_str != "Kunjungan pemantauan pertama / data awal." else "Kunjungan pertama / data awal pemantauan."
+                if not item.get("ai_insight"):
+                    item["ai_insight"] = (
+                        "Saran Tambahan AI: Libatkan keluarga dalam pendampingan makan harian dan terapkan variasi olahan bahan pangan lokal agar anak antusias makan."
+                        if phase != "IBU_HAMIL"
+                        else "Saran Tambahan AI: Minum TTD dengan air putih atau sari buah jeruk di malam hari untuk penyerapan optimal dan mengurangi keluhan mual."
+                    )
                 try:
                     validated = RecommendationItem(**item)
                     validated_items.append(validated.model_dump())
