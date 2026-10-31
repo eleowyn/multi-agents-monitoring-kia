@@ -1182,132 +1182,33 @@ const InputKunjungan = () => {
         </div>
       )}
 
-      {/* ═══ Modal Loading Progress Kunjungan ═══ */}
+      {/* ═══ Modal Loading Sederhana ═══ */}
       {loading && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="modal-loading-title"
         >
-          <div className="bg-card rounded-xl max-w-lg w-full p-6 sm:p-7 border border-line shadow-elevated space-y-5 text-center animate-scale-in">
-            <div className="w-12 h-12 mx-auto rounded-full bg-subtle border border-line flex items-center justify-center text-sky-600 dark:text-sky-400">
+          <div className="bg-card rounded-2xl max-w-sm w-full p-6 border border-line shadow-elevated space-y-4 text-center animate-scale-in">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-200 dark:border-sky-800">
               <span className="spinner w-6 h-6 border-sky-600 border-t-transparent" />
             </div>
 
-            <div>
-              <h3 id="modal-loading-title" className="text-base sm:text-lg font-bold text-heading">
-                Sedang Memproses Kunjungan Posyandu
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-heading">
+                Memproses Data Kunjungan
               </h3>
-              <p className="text-xs text-caption mt-1">
-                Data klinis pasien sedang dievaluasi berdasarkan pedoman Kemenkes RI dan Buku KIA.
+              <p className="text-xs text-caption">
+                Menganalisis antropometri dan mencocokkan pedoman KIA...
               </p>
             </div>
 
-            {/* Stepper */}
-            <div className="space-y-3 text-left">
-              {/* Step 1 */}
-              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
-                loadingStep === 1
-                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
-                  : loadingStep > 1
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
-                  : "bg-subtle/50 border-line/60 opacity-60"
-              }`}>
-                <div className="mt-0.5">
-                  {loadingStep > 1 ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  ) : loadingStep === 1 ? (
-                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
-                    <span>Agen 1: Deteksi Risiko & Parameter Antropometri</span>
-                    {loadingStep === 1 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
-                  </div>
-                  <p className="text-xs text-caption mt-0.5">
-                    Kalkulasi Z-score WHO, skor KSPR, LiLA, dan evaluasi riwayat longitudinal.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
-                loadingStep === 2
-                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
-                  : loadingStep > 2
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
-                  : "bg-subtle/50 border-line/60 opacity-60"
-              }`}>
-                <div className="mt-0.5">
-                  {loadingStep > 2 ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  ) : loadingStep === 2 ? (
-                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
-                    <span>Agen 2: Penalaran ReAct & RAG Pedoman KIA</span>
-                    {loadingStep === 2 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
-                  </div>
-                  <p className="text-xs text-caption mt-0.5">
-                    Penelusuran semantik Buku KIA 2024 & KMK Stunting untuk sintesis rekomendasi klinis tersitasi.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className={`p-3 rounded-lg border transition-all duration-300 flex items-start gap-3 ${
-                loadingStep === 3
-                  ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/40 shadow-sm"
-                  : loadingStep > 3
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30"
-                  : "bg-subtle/50 border-line/60 opacity-60"
-              }`}>
-                <div className="mt-0.5">
-                  {loadingStep > 3 ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  ) : loadingStep === 3 ? (
-                    <span className="spinner w-4 h-4 border-sky-600 border-t-transparent" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border border-line bg-muted" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-heading flex items-center gap-1.5">
-                    <span>Agen 3: Verifikasi Grounding Sitasi & Laporan</span>
-                    {loadingStep === 3 && <span className="text-xs px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded font-medium">Aktif</span>}
-                  </div>
-                  <p className="text-xs text-caption mt-0.5">
-                    Audit integritas bukti (LLM-Judge) dan penerbitan draf laporan resmi Posyandu.
-                  </p>
-                </div>
-              </div>
+            <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden border border-line">
+              <div
+                className="bg-sky-600 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${loadingProgress}%` }}
+              />
             </div>
-
-            {/* Progress bar */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-caption font-medium">
-                <span>Memproses pipeline klinis...</span>
-                <span>{loadingProgress}%</span>
-              </div>
-              <div className="w-full bg-subtle rounded-full h-2 overflow-hidden border border-line">
-                <div
-                  className="bg-sky-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${loadingProgress}%` }}
-                />
-              </div>
-            </div>
-
-            <p className="text-xs text-caption italic">
-              * Harap tidak menyegarkan (refresh) atau menutup browser agar proses pembuatan laporan tidak terputus.
-            </p>
           </div>
         </div>
       )}

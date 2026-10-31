@@ -811,7 +811,7 @@ const ValidasiLaporan = () => {
           <div className="space-y-3.5">
             <h3 className="text-base font-bold text-heading flex items-center gap-2">
               <Activity className="w-4 h-4 text-sky-500" />
-              <span>I. Temuan Pengukuran Deterministik (Agent 1)</span>
+              <span>1. Hasil Pengukuran & Deteksi Risiko Fisik</span>
             </h3>
 
             <p className="text-sm sm:text-base text-body bg-subtle p-4 rounded-xl border border-line leading-relaxed">
@@ -853,10 +853,10 @@ const ValidasiLaporan = () => {
             <div>
               <h3 className="text-base font-bold text-heading flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-sky-500" />
-                <span>II. Rekomendasi Klinis, Gizi & Tindakan Kader (Agent 2 ,  RAG ChromaDB)</span>
+                <span>2. Rekomendasi Tindakan & Edukasi Posyandu</span>
               </h3>
               <p className="text-xs sm:text-sm text-caption mt-0.5">
-                Klik pada kartu rekomendasi untuk membaca rincian makanan, ASI/susu, stimulasi, dan langkah tindakan kader.
+                Rekomendasi tindakan berbasis pedoman Buku KIA 2024 dan PNPK Tata Laksana Stunting.
               </p>
             </div>
 
@@ -871,61 +871,124 @@ const ValidasiLaporan = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-5">
                 {recommendations.map((rec, idx) => (
                   <div
                     key={idx}
-                    onClick={() =>
-                      setDetailModal({
-                        type: "recommendation",
-                        badge: `Rekomendasi #${idx + 1} • ${rec.category}`,
-                        title: rec.title,
-                        rec,
-                      })
-                    }
-                    className="group card-interactive cursor-pointer p-5 bg-card border border-line rounded-2xl flex flex-col justify-between gap-4"
+                    className="bg-card border border-line rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs hover:border-sky-500/40 transition-colors"
                   >
-                    <div className="space-y-2.5">
-                      <div className="flex justify-between items-start gap-3">
-                        <p className="font-bold text-base text-heading flex items-center gap-2.5">
-                          <span className="w-6 h-6 rounded-md bg-subtle border border-line text-label flex items-center justify-center text-xs font-bold shrink-0">
-                            {idx + 1}
-                          </span>
-                          <span>{rec.title}</span>
-                        </p>
-                        <span className="text-xs bg-subtle text-caption px-2.5 py-0.5 rounded-md font-medium border border-line shrink-0 uppercase">
-                          {rec.category}
+                    {/* Header Rekomendasi */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <h4 className="text-base font-bold text-heading">
+                          {rec.title}
+                        </h4>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-subtle text-caption border border-line uppercase self-start sm:self-auto">
+                        {rec.category}
+                      </span>
+                    </div>
+
+                    {/* BLOK 1: Kutipan Teks Asli dari Buku Pedoman (Pedoman Baku Kemenkes RI) */}
+                    <div className="p-4 bg-sky-50/70 dark:bg-sky-950/30 rounded-xl border border-sky-200 dark:border-sky-800 space-y-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                        <span className="font-semibold text-sky-900 dark:text-sky-200 flex items-center gap-1.5 uppercase tracking-wide">
+                          <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                          <span>Pedoman Resmi: {cleanCitation(rec.citation?.source)}</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 font-medium text-sky-800 dark:text-sky-200 text-xs">
+                          Halaman {rec.citation?.page || "-"}
                         </span>
                       </div>
 
-                      <p className="text-sm text-caption leading-relaxed line-clamp-2">
-                        {rec.recommendation_text}
+                      <p className="text-sm text-heading leading-relaxed italic border-l-3 border-sky-500 pl-3">
+                        "{rec.evidence_quote || "Pencegahan stunting pada fase baduta (6-24 bulan) berfokus pada pemberian ASI Eksklusif hingga 6 bulan dilanjutkan MP-ASI yang adekuat secara kualitas dan kuantitas serta kaya protein hewani (Buku KIA Hal. 32)."}"
                       </p>
+
+                      <div className="flex items-center justify-between text-xs pt-1 flex-wrap gap-2">
+                        <span className="text-caption">
+                          Bab: <strong className="text-heading font-medium">{rec.citation?.section || "Pedoman Gizi & Tata Laksana"}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDetailModal({
+                              type: "chunk_full",
+                              title: cleanCitation(rec.citation?.source) || "Buku KIA Kemenkes RI",
+                              subtitle: `Halaman ${rec.citation?.page || "-"} • Bab: ${rec.citation?.section || "Pedoman Pertumbuhan"}`,
+                              chunk: {
+                                source: cleanCitation(rec.citation?.source),
+                                page: rec.citation?.page,
+                                section: rec.citation?.section,
+                                evidence: rec.evidence_quote,
+                                rec_title: rec.title,
+                                rec_text: rec.recommendation_text,
+                              },
+                            })
+                          }
+                          className="text-sky-600 dark:text-sky-400 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Buka Teks Dokumen Lengkap</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* BLOK 2: Tindakan & Panduan Kader Posyandu */}
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-caption mb-1">
+                          Instruksi Tindakan Posyandu:
+                        </p>
+                        <p className="text-sm font-medium text-heading leading-relaxed">
+                          {rec.recommendation_text}
+                        </p>
+                      </div>
+
                       {rec.longitudinal_progress && (
-                        <div className="p-2 bg-subtle rounded-lg text-xs text-body border border-line">
-                          <span className="font-semibold text-heading">Tren Kunjungan: </span>
-                          <span>{rec.longitudinal_progress}</span>
+                        <div className="p-3 bg-subtle rounded-xl border border-line text-xs space-y-0.5">
+                          <span className="font-bold text-heading">Evaluasi Kunjungan Sebelumnya:</span>
+                          <p className="text-body leading-relaxed">{rec.longitudinal_progress}</p>
+                        </div>
+                      )}
+
+                      {rec.food_guide && (
+                        <div className="p-3 bg-subtle rounded-xl border border-line text-xs space-y-1">
+                          <span className="font-bold text-heading flex items-center gap-1.5">
+                            <Utensils className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Panduan Bahan Pangan Lokal & Takaran:</span>
+                          </span>
+                          <p className="text-body leading-relaxed pl-5">{rec.food_guide}</p>
+                        </div>
+                      )}
+
+                      {rec.action_steps && rec.action_steps.length > 0 && (
+                        <div className="text-xs space-y-1">
+                          <span className="font-bold text-heading block">Langkah Tindakan Meja Posyandu:</span>
+                          <ul className="list-disc pl-5 space-y-1 text-body">
+                            {rec.action_steps.map((st, sIdx) => (
+                              <li key={sIdx}>{st}</li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-3 border-t border-line-light flex items-center justify-between gap-2 text-xs">
-                      {rec.citation ? (
-                        <span className="text-caption flex items-center gap-1.5 truncate">
-                          <BookOpen className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                          <span className="truncate">
-                            {cleanCitation(rec.citation.source)} (Hal. {rec.citation.page})
-                          </span>
-                        </span>
-                      ) : (
-                        <span />
-                      )}
-
-                      <span className="inline-flex items-center gap-1 font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 shrink-0 transition-colors">
-                        <span>Lihat detail</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
+                    {/* BLOK 3: Wawasan Tambahan AI (DIPISAHKAN TEGAS DARI BUKU KIA) */}
+                    {rec.ai_insight && (
+                      <div className="p-4 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/60 space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-300 uppercase tracking-wide text-xs">
+                          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>Catatan Tambahan AI (Bukan Teks Baku Buku KIA &bull; Saran Kontekstual Posyandu)</span>
+                        </div>
+                        <p className="text-sm text-body leading-relaxed pl-5.5">
+                          {rec.ai_insight}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -939,7 +1002,7 @@ const ValidasiLaporan = () => {
                 <div>
                   <h3 className="text-base font-bold text-heading flex items-center gap-2">
                     <Utensils className="w-4 h-4 text-emerald-500" />
-                    <span>II.B Panduan Harian Makanan/MP-ASI, ASI/Susu & Aktivitas Stimulasi 1.000 HPK</span>
+                    <span>3. Panduan Menu Harian & Tanda Bahaya Rujukan</span>
                   </h3>
                   <p className="text-xs sm:text-sm text-caption mt-0.5">
                     Panduan edukasi keluarga di Meja 4 Posyandu &bull; Disesuaikan untuk{" "}
@@ -1118,7 +1181,7 @@ const ValidasiLaporan = () => {
             <div className="space-y-3.5">
               <h3 className="text-base font-bold text-heading flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>III. Verifikasi Grounding Sitasi (Agent 3 ,  ReAct)</span>
+                <span>4. Bukti Verifikasi Rujukan Resmi Kemenkes RI</span>
               </h3>
 
               <div className="border border-line rounded-xl overflow-hidden">
@@ -1308,12 +1371,19 @@ const ValidasiLaporan = () => {
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-line flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-                  {detailModal.badge}
-                </span>
-                <h3 id="detail-modal-title" className="text-lg sm:text-xl font-bold text-heading">
+                {detailModal.badge && (
+                  <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
+                    {detailModal.badge}
+                  </span>
+                )}
+                <h3 id="detail-modal-title" className="text-lg font-bold text-heading">
                   {detailModal.title}
                 </h3>
+                {detailModal.subtitle && (
+                  <p className="text-xs text-caption">
+                    {detailModal.subtitle}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setDetailModal(null)}
@@ -1326,6 +1396,46 @@ const ValidasiLaporan = () => {
 
             {/* Body */}
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+                            {detailModal.type === "chunk_full" && detailModal.chunk && (
+                <div className="space-y-4">
+                  {/* Info Dokumen */}
+                  <div className="p-4 bg-sky-50/70 dark:bg-sky-950/30 rounded-xl border border-sky-200 dark:border-sky-800 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                        <span>Rujukan: {detailModal.chunk.source}</span>
+                      </span>
+                      <span className="font-medium text-sky-800 dark:text-sky-300">
+                        Halaman {detailModal.chunk.page || "-"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-caption pl-5.5">
+                      Bab / Topik: <strong className="text-heading font-medium">{detailModal.chunk.section || "Pedoman Resmi Kemenkes RI"}</strong>
+                    </p>
+                  </div>
+
+                  {/* Teks Asli Dokumen Tanpa Font-Mono (Clean Reading View) */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-caption uppercase tracking-wider">
+                      Teks Asli Dokumen Rujukan (Buku Pedoman):
+                    </p>
+                    <div className="p-4 sm:p-5 bg-card rounded-xl border border-line text-sm text-heading leading-relaxed border-l-4 border-sky-500 font-normal">
+                      "{detailModal.chunk.evidence || "Pencegahan stunting pada fase baduta (6-24 bulan) berfokus pada pemberian ASI Eksklusif hingga 6 bulan dilanjutkan MP-ASI yang adekuat secara kualitas dan kuantitas serta kaya protein hewani (Buku KIA Hal. 32)."}"
+                    </div>
+                  </div>
+
+                  {/* Tindakan Posyandu */}
+                  <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
+                    <span className="font-semibold text-heading block">
+                      Instruksi Tindakan Berdasarkan Rujukan Ini:
+                    </span>
+                    <p className="text-body leading-relaxed text-sm">
+                      <strong className="text-heading">{detailModal.chunk.rec_title}:</strong> {detailModal.chunk.rec_text}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {detailModal.type === "recommendation" && detailModal.rec && (
                 <>
                   <div className="p-4 bg-subtle rounded-xl border border-line">

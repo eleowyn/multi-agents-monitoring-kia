@@ -304,11 +304,10 @@ const DoctorMonitoring = () => {
         <button
           type="button"
           onClick={() => setActiveTab("overview")}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === "overview"
-              ? "border-sky-600 text-sky-600 dark:text-sky-400"
-              : "border-transparent text-label hover:text-heading"
-          }`}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${activeTab === "overview"
+            ? "border-sky-600 text-sky-600 dark:text-sky-400"
+            : "border-transparent text-label hover:text-heading"
+            }`}
         >
           Pasien Berisiko & Pemantauan ({stats.at_risk_count})
         </button>
@@ -316,11 +315,10 @@ const DoctorMonitoring = () => {
         <button
           type="button"
           onClick={() => setActiveTab("revisions")}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "revisions"
-              ? "border-sky-600 text-sky-600 dark:text-sky-400"
-              : "border-transparent text-label hover:text-heading"
-          }`}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "revisions"
+            ? "border-sky-600 text-sky-600 dark:text-sky-400"
+            : "border-transparent text-label hover:text-heading"
+            }`}
         >
           <span>Persetujuan Revisi Data</span>
           {stats.pending_revisions_count > 0 && (
@@ -333,11 +331,10 @@ const DoctorMonitoring = () => {
         <button
           type="button"
           onClick={() => setActiveTab("chunks")}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "chunks"
-              ? "border-sky-600 text-sky-600 dark:text-sky-400"
-              : "border-transparent text-label hover:text-heading"
-          }`}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "chunks"
+            ? "border-sky-600 text-sky-600 dark:text-sky-400"
+            : "border-transparent text-label hover:text-heading"
+            }`}
         >
           <Database className="w-4 h-4 text-sky-500" />
           <span>Koleksi Pengetahuan RAG (Buku KIA & PNPK)</span>
@@ -408,13 +405,12 @@ const DoctorMonitoring = () => {
                         </td>
                         <td className="p-3.5">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
-                              item.overall_status === "RISIKO_TINGGI"
-                                ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                                : item.overall_status === "PERLU_PERHATIAN"
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${item.overall_status === "RISIKO_TINGGI"
+                              ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
+                              : item.overall_status === "PERLU_PERHATIAN"
                                 ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
                                 : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                            }`}
+                              }`}
                           >
                             {item.overall_status ? item.overall_status.replace(/_/g, " ") : "-"}
                           </span>
@@ -770,17 +766,16 @@ const DoctorMonitoring = () => {
                 type="button"
                 onClick={handleProcessRevision}
                 disabled={actionLoading}
-                className={`px-4 py-2 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer ${
-                  reviewModal.action === "approve"
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-rose-600 hover:bg-rose-700"
-                }`}
+                className={`px-4 py-2 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer ${reviewModal.action === "approve"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-rose-600 hover:bg-rose-700"
+                  }`}
               >
                 {actionLoading
                   ? "Memproses..."
                   : reviewModal.action === "approve"
-                  ? "Konfirmasi & Setujui"
-                  : "Konfirmasi Penolakan"}
+                    ? "Konfirmasi & Setujui"
+                    : "Konfirmasi Penolakan"}
               </button>
             </div>
           </div>

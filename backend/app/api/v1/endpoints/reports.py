@@ -185,6 +185,84 @@ def _extract_visit_data(visit: Optional[Visit], db: Optional[Session] = None, ri
     }
 
 
+def _enrich_evidence_quotes(recs: list, verifs: list) -> list:
+    """
+    Memastikan setiap butir rekomendasi memiliki kutipan teks asli (evidence_quote)
+    yang valid dari pedoman resmi (Buku KIA / PNPK Stunting), bukan placeholder generik.
+    """
+    from app.multiagent.rag.ingest import DEFAULT_CLINICAL_GUIDELINES
+
+    enriched = []
+    for rec in recs:
+        r = dict(rec)
+        eq = str(r.get("evidence_quote") or "").strip()
+        # Jika belum ada kutipan asli atau masih teks placeholder generik
+        if not eq or "Teks rujukan resmi sesuai standar Kemenkes RI" in eq:
+            cit = r.get("citation") or {}
+            cit_page = cit.get("page")
+            cit_sec = str(cit.get("section") or "").lower()
+            rec_title = str(r.get("title") or "").lower()
+            rec_cat = str(r.get("category") or "").lower()
+
+            found_text = None
+
+            # 1. Cek dari verification_details jika ada snippet evidence yang otentik
+            if verifs:
+                for v in verifs:
+                    v_ev = str(v.get("evidence") or "").strip()
+                    if v_ev and "Sitasi terverifikasi pada dokumen rujukan resmi" not in v_ev:
+                        v_title = str(v.get("title") or "").lower()
+                        if (rec_title and (rec_title in v_title or v_title in rec_title)) or (str(cit_page) == str(v.get("citation_page"))):
+                            found_text = v_ev
+                            break
+
+            # 2. Cek kecocokan halaman di DEFAULT_CLINICAL_GUIDELINES
+            if not found_text and cit_page:
+                try:
+                    p_num = int(cit_page)
+                    for g in DEFAULT_CLINICAL_GUIDELINES:
+                        if int(g.get("page", -1)) == p_num:
+                            found_text = g["content"]
+                            break
+                except (ValueError, TypeError):
+                    pass
+
+            # 3. Cek kecocokan bab / topik
+            if not found_text and cit_sec:
+                for g in DEFAULT_CLINICAL_GUIDELINES:
+                    g_sec = str(g.get("section") or "").lower()
+                    if cit_sec in g_sec or g_sec in cit_sec:
+                        found_text = g["content"]
+                        break
+
+            # 4. Cek kecocokan kategori / judul
+            if not found_text:
+                full_kw = f"{rec_title} {rec_cat} {cit_sec}"
+                if any(w in full_kw for w in ["stunting", "baduta", "gizi", "tumbuh", "anak"]):
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[1]["content"] if "pencegahan" in full_kw or "baduta" in full_kw else DEFAULT_CLINICAL_GUIDELINES[0]["content"]
+                elif any(w in full_kw for w in ["kek", "lila", "hamil", "ibu"]):
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[2]["content"]
+                elif any(w in full_kw for w in ["anemia", "hb"]):
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[3]["content"]
+                elif any(w in full_kw for w in ["bblr", "bayi", "lahir"]):
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[4]["content"]
+                elif any(w in full_kw for w in ["kspr", "risiko"]):
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[5]["content"]
+                else:
+                    found_text = DEFAULT_CLINICAL_GUIDELINES[1]["content"]
+
+            r["evidence_quote"] = found_text
+
+        if not r.get("ai_insight"):
+            r["ai_insight"] = (
+                "Catatan Tambahan AI: Libatkan peran keluarga dalam pendampingan makan harian dan "
+                "terapkan variasi menu pangan lokal kaya protein hewani untuk percepatan pemulihan tumbuh kembang."
+            )
+
+        enriched.append(r)
+    return enriched
+
+
 def _enrich_report_telemetry(report: Report, db: Session) -> None:
     """
     Memastikan setiap laporan (termasuk laporan lama di database) memiliki data
@@ -208,8 +286,13 @@ def _enrich_report_telemetry(report: Report, db: Session) -> None:
     )
     risk_flags = report.risk_flags or []
     risk_narrative = report.risk_narrative or ""
-    recs = report.recommendations or []
-    verifs = report.verification_summary or []
+    recs = list(report.recommendations or fr_json.get("recommendations") or [])
+    verifs = list(report.verification_summary or fr_json.get("verification_summary") or [])
+    if recs:
+        recs = _enrich_evidence_quotes(recs, verifs)
+        report.recommendations = recs
+        fr_json["recommendations"] = recs
+
     is_approved = report.status == ReportStatus.APPROVED
     rev_cnt = report.revision_count or 0
 

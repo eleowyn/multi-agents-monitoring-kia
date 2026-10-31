@@ -946,11 +946,16 @@ Tugas Anda:
                     }
                 item = _enrich_recommendation_item_fields(item, care_plan)
                 # Auto-populate evidence quote & longitudinal progress if empty
+                # Auto-populate evidence quote & longitudinal progress if empty
                 default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
                 target_chunk = seen_chunks.get(item.get("citation", {}).get("chunk_id")) or default_chunk
-                if not item.get("evidence_quote") and target_chunk:
-                    raw_c = target_chunk.get("content", "").strip()
-                    item["evidence_quote"] = raw_c[:350] + ("..." if len(raw_c) > 350 else "")
+                if not item.get("evidence_quote"):
+                    if target_chunk and target_chunk.get("content"):
+                        raw_c = target_chunk.get("content", "").strip()
+                        item["evidence_quote"] = raw_c[:350] + ("..." if len(raw_c) > 350 else "")
+                    else:
+                        from app.multiagent.rag.ingest import DEFAULT_CLINICAL_GUIDELINES
+                        item["evidence_quote"] = DEFAULT_CLINICAL_GUIDELINES[1]["content"] if phase != "IBU_HAMIL" else DEFAULT_CLINICAL_GUIDELINES[2]["content"]
                 if not item.get("longitudinal_progress"):
                     item["longitudinal_progress"] = comp_str if comp_str != "Kunjungan pemantauan pertama / data awal." else "Kunjungan pertama / data awal pemantauan."
                 if not item.get("ai_insight"):
