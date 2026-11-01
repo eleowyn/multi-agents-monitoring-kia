@@ -786,7 +786,7 @@ const ValidasiLaporan = () => {
                     </div>
                   </div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${carePlan?.graduation_package?.status_type === "ALERT" ? "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/60 dark:text-rose-200" : "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-200"}`}>
-                    {carePlan?.graduation_package?.status_badge || "🎓 Lulus Periode Emas 1.000 HPK"}
+                    {carePlan?.graduation_package?.status_badge || "Lulus Periode Emas 1.000 HPK"}
                   </span>
                 </div>
 

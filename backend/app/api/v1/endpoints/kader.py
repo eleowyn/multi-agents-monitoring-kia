@@ -55,6 +55,9 @@ class KaderDashboardSummary(BaseModel):
     monthly_visits: int
     pending_validation: int
     high_risk_count: int
+    total_stunting: int = 0
+    total_kek: int = 0
+    total_anemia: int = 0
     phase_breakdown: Optional[PhaseBreakdown] = None
     monthly_trend: Optional[List[MonthlyTrendItem]] = []
     priority_patients: List[PriorityPatientItem]
@@ -125,6 +128,20 @@ def get_kader_dashboard_summary(
 
     pending_validation = report_q.filter(Report.status == ReportStatus.DRAFT).count()
     high_risk_count = report_q.filter(Report.overall_status == "RISIKO_TINGGI").count()
+
+    # Hitung total kumulatif stunting, KEK, dan anemia untuk posyandu / desa kader
+    total_stunting = 0
+    total_kek = 0
+    total_anemia = 0
+    for r in report_q.all():
+        for f in (r.risk_flags or []):
+            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
+            if "STUNTING" in f_name:
+                total_stunting += 1
+            if "KEK" in f_name:
+                total_kek += 1
+            if "ANEMIA" in f_name:
+                total_anemia += 1
 
     # Tren bulanan (6 bulan terakhir) untuk posyandu kader
     BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
@@ -228,6 +245,9 @@ def get_kader_dashboard_summary(
         monthly_visits=monthly_visits,
         pending_validation=pending_validation,
         high_risk_count=high_risk_count,
+        total_stunting=total_stunting,
+        total_kek=total_kek,
+        total_anemia=total_anemia,
         phase_breakdown=phase_data,
         monthly_trend=monthly_trend,
         priority_patients=priority_items,

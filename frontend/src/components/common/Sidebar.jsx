@@ -94,16 +94,16 @@ const Sidebar = ({ isOpen, onClose }) => {
               to={link.to}
               onClick={onClose}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 active:scale-[0.98] ${
+                `group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ease-out active:scale-[0.98] ${
                   isActive
-                    ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-xs border border-sky-200 dark:border-sky-800/50"
-                    : "text-label hover:bg-muted hover:text-heading"
+                    ? "bg-accent-sky text-sky-700 dark:text-sky-300 font-semibold shadow-xs border border-sky-200 dark:border-sky-800/50 translate-x-0.5"
+                    : "text-label hover:bg-muted hover:text-heading hover:translate-x-1"
                 }`
               }
               aria-label={link.label}
             >
               <Icon
-                className="w-[18px] h-[18px] shrink-0"
+                className="w-[18px] h-[18px] shrink-0 transition-transform duration-200 group-hover:scale-105"
                 aria-hidden="true"
               />
               <span className="flex-1">{link.label}</span>

@@ -199,24 +199,24 @@ const ManageReports = () => {
     switch (risk) {
       case "RISIKO_TINGGI":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-rose text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-            Risiko Tinggi
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>Risiko Tinggi</span>
           </span>
         );
       case "PERLU_PERHATIAN":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-amber text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            Perlu Perhatian
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>Perlu Perhatian</span>
           </span>
         );
       case "KONDISI_BAIK":
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-emerald text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            Kondisi Baik
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Kondisi Baik</span>
           </span>
         );
     }
@@ -226,24 +226,24 @@ const ManageReports = () => {
     switch (status) {
       case "APPROVED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            Disahkan
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Disahkan</span>
           </span>
         );
       case "REJECTED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40">
-            <XCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-            Ditolak
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+            <XCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>Ditolak</span>
           </span>
         );
       case "DRAFT":
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
-            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            Draft (Review)
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>Draft</span>
           </span>
         );
     }

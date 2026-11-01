@@ -282,15 +282,19 @@ def _append_maternal_carryover_flags(
     if not maternal_history:
         return
 
+    m_name = maternal_history.get("mother_name") or "Ibu Kandung"
+    m_nik = maternal_history.get("mother_nik")
+    m_identity = f"{m_name} (NIK: {m_nik})" if m_nik else m_name
+
     if maternal_history.get("is_kek"):
         min_lila = maternal_history.get("min_maternal_lila_cm")
         lila_info = f" (LiLA terendah {min_lila} cm)" if min_lila else ""
         risk_flags.append({
             "indicator": "LONGITUDINAL_MATERNAL_KEK",
             "flag": "RIWAYAT_IBU_KEK",
-            "detail": f"Ibu memiliki riwayat KEK saat hamil{lila_info} yang meningkatkan kerentanan stunting pada {phase_label}.",
+            "detail": f"Anak terhubung secara longitudinal dengan Ibu Kandung: {m_identity}. Ibu memiliki riwayat KEK saat hamil{lila_info} yang secara klinis meningkatkan kerentanan stunting dan gangguan pertumbuhan linier pada {phase_label}.",
         })
-        points.append(f"Terdapat riwayat maternal KEK pada masa kehamilan{lila_info}.")
+        points.append(f"Terdapat riwayat maternal KEK pada masa kehamilan Ibu {m_name}{lila_info}.")
 
     if maternal_history.get("is_anemia"):
         min_hb = maternal_history.get("min_maternal_hb")
@@ -298,9 +302,9 @@ def _append_maternal_carryover_flags(
         risk_flags.append({
             "indicator": "LONGITUDINAL_MATERNAL_ANEMIA",
             "flag": "RIWAYAT_IBU_ANEMIA",
-            "detail": f"Ibu memiliki riwayat anemia saat hamil{hb_info} yang berdampak pada cadangan zat besi dan pertumbuhan {phase_label}.",
+            "detail": f"Anak terhubung dengan Ibu Kandung: {m_identity} yang memiliki riwayat Anemia saat hamil{hb_info}. Kondisi ini berisiko menyebabkan defisiensi cadangan zat besi kongenital pada {phase_label}.",
         })
-        points.append(f"Terdapat riwayat maternal Anemia saat kehamilan{hb_info}.")
+        points.append(f"Terdapat riwayat maternal Anemia saat kehamilan Ibu {m_name}{hb_info}.")
 
     if maternal_history.get("is_high_risk_kspr"):
         kspr_cat = maternal_history.get("kspr_category", "KRT")
@@ -308,9 +312,9 @@ def _append_maternal_carryover_flags(
         risk_flags.append({
             "indicator": "LONGITUDINAL_MATERNAL_KSPR",
             "flag": "RIWAYAT_KEHAMILAN_RISIKO_TINGGI",
-            "detail": f"Ibu memiliki riwayat kehamilan risiko tinggi ({kspr_cat}, Skor KSPR {kspr_score}) yang memerlukan pemantauan intensif pada {phase_label}.",
+            "detail": f"Ibu Kandung: {m_identity} memiliki riwayat kehamilan risiko tinggi ({kspr_cat}, Skor KSPR {kspr_score}) yang memerlukan pemantauan tumbuh kembang intensif pada {phase_label}.",
         })
-        points.append(f"Terdapat riwayat obstetri kehamilan risiko tinggi ({kspr_cat}, Skor {kspr_score}).")
+        points.append(f"Terdapat riwayat obstetri kehamilan risiko tinggi pada Ibu {m_name} ({kspr_cat}, Skor {kspr_score}).")
 
 
 def detect_maternal_longitudinal_trend(

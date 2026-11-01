@@ -405,13 +405,23 @@ const DoctorMonitoring = () => {
                         </td>
                         <td className="p-3.5">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${item.overall_status === "RISIKO_TINGGI"
-                              ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                              : item.overall_status === "PERLU_PERHATIAN"
-                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                                : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                              }`}
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+                              item.overall_status === "RISIKO_TINGGI"
+                                ? "text-rose-600 dark:text-rose-400"
+                                : item.overall_status === "PERLU_PERHATIAN"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}
                           >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                item.overall_status === "RISIKO_TINGGI"
+                                  ? "bg-rose-500"
+                                  : item.overall_status === "PERLU_PERHATIAN"
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                              }`}
+                            />
                             {item.overall_status ? item.overall_status.replace(/_/g, " ") : "-"}
                           </span>
                         </td>

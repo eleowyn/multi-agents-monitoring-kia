@@ -87,10 +87,10 @@ const KaderDashboard = () => {
     summary?.phase_breakdown?.toddlers ??
     (summary?.total_children ? Math.max(0, summary.total_children - newbornsCount) : 0);
 
-  // Tren bulan berjalan & Metrik Stunting
+  // Tren bulan berjalan & Metrik Stunting (tersinkronisasi akurat dengan data riil)
   const trendPoints = summary?.monthly_trend || [];
   const lastPoint = trendPoints[trendPoints.length - 1] || { visits: 0, stunting: 0, kek: 0, anemia: 0 };
-  const stuntingCount = lastPoint?.stunting || 0;
+  const stuntingCount = summary?.total_stunting !== undefined ? summary.total_stunting : (lastPoint?.stunting || 0);
   const stuntingRate = toddlersCount > 0 ? ((stuntingCount / toddlersCount) * 100).toFixed(1) : "0.0";
 
   return (
@@ -394,116 +394,65 @@ const KaderDashboard = () => {
           </div>
         </section>
 
-        {/* Kolom Kanan: Aksi Layanan Meja Posyandu + Distribusi 3 Fase 1.000 HPK (lg:col-span-5) */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
-          {/* Kartu A: Panel Monitoring Khusus Stunting (1.000 HPK) */}
-          <div className="bg-card rounded-xl border border-line p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+        {/* Kolom Kanan: Monitoring Stunting Sederhana (lg:col-span-5) */}
+        <div className="lg:col-span-5 flex flex-col">
+          <div className="bg-card rounded-xl border border-line p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-line">
                 <h3 className="text-base font-bold text-heading flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span>Monitoring Stunting & Gizi Baduta</span>
+                  <span>Kasus Stunting (PB/U &lt; -2 SD)</span>
                 </h3>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${
+                <span className={`text-xs font-semibold ${
                   stuntingCount > 0
-                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-emerald-600 dark:text-emerald-400"
                 }`}>
                   {stuntingCount > 0 ? `${stuntingCount} Kasus Aktif` : "0 Kasus (Aman)"}
                 </span>
               </div>
-              <p className="text-xs text-caption leading-relaxed">
-                Evaluasi status antropometri Panjang/Tinggi Badan menurut Umur (PB/U) balita usia 0–24 bulan:
-              </p>
 
-              {/* 2 Indikator Kunci Stunting */}
-              <div className="grid grid-cols-2 gap-2.5 my-3">
-                <div className="p-3 bg-subtle rounded-lg border border-line space-y-1">
-                  <span className="text-xs text-caption block">Prevalensi di Posyandu</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-bold text-heading tabular-nums">
+              {/* Angka & Prevalensi Sederhana */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
+                  <span className="text-xs text-caption block">Jumlah Balita Stunting</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-bold text-heading tabular-nums">
+                      {stuntingCount}
+                    </span>
+                    <span className="text-xs text-caption">anak</span>
+                  </div>
+                  <span className="text-xs text-dim block">Bulan berjalan</span>
+                </div>
+
+                <div className="p-3.5 bg-subtle rounded-xl border border-line space-y-1">
+                  <span className="text-xs text-caption block">Prevalensi Posyandu</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-bold text-heading tabular-nums">
                       {stuntingRate}%
                     </span>
-                    <span className="text-xs text-caption">dari {toddlersCount} anak</span>
+                    <span className="text-xs text-caption">dari {toddlersCount || summary?.total_children || 0} anak</span>
                   </div>
-                  <span className="text-xs text-caption block">Standar WHO &lt; 20%</span>
-                </div>
-
-                <div className="p-3 bg-subtle rounded-lg border border-line space-y-1">
-                  <span className="text-xs text-caption block">Ambang Batas Kemenkes</span>
-                  <div className="text-sm font-bold text-heading">
-                    PB/U &lt; -2 SD
-                  </div>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 block font-medium">
-                    &lt; -3 SD: Sangat Pendek
-                  </span>
+                  <span className="text-xs text-dim block">Target nasional &lt; 14%</span>
                 </div>
               </div>
 
-              {/* Protokol Cepat Intervensi PMT Lokal */}
-              <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1.5">
-                <span className="font-semibold text-heading block">Protokol Respon Posyandu:</span>
-                <ul className="space-y-1 text-caption">
-                  <li className="flex items-start gap-1.5">
-                    <span className="text-sky-600 dark:text-sky-400 font-bold">•</span>
-                    <span><strong>Protein Hewani:</strong> Beri 1 butir telur/hari & ikan laut segar (tude/cakalang).</span>
-                  </li>
-                  <li className="flex items-start gap-1.5">
-                    <span className="text-sky-600 dark:text-sky-400 font-bold">•</span>
-                    <span><strong>Rujukan Dokter:</strong> Rujuk bila BB tidak naik 2x (2T) atau kurva KMS di bawah garis merah.</span>
-                  </li>
-                </ul>
-              </div>
+              {/* Status Ringkas */}
+              <p className="text-xs text-caption leading-relaxed">
+                Deteksi berdasarkan standar antropometri Panjang/Tinggi Badan menurut Umur (PB/U). Balita terindikasi stunting jika Z-score berada di bawah -2 SD.
+              </p>
             </div>
 
-            <div className="pt-2 border-t border-line flex items-center justify-between text-xs">
-              <span className="text-caption font-medium">Kecamatan Airmadidi</span>
+            <div className="pt-3 border-t border-line flex items-center justify-between text-xs">
+              <span className="text-caption">Posyandu {summary?.posyandu_name || "Airmadidi"}</span>
               <button
                 type="button"
                 onClick={() => navigate("/kader/monitoring-kia?tab=personal")}
                 className="font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
               >
-                <span>Buka Detail Pasien di Monitoring</span>
+                <span>Lihat Data di Monitoring</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            </div>
-          </div>
-
-          {/* Kartu B: Distribusi Sasaran 3 Fase 1.000 HPK */}
-          <div className="bg-card rounded-xl border border-line p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-semibold text-heading">
-                Distribusi 3 Fase 1.000 HPK
-              </h3>
-              <span className="text-xs font-medium text-caption tabular-nums">
-                {totalSasaran} Sasaran
-              </span>
-            </div>
-            <p className="text-sm text-caption mb-3">
-              Rincian demografi sasaran aktif di wilayah posyandu:
-            </p>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between py-1.5 border-b border-line">
-                <span className="text-caption">Fase 1: Ibu Hamil</span>
-                <span className="font-medium text-heading tabular-nums">
-                  {mothersCount} sasaran
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5 border-b border-line">
-                <span className="text-caption">Fase 2: Bayi 0-28 Hari</span>
-                <span className="font-medium text-heading tabular-nums">
-                  {newbornsCount} sasaran
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-caption">Fase 3: Baduta (1-24 Bulan)</span>
-                <span className="font-medium text-heading tabular-nums">
-                  {toddlersCount} sasaran
-                </span>
-              </div>
             </div>
           </div>
         </div>

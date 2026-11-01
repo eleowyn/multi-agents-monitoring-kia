@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/common/Navbar";
 import Sidebar from "./components/common/Sidebar";
@@ -52,13 +52,16 @@ const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
     return <Navigate to={redirectPath} replace />;
   }
 
+  const location = useLocation();
+
   return (
     <div className="min-h-screen flex flex-col bg-page">
       <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex flex-1 relative">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main
-          className="flex-1 bg-page overflow-y-auto min-h-[calc(100vh-4rem)]"
+          key={location.pathname}
+          className="flex-1 bg-page overflow-y-auto min-h-[calc(100vh-4rem)] animate-fade-in"
           id="main-content"
           role="main"
         >

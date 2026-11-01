@@ -65,19 +65,25 @@ const PatientSkeleton = () => (
   </div>
 );
 
-/* ─── Reusable Form Field ─── */
-const FormField = ({ id, label, hint, children }) => (
-  <div className="space-y-1.5">
-    <label
-      htmlFor={id}
-      className="block text-xs font-semibold text-heading"
-    >
-      {label}
+/* ─── Reusable Form Field (Auto-Aligned Baseline Across Grid Rows) ─── */
+const FormField = ({ id, label, hint, children, className = "" }) => (
+  <div className={`flex flex-col h-full justify-between ${className}`}>
+    <div className="flex items-start justify-between gap-1 mb-1.5 min-h-[1.5rem]">
+      <label
+        htmlFor={id}
+        className="text-xs font-semibold text-heading leading-tight"
+      >
+        {label}
+      </label>
       {hint && (
-        <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs ml-1.5">{hint}</span>
+        <span className="text-amber-600 dark:text-amber-400 font-medium text-[11px] leading-tight shrink-0 whitespace-nowrap ml-1">
+          {hint}
+        </span>
       )}
-    </label>
-    {children}
+    </div>
+    <div className="mt-auto">
+      {children}
+    </div>
   </div>
 );
 
@@ -204,7 +210,7 @@ const InputKunjungan = () => {
         isGraduation: isGrad,
         phaseCode: diffDays <= 28 ? "BAYI_BARU_LAHIR" : "BADUTA",
         label: isGrad
-          ? `Hari ke-${totalHpkDay} • Target Kelulusan 1.000 HPK (Usia 24 Bulan)! 🎓`
+          ? `Hari ke-${totalHpkDay} • Target Kelulusan 1.000 HPK (Usia 24 Bulan)`
           : `Hari ke-${totalHpkDay} dari 1.000 HPK (${percent}%) • Fase ${diffDays <= 28 ? "2: Neonatal (0-28 hari)" : "3: Baduta"} (Usia ${calcMonths} Bulan)`,
       };
     }
@@ -686,41 +692,52 @@ const InputKunjungan = () => {
                   </FormField>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-stretch">
+                  <FormField id="maternal-weight" label="Berat Badan (kg)">
+                    <input
+                      id="maternal-weight"
+                      type="number"
+                      step="0.1"
+                      placeholder="Contoh: 52.0"
+                      value={maternalWeight}
+                      onChange={(e) => setMaternalWeight(e.target.value)}
+                      className={INPUT_CLASS}
+                    />
+                  </FormField>
+                  <FormField id="maternal-height" label="Tinggi Badan (cm)" hint="*≤ 145 cm">
+                    <input
+                      id="maternal-height"
+                      type="number"
+                      step="0.1"
+                      placeholder="Contoh: 153.0"
+                      value={maternalHeight}
+                      onChange={(e) => setMaternalHeight(e.target.value)}
+                      className={INPUT_CLASS}
+                    />
+                  </FormField>
                   <FormField
                     id="lila"
                     label="LiLA (cm)"
-                    hint="*KEK jika < 23.5"
+                    hint="*KEK < 23.5"
                   >
                     <input
                       id="lila"
                       type="number"
                       step="0.1"
-                      placeholder="Contoh: 22.5"
+                      placeholder="Contoh: 24.0"
                       value={lilaCm}
                       onChange={(e) => setLilaCm(e.target.value)}
                       className={INPUT_CLASS}
                     />
                   </FormField>
-                  <FormField id="hb" label="Kadar Hb (g/dL)">
+                  <FormField id="hb" label="Kadar Hb (g/dL)" hint="*< 11.0">
                     <input
                       id="hb"
                       type="number"
                       step="0.1"
-                      placeholder="Contoh: 10.2"
+                      placeholder="Contoh: 12.0"
                       value={hbLevel}
                       onChange={(e) => setHbLevel(e.target.value)}
-                      className={INPUT_CLASS}
-                    />
-                  </FormField>
-                  <FormField id="maternal-weight" label="Berat Badan Ibu (kg)">
-                    <input
-                      id="maternal-weight"
-                      type="number"
-                      step="0.1"
-                      placeholder="Contoh: 54.0"
-                      value={maternalWeight}
-                      onChange={(e) => setMaternalWeight(e.target.value)}
                       className={INPUT_CLASS}
                     />
                   </FormField>
@@ -862,7 +879,7 @@ const InputKunjungan = () => {
                   <FormField
                     id="age-months"
                     label="Usia Anak (Bulan)"
-                    hint="*Otomatis sinkron dari tgl lahir & kunjungan (dapat diedit)"
+                    hint="*Otomatis (dapat diedit)"
                   >
                     <input
                       id="age-months"
@@ -976,11 +993,11 @@ const InputKunjungan = () => {
             >
               <textarea
                 id="clinical-notes"
-                rows="2"
+                rows={3}
                 placeholder="Catatan tambahan tanda klinis atau keluhan keluarga..."
                 value={clinicalNotes}
                 onChange={(e) => setClinicalNotes(e.target.value)}
-                className={INPUT_CLASS}
+                className="w-full min-h-[84px] p-3.5 bg-card dark:bg-slate-900/90 border border-line dark:border-slate-700 rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-150 shadow-2xs leading-relaxed"
               />
             </FormField>
 

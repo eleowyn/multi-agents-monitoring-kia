@@ -464,47 +464,47 @@ const MonitoringKia = () => {
 
                           <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.stunting_count > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
                                 {v.stunting_count} Kasus
                               </span>
                             ) : (
-                              <span className="text-dim font-mono">-</span>
+                              <span className="text-dim text-xs">-</span>
                             )}
                           </td>
 
                           <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.kek_count + v.anemia_count > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
                                 {v.kek_count} KEK • {v.anemia_count} Anemia
                               </span>
                             ) : (
-                              <span className="text-dim font-mono">-</span>
+                              <span className="text-dim text-xs">-</span>
                             )}
                           </td>
 
                           <td className="p-3.5 sm:p-4 text-center tabular-nums">
                             {v.high_risk_count > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
                                 {v.high_risk_count} Kasus
                               </span>
                             ) : (
-                              <span className="text-dim font-mono">-</span>
+                              <span className="text-dim text-xs">-</span>
                             )}
                           </td>
 
                           <td className="p-3.5 sm:p-4 text-center">
                             {v.status_color === "rose" ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/50">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                                 Prioritas
                               </span>
                             ) : v.status_color === "amber" ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 Waspada
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 Aman
                               </span>
@@ -554,11 +554,11 @@ const MonitoringKia = () => {
               </div>
 
               {/* Filter Jenis Pasien (Simple, Rapi, Sesuai Standar UI) */}
-              <div className="inline-flex items-center p-1 bg-subtle border border-line rounded-xl gap-1 shrink-0">
+              <div className="h-10 inline-flex items-center p-1 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => setFilterType("")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === ""
                       ? "bg-card text-heading shadow-xs border border-line"
                       : "text-caption hover:text-heading"
@@ -569,7 +569,7 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("CHILD")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "CHILD"
                       ? "bg-card text-sky-600 dark:text-sky-400 shadow-xs border border-line"
                       : "text-caption hover:text-heading"
@@ -580,7 +580,7 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("MOTHER")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "MOTHER"
                       ? "bg-card text-pink-600 dark:text-pink-400 shadow-xs border border-line"
                       : "text-caption hover:text-heading"
@@ -691,29 +691,26 @@ const MonitoringKia = () => {
             loading={loadingLongitudinal}
           />
 
-          {/* Komponen 3: Timeline Card Riwayat Rekam Jejak Kunjungan 1.000 HPK */}
-          <div className="bg-card rounded-xl border border-line shadow-card p-5 sm:p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
+          {/* Komponen 3: Riwayat Kunjungan 1.000 HPK (Format Ringkas, Bebas Deadspace, Tanpa Label Menumpuk) */}
+          <div className="bg-card rounded-xl border border-line shadow-card p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div>
                 <h3 className="text-base font-bold text-heading flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Riwayat Rekam Jejak Kunjungan 1.000 HPK</span>
+                  <span>Riwayat Rekam Kunjungan 1.000 HPK</span>
                 </h3>
                 <p className="text-xs text-caption mt-0.5">
-                  Rekapitulasi berkala setiap kali kunjungan Posyandu & Puskesmas (dari kunjungan terkini ke awal)
+                  Catatan kunjungan berkala Posyandu & Puskesmas ({visits.length} Kunjungan Tercatat)
                 </p>
               </div>
-              <span className="text-xs font-semibold text-caption px-2.5 py-1 rounded-md bg-subtle border border-line self-start sm:self-auto">
-                Total {visits.length} Kunjungan Terdaftar
-              </span>
             </div>
 
             {visits.length === 0 ? (
-              <div className="p-8 text-center text-caption text-xs bg-subtle rounded-xl border border-dashed border-line">
+              <div className="p-6 text-center text-caption text-xs bg-subtle rounded-xl border border-dashed border-line">
                 Belum ada data riwayat kunjungan tercatat untuk pasien ini.
               </div>
             ) : (
-              <div className="relative border-l-2 border-line ml-4 sm:ml-5 space-y-6">
+              <div className="space-y-3">
                 {[...visits].reverse().map((v, idx) => {
                   const visitNumber = visits.length - idx;
                   const isLatest = idx === 0;
@@ -733,188 +730,144 @@ const MonitoringKia = () => {
                   const isAttention = v.overall_status === "PERLU_PERHATIAN";
 
                   return (
-                    <div key={v.id || idx} className="relative pl-6 sm:pl-8 group">
-                      {/* Timeline Node Icon / Number */}
-                      <div
-                        className={`absolute -left-[17px] top-1.5 w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold shadow-xs ${
-                          isLatest
-                            ? "bg-sky-600 text-white border-white dark:border-slate-900"
-                            : isHighRisk
-                            ? "bg-rose-500 text-white border-white dark:border-slate-900"
-                            : "bg-card text-heading border-line"
-                        }`}
-                      >
-                        {visitNumber}
-                      </div>
-
-                      {/* Card Content */}
-                      <div className="bg-card rounded-xl border border-line p-4 sm:p-5 shadow-xs space-y-4">
-                        {/* Card Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-line-light">
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-bold text-heading">
-                                Kunjungan ke-{visitNumber}
-                              </span>
-                              {isLatest && (
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-                                  Kunjungan Terkini
-                                </span>
-                              )}
-                              <span className="text-xs text-caption">
-                                &bull; {formatDateIndo(v.visit_date)}
-                              </span>
-                            </div>
-                            <p className="text-xs text-caption">
-                              {isChild ? (
-                                <>
-                                  Usia: <strong className="text-heading">{v.age_in_months ?? "-"} Bulan</strong>
-                                  {v.phase && ` • Fase: ${v.phase.replace(/_/g, " ")}`}
-                                </>
-                              ) : (
-                                <>
-                                  Usia Kehamilan:{" "}
-                                  <strong className="text-heading">
-                                    {v.gestational_age_weeks ? `${v.gestational_age_weeks} Minggu` : (v.trimester ? `Trimester ${v.trimester}` : "-")}
-                                  </strong>
-                                </>
-                              )}
-                            </p>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="self-start sm:self-auto">
-                            {isHighRisk ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                <span>Risiko Tinggi</span>
-                              </span>
-                            ) : isAttention ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                <span>Perlu Perhatian</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Kondisi Baik</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Parameter Pengukuran Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                          {isChild ? (
-                            <>
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Berat Badan (BB)</span>
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="font-bold text-heading text-sm">
-                                    {v.child_weight_kg ?? (v.birth_weight_gram ? `${+(v.birth_weight_gram / 1000).toFixed(2)}` : "-")} kg
-                                  </span>
-                                  {deltaWeight !== null && (
-                                    <span
-                                      className={`text-xs font-semibold ${
-                                        deltaWeight > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                                      }`}
-                                    >
-                                      {deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Panjang / TB</span>
-                                <span className="font-bold text-heading text-sm">
-                                  {v.child_length_cm ?? v.birth_length_cm ?? "-"} cm
-                                </span>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Z-Score PB/U (Stunting)</span>
-                                <span className={`font-bold text-xs ${
-                                  v.z_score_pbu < -2 ? "text-rose-600 dark:text-rose-400" : "text-heading"
-                                }`}>
-                                  {v.z_score_pbu !== null && v.z_score_pbu !== undefined
-                                    ? `${Number(v.z_score_pbu).toFixed(2)} SD (${v.pbu_category || (v.z_score_pbu < -2 ? "Pendek" : "Normal")})`
-                                    : "-"}
-                                </span>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Tren KMS & ASI</span>
-                                <span className="font-bold text-heading text-xs">
-                                  {v.weight_trend_kms ? (v.weight_trend_kms === "N" ? "Naik (N)" : "Tidak Naik (T)") : "-"} • {v.feeding_status ? v.feeding_status.replace(/_/g, " ") : "ASI"}
-                                </span>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Lingkar Lengan (LiLA)</span>
-                                <span className={`font-bold text-sm ${v.lila_cm && v.lila_cm < 23.5 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
-                                  {v.lila_cm ? `${v.lila_cm} cm` : "-"}
-                                </span>
-                                <span className="text-xs text-caption block">
-                                  {v.lila_cm ? (v.lila_cm >= 23.5 ? "Normal (≥23.5 cm)" : "Risiko KEK (<23.5 cm)") : ""}
-                                </span>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Tekanan Darah (TD)</span>
-                                <span className="font-bold text-heading text-sm">
-                                  {v.systolic_bp && v.diastolic_bp ? `${v.systolic_bp}/${v.diastolic_bp} mmHg` : "-"}
-                                </span>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Tinggi Fundus (TFU)</span>
-                                <span className="font-bold text-heading text-sm">
-                                  {v.fundal_height_cm ? `${v.fundal_height_cm} cm` : "-"}
-                                </span>
-                              </div>
-
-                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
-                                <span className="text-caption text-xs block">Berat Badan Ibu</span>
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="font-bold text-heading text-sm">
-                                    {v.maternal_weight_kg ? `${v.maternal_weight_kg} kg` : "-"}
-                                  </span>
-                                  {deltaWeight !== null && (
-                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                      {deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </>
+                    <div
+                      key={v.id || idx}
+                      className="p-3.5 bg-subtle rounded-xl border border-line space-y-2 hover:border-sky-300 dark:hover:border-sky-800 transition-colors"
+                    >
+                      {/* Baris Judul & Metadata */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-heading">
+                            Kunjungan #{visitNumber}
+                          </span>
+                          <span className="text-dim">•</span>
+                          <span className="text-heading font-medium">{formatDateIndo(v.visit_date)}</span>
+                          <span className="text-dim">•</span>
+                          <span className="text-caption">
+                            {isChild
+                              ? `Usia ${v.age_in_months ?? "-"} Bulan${v.phase ? ` (${v.phase.replace(/_/g, " ")})` : ""}`
+                              : `Usia Kehamilan: ${v.gestational_age_weeks ? `${v.gestational_age_weeks} Mgg` : (v.trimester ? `Trimester ${v.trimester}` : "-")}`}
+                          </span>
+                          <span className="text-dim">•</span>
+                          <span className={`font-semibold ${
+                            isHighRisk
+                              ? "text-rose-600 dark:text-rose-400"
+                              : isAttention
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}>
+                            {isHighRisk ? "Risiko Tinggi" : isAttention ? "Perlu Perhatian" : "Kondisi Baik"}
+                          </span>
+                          {isLatest && (
+                            <span className="text-sky-600 dark:text-sky-400 font-semibold">
+                              (Terkini)
+                            </span>
                           )}
                         </div>
 
-                        {/* Temuan Klinis / Catatan Pemeriksaan */}
-                        {v.clinical_notes && (
-                          <div className="p-3 bg-card rounded-lg border border-line-light text-xs text-body space-y-1">
-                            <span className="font-semibold text-heading block">Catatan Pemeriksaan:</span>
-                            <p className="leading-relaxed">{v.clinical_notes}</p>
-                          </div>
-                        )}
-
-                        {/* Action Link to Validation Report */}
                         {v.report_id && (
-                          <div className="pt-2 flex items-center justify-end">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/kader/validasi-laporan/${v.report_id}`)}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
-                            >
-                              <span>Buka Lembar Validasi KIA #{v.report_id}</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/kader/validasi-laporan/${v.report_id}`)}
+                            className="inline-flex items-center gap-1 font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer self-start sm:self-auto shrink-0"
+                          >
+                            <span>Laporan #{v.report_id}</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
+
+                      {/* Baris Hasil Pengukuran (Poin-Poin Ringkas) */}
+                      <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-caption pt-1 border-t border-line-light">
+                        {isChild ? (
+                          <>
+                            <div>
+                              <span>BB: </span>
+                              <strong className="text-heading">
+                                {v.child_weight_kg ?? (v.birth_weight_gram ? `${+(v.birth_weight_gram / 1000).toFixed(2)}` : "-")} kg
+                              </strong>
+                              {deltaWeight !== null && (
+                                <span className={`ml-1 font-medium ${deltaWeight > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                  ({deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg)
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>PB/TB: </span>
+                              <strong className="text-heading">
+                                {v.child_length_cm ?? v.birth_length_cm ?? "-"} cm
+                              </strong>
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>Z-Score PB/U: </span>
+                              <strong className={v.z_score_pbu < -2 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-heading"}>
+                                {v.z_score_pbu !== null && v.z_score_pbu !== undefined
+                                  ? `${Number(v.z_score_pbu).toFixed(2)} SD (${v.pbu_category || (v.z_score_pbu < -2 ? "Pendek" : "Normal")})`
+                                  : "-"}
+                              </strong>
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>KMS: </span>
+                              <strong className="text-heading">
+                                {v.weight_trend_kms === "N" ? "Naik (N)" : v.weight_trend_kms === "T" ? "Tidak Naik (T)" : "-"}
+                              </strong>
+                              {v.feeding_status && (
+                                <span className="text-caption ml-1">({v.feeding_status.replace(/_/g, " ")})</span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <span>LiLA: </span>
+                              <strong className={v.lila_cm && v.lila_cm < 23.5 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-heading"}>
+                                {v.lila_cm ? `${v.lila_cm} cm` : "-"}
+                              </strong>
+                              {v.lila_cm && (
+                                <span className="text-caption ml-1">
+                                  ({v.lila_cm >= 23.5 ? "Normal" : "Risiko KEK"})
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>TD: </span>
+                              <strong className="text-heading">
+                                {v.systolic_bp && v.diastolic_bp ? `${v.systolic_bp}/${v.diastolic_bp} mmHg` : "-"}
+                              </strong>
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>TFU: </span>
+                              <strong className="text-heading">
+                                {v.fundal_height_cm ? `${v.fundal_height_cm} cm` : "-"}
+                              </strong>
+                            </div>
+                            <span className="text-dim">•</span>
+                            <div>
+                              <span>BB Ibu: </span>
+                              <strong className="text-heading">
+                                {v.maternal_weight_kg ? `${v.maternal_weight_kg} kg` : "-"}
+                              </strong>
+                              {deltaWeight !== null && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-medium ml-1">
+                                  ({deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg)
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Catatan Pemeriksaan (jika ada) */}
+                      {v.clinical_notes && (
+                        <p className="text-xs text-caption pt-1 text-dim leading-relaxed">
+                          Catatan: {v.clinical_notes}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
