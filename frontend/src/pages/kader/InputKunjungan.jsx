@@ -68,20 +68,21 @@ const PatientSkeleton = () => (
 /* ─── Reusable Form Field (Auto-Aligned Baseline Across Grid Rows) ─── */
 const FormField = ({ id, label, hint, children, className = "" }) => (
   <div className={`flex flex-col h-full justify-between ${className}`}>
-    <div className="flex items-start justify-between gap-1 mb-1.5 min-h-[1.5rem]">
+    <div className="flex items-baseline justify-between gap-1 mb-1.5 min-h-[1.6rem]">
       <label
         htmlFor={id}
-        className="text-xs font-semibold text-heading leading-tight"
+        className="text-xs font-semibold text-heading leading-tight truncate"
+        title={label}
       >
         {label}
       </label>
       {hint && (
-        <span className="text-amber-600 dark:text-amber-400 font-medium text-[11px] leading-tight shrink-0 whitespace-nowrap ml-1">
+        <span className="text-amber-600 dark:text-amber-400 font-semibold text-[10px] leading-none shrink-0 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 whitespace-nowrap ml-1">
           {hint}
         </span>
       )}
     </div>
-    <div className="mt-auto">
+    <div className="mt-auto w-full">
       {children}
     </div>
   </div>
@@ -547,8 +548,8 @@ const InputKunjungan = () => {
                     <p className="text-xs text-body dark:text-slate-300 font-medium mt-1">
                       NIK: {p.nik}
                     </p>
-                    <p className="text-xs text-caption font-medium">
-                      Posyandu: {p.village_name || "Airmadidi"}
+                    <p className="text-xs text-caption font-medium truncate">
+                      {p.posyandu_name ? `${p.posyandu_name} • ` : ""}{p.village_name || "Airmadidi"}
                     </p>
                   </button>
                 );
@@ -813,7 +814,7 @@ const InputKunjungan = () => {
                 role="tabpanel"
                 className="space-y-5 animate-slide-up"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <FormField
                     id="birth-weight"
                     label="Berat Lahir (Gram)"
@@ -840,8 +841,24 @@ const InputKunjungan = () => {
                     />
                   </FormField>
                   <FormField
+                    id="head-circ"
+                    label="Lingkar Kepala (cm)"
+                    hint="*< 33 cm"
+                  >
+                    <input
+                      id="head-circ"
+                      type="number"
+                      step="0.1"
+                      placeholder="Contoh: 33.5"
+                      value={headCircumference}
+                      onChange={(e) => setHeadCircumference(e.target.value)}
+                      className={INPUT_CLASS}
+                    />
+                  </FormField>
+                  <FormField
                     id="gest-birth"
                     label="Usia Gestasi Lahir (Minggu)"
+                    hint="*< 37 mg"
                   >
                     <input
                       id="gest-birth"
@@ -875,7 +892,7 @@ const InputKunjungan = () => {
                 role="tabpanel"
                 className="space-y-5 animate-slide-up"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <FormField
                     id="age-months"
                     label="Usia Anak (Bulan)"
@@ -920,6 +937,17 @@ const InputKunjungan = () => {
                       className={INPUT_CLASS}
                     />
                   </FormField>
+                  <FormField id="child-head-circ" label="Lingkar Kepala (cm)">
+                    <input
+                      id="child-head-circ"
+                      type="number"
+                      step="0.1"
+                      placeholder="Contoh: 45.0"
+                      value={childHeadCirc}
+                      onChange={(e) => setChildHeadCirc(e.target.value)}
+                      className={INPUT_CLASS}
+                    />
+                  </FormField>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -948,8 +976,11 @@ const InputKunjungan = () => {
                         ASI Eksklusif (0-6 bln)
                       </option>
                       <option value="MP_ASI">ASI + MP-ASI Adekuat</option>
+                      <option value="MAKANAN_KELUARGA">
+                        Makanan Keluarga Seimbang + ASI Lanjutan (12-24 bln)
+                      </option>
                       <option value="TIDAK_ADEKUAT">
-                        MP-ASI Kurang Protein Hewani
+                        MP-ASI Kurang Adekuat / Kurang Protein Hewani
                       </option>
                       <option value="FORMULA_PKMK">
                         Formula Khusus / PKMK Medis (Anjuran Dokter)

@@ -53,21 +53,22 @@ def get_dashboard_summary(
     total_reports_pending = db.query(Report).filter(Report.status == ReportStatus.DRAFT).count()
 
     all_reports = db.query(Report).all()
+    reports_by_pid = {}
+    for r in all_reports:
+        reports_by_pid.setdefault(r.patient_id, []).append(r)
     
     total_stunting = 0
     total_kek = 0
     total_anemia = 0
-    
-    for r in all_reports:
-        flags = r.risk_flags or []
-        for f in flags:
-            f_name = f.get("flag", "")
-            if "STUNTING" in f_name:
-                total_stunting += 1
-            if "KEK" in f_name:
-                total_kek += 1
-            if "ANEMIA" in f_name:
-                total_anemia += 1
+    for pid, p_reps in reports_by_pid.items():
+        latest = max(p_reps, key=lambda r: r.id)
+        flags = latest.risk_flags or []
+        if any("STUNTING" in f.get("flag", "") for f in flags):
+            total_stunting += 1
+        if any("KEK" in f.get("flag", "") for f in flags):
+            total_kek += 1
+        if any("ANEMIA" in f.get("flag", "") for f in flags):
+            total_anemia += 1
 
     # Rekapitulasi per desa
     village_breakdown = []
@@ -76,11 +77,25 @@ def get_dashboard_summary(
         p_ids = [p.id for p in v_patients]
         
         v_reports = db.query(Report).filter(Report.patient_id.in_(p_ids)).all() if p_ids else []
+        v_reports_by_pid = {}
+        for r in v_reports:
+            v_reports_by_pid.setdefault(r.patient_id, []).append(r)
         
-        stunt_v = sum(1 for r in v_reports if any("STUNTING" in f.get("flag", "") for f in (r.risk_flags or [])))
-        kek_v = sum(1 for r in v_reports if any("KEK" in f.get("flag", "") for f in (r.risk_flags or [])))
-        anemia_v = sum(1 for r in v_reports if any("ANEMIA" in f.get("flag", "") for f in (r.risk_flags or [])))
-        high_risk_v = sum(1 for r in v_reports if r.overall_status == "RISIKO_TINGGI")
+        stunt_v = 0
+        kek_v = 0
+        anemia_v = 0
+        high_risk_v = 0
+        for pid, p_reps in v_reports_by_pid.items():
+            latest = max(p_reps, key=lambda r: r.id)
+            flags = latest.risk_flags or []
+            if any("STUNTING" in f.get("flag", "") for f in flags):
+                stunt_v += 1
+            if any("KEK" in f.get("flag", "") for f in flags):
+                kek_v += 1
+            if any("ANEMIA" in f.get("flag", "") for f in flags):
+                anemia_v += 1
+            if latest.overall_status == "RISIKO_TINGGI":
+                high_risk_v += 1
         
         village_breakdown.append(VillageStats(
             village_name=v_name,

@@ -72,6 +72,26 @@ const humanPhase = (phase) => {
   return map[phase] || (phase ? phase.replace(/_/g, " ") : "KIA");
 };
 
+const formatIndicator = (ind) => {
+  if (!ind) return "";
+  const map = {
+    PB_U: "Panjang/Tinggi Badan (PB/U)",
+    BB_U: "Berat Badan (BB/U)",
+    BB_PB: "Status Gizi Akut (BB/PB)",
+    LONGITUDINAL_MATERNAL_KEK: "Riwayat Ibu KEK Saat Hamil",
+    LONGITUDINAL_MATERNAL_ANEMIA: "Riwayat Ibu Anemia Saat Hamil",
+    LONGITUDINAL_MATERNAL_KSPR: "Riwayat Risiko Obstetri (KSPR)",
+    LILA: "Lingkar Lengan Atas (LiLA)",
+    HB: "Kadar Hemoglobin (Hb)",
+    TEKANAN_DARAH: "Tekanan Darah",
+    IMD: "Inisiasi Menyusu Dini (IMD)",
+    LINGKAR_KEPALA: "Lingkar Kepala",
+    BERAT_LAHIR: "Berat Bayi Lahir (BBLR)",
+    USIA_KEHAMILAN_LAHIR: "Usia Gestasi Kelahiran",
+  };
+  return map[ind] || ind.replace(/_/g, " ");
+};
+
 const humanRisk = (flag) => {
   const map = {
     RISIKO_KEHAMILAN_SANGAT_TINGGI_KRST: "Kehamilan Risiko Sangat Tinggi (KRST)",
@@ -936,18 +956,18 @@ const ValidasiLaporan = () => {
                 {clinical.active_risk_flags.map((flag, i) => (
                   <div
                     key={i}
-                    className="p-4 bg-card border border-line rounded-xl space-y-1.5"
+                    className="p-4 bg-card border border-line rounded-xl space-y-2.5 overflow-hidden shadow-2xs"
                   >
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="font-bold text-sm text-heading flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line/60 pb-2">
+                      <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-heading min-w-0">
                         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                        <span>{flag.indicator}</span>
-                      </span>
-                      <span className="text-xs bg-subtle px-2.5 py-0.5 rounded-md text-label font-medium border border-line shrink-0">
+                        <span className="truncate">{formatIndicator(flag.indicator)}</span>
+                      </div>
+                      <span className="text-[11px] sm:text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-semibold border border-amber-500/20 max-w-full break-words inline-block self-start sm:self-auto">
                         {humanRisk(flag.flag)}
                       </span>
                     </div>
-                    <p className="text-sm text-caption leading-relaxed pl-6">
+                    <p className="text-xs sm:text-sm text-caption leading-relaxed pl-1">
                       {flag.detail}
                     </p>
                   </div>

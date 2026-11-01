@@ -129,19 +129,24 @@ def get_kader_dashboard_summary(
     pending_validation = report_q.filter(Report.status == ReportStatus.DRAFT).count()
     high_risk_count = report_q.filter(Report.overall_status == "RISIKO_TINGGI").count()
 
-    # Hitung total kumulatif stunting, KEK, dan anemia untuk posyandu / desa kader
+    # Hitung total kasus stunting, KEK, dan anemia unik per pasien untuk posyandu / desa kader (berdasarkan rekam terkini)
+    kader_reports = report_q.all()
+    reports_by_pid = {}
+    for r in kader_reports:
+        reports_by_pid.setdefault(r.patient_id, []).append(r)
+
     total_stunting = 0
     total_kek = 0
     total_anemia = 0
-    for r in report_q.all():
-        for f in (r.risk_flags or []):
-            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
-            if "STUNTING" in f_name:
-                total_stunting += 1
-            if "KEK" in f_name:
-                total_kek += 1
-            if "ANEMIA" in f_name:
-                total_anemia += 1
+    for pid, p_reps in reports_by_pid.items():
+        latest = max(p_reps, key=lambda r: r.id)
+        flags = latest.risk_flags or []
+        if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
+            total_stunting += 1
+        if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
+            total_kek += 1
+        if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
+            total_anemia += 1
 
     # Tren bulanan (6 bulan terakhir) untuk posyandu kader
     BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]

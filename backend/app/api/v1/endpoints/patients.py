@@ -163,16 +163,18 @@ def get_patients(
     """
     query = db.query(Patient)
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        v_clean = current_user.village_name.strip()
-        query = query.filter(
-            or_(
-                Patient.village_name == v_clean,
-                Patient.village_name.ilike(f"%{v_clean}%"),
-                Patient.village_name.ilike("%Airmadidi%"),
-                Patient.village_name.is_(None)
-            )
-        )
+    if current_user.role == UserRole.KADER:
+        kader_filters = []
+        if current_user.village_name:
+            v_clean = current_user.village_name.strip()
+            kader_filters.append(Patient.village_name == v_clean)
+            kader_filters.append(Patient.village_name.ilike(f"%{v_clean}%"))
+        if current_user.posyandu_name:
+            p_clean = current_user.posyandu_name.strip()
+            kader_filters.append(Patient.posyandu_name == p_clean)
+            kader_filters.append(Patient.posyandu_name.ilike(f"%{p_clean}%"))
+        if kader_filters:
+            query = query.filter(or_(*kader_filters))
     elif village_name:
         query = query.filter(Patient.village_name.ilike(f"%{village_name.strip()}%"))
 

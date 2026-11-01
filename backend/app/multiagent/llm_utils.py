@@ -175,13 +175,14 @@ def merge_token_usage(usages: list) -> dict:
 
 
 def is_koboillm() -> bool:
-    """True jika provider diatur ke KoboiLLM / OpenAI proxy atau menggunakan key sk-..."""
+    """True jika provider diatur ke KoboiLLM / OpenAI proxy."""
     from app.core.config import settings
-    if (settings.LLM_PROVIDER or "").lower() in ("koboillm", "openai"):
+    provider = (settings.LLM_PROVIDER or "").lower().strip()
+    if provider == "google":
+        return False
+    if provider in ("koboillm", "openai"):
         return True
-    if settings.KOBOILLM_API_KEY:
-        return True
-    if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.startswith("sk-"):
+    if settings.KOBOILLM_API_KEY and not settings.GEMINI_API_KEY:
         return True
     return False
 
