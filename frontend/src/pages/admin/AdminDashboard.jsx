@@ -319,7 +319,7 @@ const AdminDashboard = () => {
                       </td>
                       <td className="p-3.5 text-center tabular-nums">
                         {hasHighRisk ? (
-                          <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
+                          <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
                             {v.high_risk_count} Kasus
                           </span>
                         ) : (

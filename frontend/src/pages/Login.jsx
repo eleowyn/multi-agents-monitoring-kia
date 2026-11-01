@@ -10,8 +10,8 @@ import {
   ArrowLeft,
   AlertCircle,
   Heart,
-  Shield,
-  BarChart3,
+  MapPin,
+  ShieldCheck,
   Sun,
   Moon,
 } from "lucide-react";
@@ -53,97 +53,106 @@ const Login = () => {
     }
   };
 
-  const features = [
-    {
-      icon: Heart,
-      title: "Monitoring 1.000 HPK",
-      desc: "Deteksi dini risiko stunting, BBLR, dan KEK berbasis data antropometri",
-    },
-    {
-      icon: BarChart3,
-      title: "Analisis Multi-Agent AI",
-      desc: "3 agen cerdas (Deterministic + RAG + Verifier) untuk rekomendasi akurat",
-    },
-    {
-      icon: Shield,
-      title: "Sitasi Terverifikasi",
-      desc: "Rekomendasi di-grounding terhadap Buku KIA & PNPK Stunting 2022",
-    },
-  ];
+
 
   return (
     <div className="min-h-screen flex bg-page">
-      {/* LEFT: Branding Panel (desktop only) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-600 via-sky-700 to-indigo-800 p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-
-        {/* Top: Logo & Back link */}
+      {/* LEFT: Branding Panel (Clean & Minimalist, No Deadspace) */}
+      <div className="hidden lg:flex lg:w-5/12 xl:w-[42%] bg-gradient-to-br from-sky-600 via-sky-700 to-indigo-900 p-10 xl:p-14 flex-col justify-between relative overflow-hidden">
+        {/* Top: Official Logos & Back link */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <Activity className="w-5 h-5 text-white" aria-hidden="true" />
+            <div className="flex items-center gap-2 shrink-0">
+              <img
+                src="/logo-minahasa-utara.png"
+                alt="Logo Minahasa Utara"
+                className="w-9 h-9 object-contain"
+              />
+              <img
+                src="/logo-puskesmas-airmadidi.png"
+                alt="Logo Puskesmas Airmadidi"
+                className="w-9 h-9 object-contain"
+              />
             </div>
             <div>
-              <span className="font-bold text-white text-lg tracking-tight">
+              <span className="font-bold text-white text-base tracking-tight block">
                 Multi-Agent KIA
               </span>
-              <p className="text-sky-200 text-xs">Puskesmas Kec. Airmadidi</p>
+              <p className="text-sky-200 text-xs">UPTD Puskesmas Airmadidi</p>
             </div>
           </div>
           <Link
             to="/"
-            className="flex items-center gap-1.5 text-xs text-sky-100 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors duration-150 backdrop-blur-sm"
+            className="flex items-center gap-1.5 text-xs text-sky-100 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-2 rounded-xl transition-colors duration-150 backdrop-blur-sm"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Beranda</span>
           </Link>
         </div>
 
-        {/* Middle: Value Prop */}
-        <div className="relative z-10 max-w-md my-auto py-8">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-sky-500/30 text-sky-100 border border-sky-400/30 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Sistem Cerdas Pendukung Keputusan Klinis
-          </span>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight leading-snug">
-            Platform Terpadu Pengawasan 1.000 Hari Pertama Kehidupan
-          </h2>
-          <p className="mt-3 text-sky-100/80 text-sm leading-relaxed">
-            Membantu kader posyandu, bidan, dan dokter Puskesmas Airmadidi
-            dalam deteksi dini, validasi status gizi, dan intervensi cepat
-            risiko stunting serta kematian ibu-anak.
-          </p>
+        {/* Subtle ambient lighting decorations (soft, calm, no artificial grid dots) */}
+        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-sky-400/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
 
-          <div className="mt-8 space-y-4">
-            {features.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={idx}
-                  className="flex items-start gap-3 bg-white/5 border border-white/10 p-3.5 rounded-xl backdrop-blur-sm"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Icon className="w-4 h-4 text-sky-200" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h3 className="text-white text-xs font-semibold">
-                      {item.title}
-                    </h3>
-                    <p className="text-sky-200/70 text-xs mt-0.5 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+        {/* Middle: Clean Headline & Description + 3 Poin Fokus KIA */}
+        <div className="relative z-10 w-full max-w-lg my-auto py-8 space-y-6">
+          <div className="space-y-3">
+            <h1 className="text-3xl xl:text-4xl font-bold text-white tracking-tight leading-[1.25]">
+              Platform Terpadu Pengawasan 1.000 Hari Pertama Kehidupan
+            </h1>
+            <p className="text-sky-100/90 text-sm xl:text-base leading-relaxed">
+              Membantu kader posyandu, bidan, dan dokter Puskesmas Airmadidi dalam deteksi dini, validasi status gizi, serta intervensi cepat risiko stunting dan pemantauan kesehatan ibu-anak.
+            </p>
+          </div>
+
+          {/* 3 Poin Fokus KIA (Rapi, Terstruktur, Tanpa Deadspace) */}
+          <div className="pt-2 space-y-3.5 border-t border-white/10">
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5 border border-white/15">
+                <Heart className="w-3.5 h-3.5 text-rose-300" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold leading-snug">
+                  Pemantauan 1.000 HPK
+                </p>
+                <p className="text-sky-200/80 text-xs mt-0.5 leading-relaxed">
+                  Pengawasan berkala sejak masa kehamilan hingga anak genap 2 tahun sesuai standar Buku KIA.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5 border border-white/15">
+                <MapPin className="w-3.5 h-3.5 text-sky-300" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold leading-snug">
+                  Jejaring 9 Wilayah Posyandu
+                </p>
+                <p className="text-sky-200/80 text-xs mt-0.5 leading-relaxed">
+                  Integrasi data posyandu binaan di seluruh desa dan kelurahan se-Kecamatan Airmadidi.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0 mt-0.5 border border-white/15">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold leading-snug">
+                  Deteksi Dini & Pencegahan Stunting
+                </p>
+                <p className="text-sky-200/80 text-xs mt-0.5 leading-relaxed">
+                  Pencatatan antropometri akurat untuk respon intervensi gizi dan rujukan medis tepat waktu.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom footer */}
-        <div className="relative z-10 border-t border-white/10 pt-4 flex items-center justify-between text-xs text-sky-200/60">
-          <span>Kementerian Kesehatan RI — UPTD Puskesmas Airmadidi</span>
-          <span>v2.0 (Multi-Agent RAG)</span>
-        </div>
+        {/* Bottom subtle spacer to preserve balanced flex-col layout */}
+        <div className="relative z-10" />
       </div>
 
       {/* RIGHT: Login Form */}
@@ -178,15 +187,24 @@ const Login = () => {
         <div className="w-full max-w-md mx-auto my-auto py-8">
           {/* Mobile branding header */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white shadow-sm">
-              <Activity className="w-5 h-5" aria-hidden="true" />
+            <div className="flex items-center gap-2 shrink-0">
+              <img
+                src="/logo-minahasa-utara.png"
+                alt="Logo Minahasa Utara"
+                className="w-8 h-8 object-contain"
+              />
+              <img
+                src="/logo-puskesmas-airmadidi.png"
+                alt="Logo Puskesmas Airmadidi"
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div>
-              <h1 className="font-bold text-heading text-lg tracking-tight">
-                Multi-Agent AI KIA
+              <h1 className="font-bold text-heading text-base tracking-tight">
+                Multi-Agent KIA
               </h1>
               <p className="text-xs text-caption font-medium">
-                Posyandu Kec. Airmadidi
+                UPTD Puskesmas Airmadidi
               </p>
             </div>
           </div>

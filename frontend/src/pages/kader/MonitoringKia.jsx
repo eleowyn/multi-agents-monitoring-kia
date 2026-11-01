@@ -176,6 +176,13 @@ const MonitoringKia = () => {
 
   const summary = aggregates?.summary || {};
 
+  // Helper format tanggal bahasa Indonesia
+  const formatDateIndo = (iso) => {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* ═══ Header Pusat Monitoring KIA ═══ */}
@@ -546,15 +553,15 @@ const MonitoringKia = () => {
                 />
               </div>
 
-              {/* Filter Jenis Pasien: Kontras Tinggi & Warna Tematis Jelas */}
-              <div className="h-10 inline-flex items-center rounded-lg border border-line dark:border-slate-800 p-1 bg-muted/60 dark:bg-slate-900/60 shrink-0 gap-1">
+              {/* Filter Jenis Pasien (Simple, Rapi, Sesuai Standar UI) */}
+              <div className="inline-flex items-center p-1 bg-subtle border border-line rounded-xl gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => setFilterType("")}
-                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === ""
-                      ? "bg-sky-600 text-white shadow-xs"
-                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                      ? "bg-card text-heading shadow-xs border border-line"
+                      : "text-caption hover:text-heading"
                   }`}
                 >
                   Semua
@@ -562,10 +569,10 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("CHILD")}
-                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "CHILD"
-                      ? "bg-sky-600 text-white shadow-xs"
-                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                      ? "bg-card text-sky-600 dark:text-sky-400 shadow-xs border border-line"
+                      : "text-caption hover:text-heading"
                   }`}
                 >
                   Baduta (Anak)
@@ -573,10 +580,10 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("MOTHER")}
-                  className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "MOTHER"
-                      ? "bg-pink-600 text-white shadow-xs"
-                      : "text-body dark:text-slate-300 hover:text-heading hover:bg-card"
+                      ? "bg-card text-pink-600 dark:text-pink-400 shadow-xs border border-line"
+                      : "text-caption hover:text-heading"
                   }`}
                 >
                   Ibu Hamil
@@ -683,6 +690,237 @@ const MonitoringKia = () => {
             visits={visits}
             loading={loadingLongitudinal}
           />
+
+          {/* Komponen 3: Timeline Card Riwayat Rekam Jejak Kunjungan 1.000 HPK */}
+          <div className="bg-card rounded-xl border border-line shadow-card p-5 sm:p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
+              <div>
+                <h3 className="text-base font-bold text-heading flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <span>Riwayat Rekam Jejak Kunjungan 1.000 HPK</span>
+                </h3>
+                <p className="text-xs text-caption mt-0.5">
+                  Rekapitulasi berkala setiap kali kunjungan Posyandu & Puskesmas (dari kunjungan terkini ke awal)
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-caption px-2.5 py-1 rounded-md bg-subtle border border-line self-start sm:self-auto">
+                Total {visits.length} Kunjungan Terdaftar
+              </span>
+            </div>
+
+            {visits.length === 0 ? (
+              <div className="p-8 text-center text-caption text-xs bg-subtle rounded-xl border border-dashed border-line">
+                Belum ada data riwayat kunjungan tercatat untuk pasien ini.
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-line ml-4 sm:ml-5 space-y-6">
+                {[...visits].reverse().map((v, idx) => {
+                  const visitNumber = visits.length - idx;
+                  const isLatest = idx === 0;
+
+                  // Delta berat badan dibanding kunjungan sebelumnya
+                  const originalIndex = visits.length - 1 - idx;
+                  const prevVisit = originalIndex > 0 ? visits[originalIndex - 1] : null;
+
+                  let deltaWeight = null;
+                  if (isChild && v.child_weight_kg && prevVisit?.child_weight_kg) {
+                    deltaWeight = +(v.child_weight_kg - prevVisit.child_weight_kg).toFixed(2);
+                  } else if (!isChild && v.maternal_weight_kg && prevVisit?.maternal_weight_kg) {
+                    deltaWeight = +(v.maternal_weight_kg - prevVisit.maternal_weight_kg).toFixed(2);
+                  }
+
+                  const isHighRisk = v.overall_status === "RISIKO_TINGGI";
+                  const isAttention = v.overall_status === "PERLU_PERHATIAN";
+
+                  return (
+                    <div key={v.id || idx} className="relative pl-6 sm:pl-8 group">
+                      {/* Timeline Node Icon / Number */}
+                      <div
+                        className={`absolute -left-[17px] top-1.5 w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold shadow-xs ${
+                          isLatest
+                            ? "bg-sky-600 text-white border-white dark:border-slate-900"
+                            : isHighRisk
+                            ? "bg-rose-500 text-white border-white dark:border-slate-900"
+                            : "bg-card text-heading border-line"
+                        }`}
+                      >
+                        {visitNumber}
+                      </div>
+
+                      {/* Card Content */}
+                      <div className="bg-card rounded-xl border border-line p-4 sm:p-5 shadow-xs space-y-4">
+                        {/* Card Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-line-light">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-bold text-heading">
+                                Kunjungan ke-{visitNumber}
+                              </span>
+                              {isLatest && (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                                  Kunjungan Terkini
+                                </span>
+                              )}
+                              <span className="text-xs text-caption">
+                                &bull; {formatDateIndo(v.visit_date)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-caption">
+                              {isChild ? (
+                                <>
+                                  Usia: <strong className="text-heading">{v.age_in_months ?? "-"} Bulan</strong>
+                                  {v.phase && ` • Fase: ${v.phase.replace(/_/g, " ")}`}
+                                </>
+                              ) : (
+                                <>
+                                  Usia Kehamilan:{" "}
+                                  <strong className="text-heading">
+                                    {v.gestational_age_weeks ? `${v.gestational_age_weeks} Minggu` : (v.trimester ? `Trimester ${v.trimester}` : "-")}
+                                  </strong>
+                                </>
+                              )}
+                            </p>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="self-start sm:self-auto">
+                            {isHighRisk ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Risiko Tinggi</span>
+                              </span>
+                            ) : isAttention ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Perlu Perhatian</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Kondisi Baik</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Parameter Pengukuran Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                          {isChild ? (
+                            <>
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Berat Badan (BB)</span>
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="font-bold text-heading text-sm">
+                                    {v.child_weight_kg ?? (v.birth_weight_gram ? `${+(v.birth_weight_gram / 1000).toFixed(2)}` : "-")} kg
+                                  </span>
+                                  {deltaWeight !== null && (
+                                    <span
+                                      className={`text-xs font-semibold ${
+                                        deltaWeight > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                      }`}
+                                    >
+                                      {deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Panjang / TB</span>
+                                <span className="font-bold text-heading text-sm">
+                                  {v.child_length_cm ?? v.birth_length_cm ?? "-"} cm
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Z-Score PB/U (Stunting)</span>
+                                <span className={`font-bold text-xs ${
+                                  v.z_score_pbu < -2 ? "text-rose-600 dark:text-rose-400" : "text-heading"
+                                }`}>
+                                  {v.z_score_pbu !== null && v.z_score_pbu !== undefined
+                                    ? `${Number(v.z_score_pbu).toFixed(2)} SD (${v.pbu_category || (v.z_score_pbu < -2 ? "Pendek" : "Normal")})`
+                                    : "-"}
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Tren KMS & ASI</span>
+                                <span className="font-bold text-heading text-xs">
+                                  {v.weight_trend_kms ? (v.weight_trend_kms === "N" ? "Naik (N)" : "Tidak Naik (T)") : "-"} • {v.feeding_status ? v.feeding_status.replace(/_/g, " ") : "ASI"}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Lingkar Lengan (LiLA)</span>
+                                <span className={`font-bold text-sm ${v.lila_cm && v.lila_cm < 23.5 ? "text-rose-600 dark:text-rose-400" : "text-heading"}`}>
+                                  {v.lila_cm ? `${v.lila_cm} cm` : "-"}
+                                </span>
+                                <span className="text-xs text-caption block">
+                                  {v.lila_cm ? (v.lila_cm >= 23.5 ? "Normal (≥23.5 cm)" : "Risiko KEK (<23.5 cm)") : ""}
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Tekanan Darah (TD)</span>
+                                <span className="font-bold text-heading text-sm">
+                                  {v.systolic_bp && v.diastolic_bp ? `${v.systolic_bp}/${v.diastolic_bp} mmHg` : "-"}
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Tinggi Fundus (TFU)</span>
+                                <span className="font-bold text-heading text-sm">
+                                  {v.fundal_height_cm ? `${v.fundal_height_cm} cm` : "-"}
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 bg-card rounded-lg border border-line-light space-y-0.5">
+                                <span className="text-caption text-xs block">Berat Badan Ibu</span>
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="font-bold text-heading text-sm">
+                                    {v.maternal_weight_kg ? `${v.maternal_weight_kg} kg` : "-"}
+                                  </span>
+                                  {deltaWeight !== null && (
+                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                      {deltaWeight > 0 ? `+${deltaWeight}` : deltaWeight} kg
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Temuan Klinis / Catatan Pemeriksaan */}
+                        {v.clinical_notes && (
+                          <div className="p-3 bg-card rounded-lg border border-line-light text-xs text-body space-y-1">
+                            <span className="font-semibold text-heading block">Catatan Pemeriksaan:</span>
+                            <p className="leading-relaxed">{v.clinical_notes}</p>
+                          </div>
+                        )}
+
+                        {/* Action Link to Validation Report */}
+                        {v.report_id && (
+                          <div className="pt-2 flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/kader/validasi-laporan/${v.report_id}`)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                            >
+                              <span>Buka Lembar Validasi KIA #{v.report_id}</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -25,6 +25,7 @@ import {
   Droplets,
   Baby,
   ChevronRight,
+  ChevronDown,
   GraduationCap,
 } from "lucide-react";
 
@@ -136,6 +137,29 @@ const ValidasiLaporan = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [detailModal, setDetailModal] = useState(null);
+  const [checkedSteps, setCheckedSteps] = useState({});
+  const [expandedReferences, setExpandedReferences] = useState({});
+
+  const toggleStep = (recIdx, stepIdx) => {
+    setCheckedSteps(prev => ({
+      ...prev,
+      [`${recIdx}-${stepIdx}`]: !prev[`${recIdx}-${stepIdx}`]
+    }));
+  };
+
+  const toggleEducationChecked = (recIdx) => {
+    setCheckedSteps(prev => ({
+      ...prev,
+      [`rec-${recIdx}`]: !prev[`rec-${recIdx}`]
+    }));
+  };
+
+  const toggleReference = (recIdx) => {
+    setExpandedReferences(prev => ({
+      ...prev,
+      [recIdx]: !prev[recIdx]
+    }));
+  };
   const [ratingScore, setRatingScore] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
@@ -334,9 +358,36 @@ const ValidasiLaporan = () => {
   const isAdmin = user?.role === "ADMIN";
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6 animate-fade-in">
+    <div className="p-3 sm:p-5 lg:p-6 max-w-6xl mx-auto space-y-4 animate-fade-in print:p-0 print:max-w-full">
+      {/* ─── Stylesheet Khusus Cetak A4 (@media print) ─── */}
+      <style>{`
+        @media print {
+          nav, header, aside, .no-print, button, input[type="checkbox"], [role="dialog"] {
+            display: none !important;
+          }
+          body, html {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-size: 9.5pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .a4-print-sheet {
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .break-inside-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
+
       {/* Top Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line">
+      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-line">
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
@@ -349,7 +400,7 @@ const ValidasiLaporan = () => {
             )}
           </div>
           <p className="text-sm text-caption mt-1">
-            Laporan klinis terintegrasi Multi-Agent AI &bull; Posyandu Puskesmas Airmadidi
+            Lembar Hasil Pemantauan Pertumbuhan & Asuhan KIA (1.000 HPK) &bull; Posyandu Puskesmas Airmadidi
           </p>
         </div>
 
@@ -377,9 +428,37 @@ const ValidasiLaporan = () => {
       </div>
 
       {/* Main Report Container */}
-      <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
+      <div className="a4-print-sheet bg-card rounded-2xl border border-line shadow-card overflow-hidden">
+        {/* ─── Kop Surat Kedinasan Puskesmas (Format Resmi A4) ─── */}
+        <div className="hidden print:block p-6 sm:p-8 border-b-2 border-slate-800 dark:border-slate-300 bg-card text-center space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0">
+              <Activity className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 space-y-1 text-center">
+              <h4 className="text-xs sm:text-sm font-semibold tracking-wider uppercase text-caption">
+                Pemerintah Kabupaten Minahasa Utara &bull; Dinas Kesehatan
+              </h4>
+              <h2 className="text-base sm:text-xl font-bold uppercase tracking-wide text-heading">
+                Puskesmas Airmadidi &bull; Posyandu KIA
+              </h2>
+              <p className="text-xs text-caption">
+                Kecamatan Airmadidi, Kabupaten Minahasa Utara, Sulawesi Utara &bull; Layanan Terpadu 1.000 HPK
+              </p>
+            </div>
+            <div className="w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 hidden sm:flex items-center justify-center shrink-0">
+              <BookOpen className="w-7 h-7 text-sky-600 dark:text-sky-400" />
+            </div>
+          </div>
+          <div className="pt-3 border-t border-line-light mt-3">
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-heading block">
+              Lembar Rekam Pemantauan Tumbuh Kembang KIA (1.000 HPK)
+            </span>
+          </div>
+        </div>
+
         {/* Patient Header */}
-        <div className="p-5 sm:p-6 bg-subtle border-b border-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 bg-subtle border-b border-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-card border border-line flex items-center justify-center shrink-0">
               <User className="w-5 h-5 text-sky-500" />
@@ -432,7 +511,7 @@ const ValidasiLaporan = () => {
         </div>
 
         {/* Visit Details Grid */}
-        <div className="p-5 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-b border-line bg-card">
+        <div className="p-4 sm:p-5 grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-line bg-card text-xs sm:text-sm">
           <div>
             <p className="text-xs text-caption font-medium">Tanggal Kunjungan</p>
             <p className="text-sm sm:text-base font-semibold text-heading mt-1 flex items-center gap-1.5">
@@ -447,14 +526,14 @@ const ValidasiLaporan = () => {
             </p>
           </div>
           <div>
-            <p className="text-xs text-caption font-medium">Toleransi Revisi AI</p>
+            <p className="text-xs text-caption font-medium">Batas Permohonan Revisi</p>
             <p className="text-sm sm:text-base font-semibold text-heading mt-1">
               {revisionCount} / 1 kali revisi
             </p>
           </div>
           {confidence && (
             <div>
-              <p className="text-xs text-caption font-medium">Confidence Score AI</p>
+              <p className="text-xs text-caption font-medium">Tingkat Kesesuaian Klinis</p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                   confidence.confidence_label === "TINGGI"
@@ -486,151 +565,177 @@ const ValidasiLaporan = () => {
           </div>
         </div>
 
-        {/* ─── Parameter Pengukuran Antropometri & Fisik Kunjungan ─── */}
+        {/* ─── Parameter Pengukuran Antropometri & Fisik Kunjungan (Grid Rapi & Konsisten) ─── */}
         {visitData.phase && (
-          <div className="p-5 sm:p-6 border-b border-line bg-subtle/40 space-y-3.5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2 text-caption">
-              <Activity className="w-4 h-4 text-sky-500" />
-              Data Pengukuran Fisik & Antropometri Kunjungan
-            </h3>
+          <div className="p-4 sm:p-5 border-b border-line bg-subtle/30 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-heading">
+                <Activity className="w-4 h-4 text-sky-600" />
+                <span>Hasil Pengukuran Fisik Kunjungan</span>
+              </h3>
+              <span className="text-xs text-caption font-medium">
+                {humanPhase(visitData.phase)} &bull; {visitData.visit_date || "-"}
+              </span>
+            </div>
 
             {visitData.phase === "IBU_HAMIL" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Usia Kehamilan</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.gestational_age_weeks || "-"} <span className="text-xs font-normal">mg</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Usia Kehamilan</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.gestational_age_weeks ? `${visitData.gestational_age_weeks} mg` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Trimester {visitData.trimester || "-"}</p>
+                  <span className="text-xs text-dim">Trimester {visitData.trimester || "-"}</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Berat Badan Ibu</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.maternal_weight_kg || "-"} <span className="text-xs font-normal">kg</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Berat Badan Ibu</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.maternal_weight_kg ? `${visitData.maternal_weight_kg} kg` : "-"}
                   </p>
-                  <p className="text-xs text-dim">TB: {visitData.maternal_height_cm || "-"} cm</p>
+                  <span className="text-xs text-dim">TB: {visitData.maternal_height_cm || "-"} cm</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Lingkar LiLA</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.lila_cm || "-"} <span className="text-xs font-normal">cm</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Lingkar LiLA</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.lila_cm ? `${visitData.lila_cm} cm` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Batas normal ≥ 23.5</p>
+                  <span className="text-xs text-dim">Batas normal ≥ 23.5 cm</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Kadar Hemoglobin</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.hb_level || "-"} <span className="text-xs font-normal">g/dL</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Hemoglobin (Hb)</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.hb_level ? `${visitData.hb_level} g/dL` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Batas normal ≥ 11.0</p>
+                  <span className="text-xs text-dim">Batas normal ≥ 11.0 g/dL</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Tekanan Darah</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.systolic_bp || "-"}/{visitData.diastolic_bp || "-"}
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Tekanan Darah</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.systolic_bp || "-"}/{visitData.diastolic_bp || "-"} <span className="text-xs font-normal text-dim">mmHg</span>
                   </p>
-                  <p className="text-xs text-dim">mmHg</p>
+                  <span className="text-xs text-dim">Normal &lt; 140/90</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Tinggi Fundus (TFU)</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.fundal_height_cm || "-"} <span className="text-xs font-normal">cm</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Tinggi Fundus</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.fundal_height_cm ? `${visitData.fundal_height_cm} cm` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Skor KSPR: {Array.isArray(visitData.kspr_answers) ? visitData.kspr_answers.length * 4 + 2 : "-"}</p>
+                  <span className="text-xs text-dim">Fundus Uteri (TFU)</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Kepatuhan TTD</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.ttd_consumption === "RUTIN" ? "Rutin (≥30)" : visitData.ttd_consumption === "TIDAK_RUTIN" ? "Tidak Rutin" : visitData.ttd_consumption === "BELUM_PERNAH" ? "Belum Dapat" : (visitData.ttd_consumption || "Rutin")}
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Kepatuhan TTD</span>
+                  <p className="text-lg font-bold text-heading">
+                    {visitData.ttd_consumption === "RUTIN" ? "Rutin (≥30)" : visitData.ttd_consumption === "TIDAK_RUTIN" ? "Tidak Rutin" : (visitData.ttd_consumption || "Rutin")}
                   </p>
-                  <p className="text-xs text-dim">Tablet Tambah Darah</p>
+                  <span className="text-xs text-dim">Tablet Tambah Darah</span>
+                </div>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Status Imunisasi</span>
+                  <p className="text-base font-bold text-heading truncate">
+                    {visitData.immunization_status || "Tetanus Lengkap"}
+                  </p>
+                  <span className="text-xs text-dim">Skrining TT Ibu</span>
                 </div>
               </div>
             )}
 
             {visitData.phase === "BAYI_BARU_LAHIR" && (
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Berat Lahir</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.birth_weight_gram || "-"} <span className="text-xs font-normal">gram</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Berat Lahir</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.birth_weight_gram ? `${visitData.birth_weight_gram} gram` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Normal ≥ 2500g</p>
+                  <span className="text-xs text-dim">Batas normal ≥ 2500g</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Panjang Lahir</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.birth_length_cm || "-"} <span className="text-xs font-normal">cm</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Panjang Lahir</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.birth_length_cm ? `${visitData.birth_length_cm} cm` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Standar normal</p>
+                  <span className="text-xs text-dim">Panjang Badan Neonatus</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Lingkar Kepala</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.head_circumference_cm || "-"} <span className="text-xs font-normal">cm</span>
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Lingkar Kepala</span>
+                  <p className="text-lg font-bold text-heading tabular-nums">
+                    {visitData.head_circumference_cm ? `${visitData.head_circumference_cm} cm` : "-"}
                   </p>
-                  <p className="text-xs text-dim">Rentang 33-35 cm</p>
+                  <span className="text-xs text-dim">Rentang 33 - 35 cm</span>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Usia Gestasi Lahir</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.gestational_age_at_birth_weeks || "-"} <span className="text-xs font-normal">mg</span>
-                  </p>
-                  <p className="text-xs text-dim">{visitData.gestational_age_at_birth_weeks && visitData.gestational_age_at_birth_weeks < 37 ? "Prematur" : "Cukup Bulan"}</p>
-                </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Inisiasi Menyusu (IMD)</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
+                <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                  <span className="text-xs font-medium text-caption uppercase tracking-wide">Inisiasi Menyusu (IMD)</span>
+                  <p className="text-base font-bold text-heading">
                     {visitData.early_initiation_breastfeeding || "-"}
                   </p>
-                  <p className="text-xs text-dim">Standar Kemenkes</p>
+                  <span className="text-xs text-dim">Dalam 1 jam pertama</span>
                 </div>
               </div>
             )}
 
             {visitData.phase === "BADUTA" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Usia Anak</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.age_in_months || "-"} <span className="text-xs font-normal">bulan</span>
-                  </p>
-                  <p className="text-xs text-dim">Fase Baduta 1000 HPK</p>
+              <div className="space-y-3">
+                {/* 4 Kartu Pengukuran Utama */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Usia Anak</span>
+                    <p className="text-lg font-bold text-heading tabular-nums">
+                      {visitData.age_in_months !== undefined && visitData.age_in_months !== null ? `${visitData.age_in_months} Bulan` : "-"}
+                    </p>
+                    <span className="text-xs text-dim">Fase Baduta 1.000 HPK</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Berat Badan (BB)</span>
+                    <p className="text-lg font-bold text-heading tabular-nums">
+                      {visitData.child_weight_kg ? `${visitData.child_weight_kg} kg` : "-"}
+                    </p>
+                    <span className="text-xs text-dim">Timbangan Meja 2 Posyandu</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Panjang Badan (PB/TB)</span>
+                    <p className="text-lg font-bold text-heading tabular-nums">
+                      {visitData.child_length_cm ? `${visitData.child_length_cm} cm` : "-"}
+                    </p>
+                    <span className="text-xs text-dim">Pengukuran Alat Stadiometer</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Lingkar Kepala</span>
+                    <p className="text-lg font-bold text-heading tabular-nums">
+                      {visitData.child_head_circumference_cm ? `${visitData.child_head_circumference_cm} cm` : "-"}
+                    </p>
+                    <span className="text-xs text-dim">Pita Ukur Nellhaus</span>
+                  </div>
                 </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Berat Badan Anak</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.child_weight_kg || "-"} <span className="text-xs font-normal">kg</span>
-                  </p>
-                  <p className="text-xs text-dim">WHO Anthro BB/U</p>
-                </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Panjang/Tinggi</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.child_length_cm || "-"} <span className="text-xs font-normal">cm</span>
-                  </p>
-                  <p className="text-xs text-dim">WHO Anthro PB/U</p>
-                </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Lingkar Kepala</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.child_head_circumference_cm || "-"} <span className="text-xs font-normal">cm</span>
-                  </p>
-                  <p className="text-xs text-dim">Nellhaus / WHO</p>
-                </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Tren Berat (KMS)</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.weight_trend_kms || "-"}
-                  </p>
-                  <p className="text-xs text-dim">Kartu Menuju Sehat</p>
-                </div>
-                <div className="p-3.5 bg-card border border-line rounded-xl">
-                  <p className="text-xs text-caption">Kapsul Vitamin A</p>
-                  <p className="text-base font-bold text-heading mt-0.5">
-                    {visitData.vitamin_a || "-"}
-                  </p>
-                  <p className="text-xs text-dim">{visitData.immunization_status || "Imunisasi Terkini"}</p>
+
+                {/* 4 Kartu Parameter Klinis & KMS Tambahan */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Tren Kenaikan (KMS)</span>
+                    <p className="text-base font-bold text-heading">
+                      {visitData.weight_trend_kms || "Normal (N)"}
+                    </p>
+                    <span className="text-xs text-dim">Evaluasi Kartu Menuju Sehat</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Pemberian ASI</span>
+                    <p className="text-base font-bold text-heading truncate">
+                      {visitData.breastfeeding_type || visitData.feeding_status || "ASI Lanjutan"}
+                    </p>
+                    <span className="text-xs text-dim">Status Nutrisi Susu</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Kapsul Vitamin A</span>
+                    <p className="text-base font-bold text-heading">
+                      {visitData.vitamin_a || "Sesuai Jadwal"}
+                    </p>
+                    <span className="text-xs text-dim">Periode Feb / Agu</span>
+                  </div>
+                  <div className="p-3.5 bg-card border border-line rounded-xl flex flex-col justify-between h-24">
+                    <span className="text-xs font-medium text-caption uppercase tracking-wide">Imunisasi Terkini</span>
+                    <p className="text-base font-bold text-heading truncate">
+                      {visitData.immunization_status || "Lengkap Sesuai Usia"}
+                    </p>
+                    <span className="text-xs text-dim">Buku KIA Standar</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -639,7 +744,7 @@ const ValidasiLaporan = () => {
 
         {/* ─── Rekam Jejak Longitudinal 1.000 HPK ─── */}
         {(hpkStatus || maternalHistory || comparisonItems.length > 0) && (
-          <div className="p-5 sm:p-6 border-b border-line bg-card space-y-4">
+          <div className="p-4 sm:p-5 border-b border-line bg-card space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2 text-caption">
               <ClipboardList className="w-4 h-4 text-sky-500" />
               Rekam Jejak & Progres Monitoring 1.000 HPK
@@ -794,25 +899,33 @@ const ValidasiLaporan = () => {
           </div>
         )}
 
-        {/* ─── Body Sections: AI Multi-Agent Results (Clean Minimalist) ─── */}
-        <div className="p-5 sm:p-6 space-y-8">
-          {/* Executive Summary */}
-          <div className="p-5 bg-subtle border border-line rounded-2xl space-y-2">
-            <p className="font-bold text-base text-heading flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-500" aria-hidden="true" />
-              Ringkasan Eksekutif Analisis Sistem
-            </p>
-            <p className="text-sm sm:text-base text-body leading-relaxed">
+        {/* ─── Body Sections: Rekam Medis & Asuhan KIA Puskesmas (Format A4) ─── */}
+        <div className="p-4 sm:p-5 space-y-5 bg-subtle/20 border-t border-line">
+          {/* Ringkasan Evaluasi Medis */}
+          <div className="p-5 bg-card border-2 border-line rounded-2xl space-y-2 shadow-xs break-inside-avoid">
+            <div className="flex items-center justify-between border-b border-line pb-2.5">
+              <span className="font-bold text-xs uppercase tracking-wider text-caption">
+                Ringkasan Evaluasi Klinis & Pertumbuhan
+              </span>
+              <span className="text-xs text-caption font-medium">Sintesis Rekam Medis Posyandu</span>
+            </div>
+            <p className="text-sm sm:text-base text-body leading-relaxed pt-1">
               {finalJson.executive_summary}
             </p>
           </div>
 
-          {/* Section I: Clinical Findings & Risk Flags */}
-          <div className="space-y-3.5">
-            <h3 className="text-base font-bold text-heading flex items-center gap-2">
-              <Activity className="w-4 h-4 text-sky-500" />
-              <span>1. Hasil Pengukuran & Deteksi Risiko Fisik</span>
-            </h3>
+          {/* ═══ BAGIAN I: HASIL PENGUKURAN & DETEKSI DEVIASI FISIK (KMS) ═══ */}
+          <section className="bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
+            <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="border-l-4 border-sky-600 pl-3.5 py-0.5">
+                <h3 className="text-base sm:text-lg font-bold text-heading">
+                  1. Hasil Pengukuran Fisik & Deteksi Deviasi (KMS)
+                </h3>
+                <p className="text-xs text-caption mt-0.5">
+                  Standar Deviasi WHO Z-Score & Deteksi Dini Tumbuh Kembang Kemenkes RI
+                </p>
+              </div>
+            </div>
 
             <p className="text-sm sm:text-base text-body bg-subtle p-4 rounded-xl border border-line leading-relaxed">
               {clinical.risk_narrative || "Tidak ada catatan deviasi antropometri."}
@@ -846,377 +959,309 @@ const ValidasiLaporan = () => {
                 <span>Seluruh parameter fisik berada dalam rentang normal / standar rujukan nasional.</span>
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Section II: Recommendations (Agent 2) ,  Clean Minimalist Cards */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-heading flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-sky-500" />
-                <span>2. Rekomendasi Tindakan & Edukasi Posyandu</span>
-              </h3>
-              <p className="text-xs sm:text-sm text-caption mt-0.5">
-                Rekomendasi tindakan berbasis pedoman Buku KIA 2024 dan PNPK Tata Laksana Stunting.
-              </p>
+          {/* ═══ BAGIAN II: RENCANA ASUHAN & INTERVENSI GIZI KLINIS (1.000 HPK) ═══ */}
+          <section className="bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
+            <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="border-l-4 border-emerald-600 pl-3.5 py-0.5">
+                <h3 className="text-base sm:text-lg font-bold text-heading">
+                  2. Rencana Asuhan & Intervensi Gizi Klinis (1.000 HPK)
+                </h3>
+                <p className="text-xs text-caption mt-0.5">
+                  Protokol edukasi Meja 4 Posyandu berbasis Buku KIA 2024 & Pedoman Kemenkes RI
+                </p>
+              </div>
             </div>
 
             {recommendations.length === 0 ? (
               <div className="text-center py-8 bg-subtle rounded-2xl border border-line px-4">
                 <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
                 <p className="text-base font-bold text-heading">
-                  Tidak Ditemukan Indikasi Risiko Medis Aktif
+                  Pertumbuhan Pasien Sesuai Standar Optimal
                 </p>
                 <p className="text-sm text-caption mt-1 max-w-2xl mx-auto">
-                  Pasien berada dalam kondisi pertumbuhan optimal. Gunakan panduan harian pada Bagian II.B di bawah ini untuk edukasi keluarga di Meja 4 Posyandu.
+                  Gunakan panduan 4 pilar di bawah untuk pendampingan edukasi gizi dan stimulasi rutin keluarga.
                 </p>
               </div>
             ) : (
-              <div className="space-y-5">
-                {recommendations.map((rec, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-card border border-line rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs hover:border-sky-500/40 transition-colors"
-                  >
-                    {/* Header Rekomendasi */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
-                      <div className="flex items-center gap-3">
-                        <span className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <h4 className="text-base font-bold text-heading">
-                          {rec.title}
-                        </h4>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-subtle text-caption border border-line uppercase self-start sm:self-auto">
-                        {rec.category}
-                      </span>
-                    </div>
-
-                    {/* BLOK 1: Kutipan Teks Asli dari Buku Pedoman (Pedoman Baku Kemenkes RI) */}
-                    <div className="p-4 bg-sky-50/70 dark:bg-sky-950/30 rounded-xl border border-sky-200 dark:border-sky-800 space-y-2.5">
-                      <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-                        <span className="font-semibold text-sky-900 dark:text-sky-200 flex items-center gap-1.5 uppercase tracking-wide">
-                          <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                          <span>Pedoman Resmi: {cleanCitation(rec.citation?.source)}</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 font-medium text-sky-800 dark:text-sky-200 text-xs">
-                          Halaman {rec.citation?.page || "-"}
+              <div className="space-y-4">
+                {recommendations.map((rec, idx) => {
+                  const isChecked = !!checkedSteps[`rec-${idx}`];
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-card border border-line rounded-xl p-5 space-y-3.5 shadow-2xs hover:border-slate-400 transition-colors break-inside-avoid"
+                    >
+                      {/* Baris Judul & Kategori (Rapi & Minimalis) */}
+                      <div className="flex items-center justify-between gap-2 border-b border-line-light pb-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <h4 className="text-sm sm:text-base font-bold text-heading">
+                            {rec.title}
+                          </h4>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
+                          {rec.category || "Gizi KIA"}
                         </span>
                       </div>
 
-                      <p className="text-sm text-heading leading-relaxed italic border-l-3 border-sky-500 pl-3">
-                        "{rec.evidence_quote || "Pencegahan stunting pada fase baduta (6-24 bulan) berfokus pada pemberian ASI Eksklusif hingga 6 bulan dilanjutkan MP-ASI yang adekuat secara kualitas dan kuantitas serta kaya protein hewani (Buku KIA Hal. 32)."}"
+                      {/* Inti Instruksi Tindakan */}
+                      <p className="text-sm text-heading leading-relaxed">
+                        {rec.recommendation_text}
                       </p>
 
-                      <div className="flex items-center justify-between text-xs pt-1 flex-wrap gap-2">
-                        <span className="text-caption">
-                          Bab: <strong className="text-heading font-medium">{rec.citation?.section || "Pedoman Gizi & Tata Laksana"}</strong>
-                        </span>
+                      {/* Porsi Pangan Lokal (Jika ada) */}
+                      {rec.food_guide && (
+                        <div className="flex items-center gap-2 text-xs bg-subtle/50 px-3 py-2 rounded-lg border border-line">
+                          <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="font-semibold text-heading shrink-0">Porsi Lokal:</span>
+                          <span className="text-body">{rec.food_guide}</span>
+                        </div>
+                      )}
+
+                      {/* Tombol Interaktif Nyata & Caption Jelas */}
+                      <div className="no-print pt-2 border-t border-line-light flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleEducationChecked(idx)}
+                          className={`btn-interactive flex items-center gap-2 px-3.5 py-1.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold ${
+                            checkedSteps[`rec-${idx}`]
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                              : "bg-card border-line hover:bg-subtle text-heading"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                            checkedSteps[`rec-${idx}`]
+                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              : "border-slate-300 dark:border-slate-600 bg-card"
+                          }`}>
+                            {checkedSteps[`rec-${idx}`] && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                          </span>
+                          <span>{checkedSteps[`rec-${idx}`] ? "Sudah Diedukasikan ke Ibu" : "Tandai Telah Diedukasikan"}</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() =>
                             setDetailModal({
-                              type: "chunk_full",
-                              title: cleanCitation(rec.citation?.source) || "Buku KIA Kemenkes RI",
-                              subtitle: `Halaman ${rec.citation?.page || "-"} • Bab: ${rec.citation?.section || "Pedoman Pertumbuhan"}`,
-                              chunk: {
-                                source: cleanCitation(rec.citation?.source),
-                                page: rec.citation?.page,
-                                section: rec.citation?.section,
-                                evidence: rec.evidence_quote,
-                                rec_title: rec.title,
-                                rec_text: rec.recommendation_text,
-                              },
+                              type: "recommendation",
+                              title: rec.title,
+                              rec: rec,
                             })
                           }
-                          className="text-sky-600 dark:text-sky-400 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                          className="btn-interactive px-3.5 py-2 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 active:bg-sky-200 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs group"
                         >
-                          <span>Buka Teks Dokumen Lengkap</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
+                          <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                          <span>Klik untuk Buka Rujukan Buku KIA & Detail Tindakan</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-sky-500 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                       </div>
-                    </div>
 
-                    {/* BLOK 2: Tindakan & Panduan Kader Posyandu */}
-                    <div className="space-y-3 pt-1">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-caption mb-1">
-                          Instruksi Tindakan Posyandu:
-                        </p>
-                        <p className="text-sm font-medium text-heading leading-relaxed">
-                          {rec.recommendation_text}
-                        </p>
+                      {/* Tampilan Otomatis Lengkap Saat Dicetak (@media print) */}
+                      <div className="hidden print:block space-y-2 mt-2 pt-2 border-t border-slate-300 text-xs">
+                        {rec.action_steps && rec.action_steps.length > 0 && (
+                          <div>
+                            <strong className="block text-slate-800 mb-1">Langkah Pelaksanaan Tindakan:</strong>
+                            <ol className="list-decimal pl-4 space-y-0.5 text-slate-700">
+                              {rec.action_steps.map((st, sIdx) => (
+                                <li key={sIdx}>{st}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        {rec.evidence_quote && (
+                          <div className="italic text-slate-700 bg-slate-50 p-2 border-l-2 border-slate-500">
+                            <strong>Dasar Rujukan Resmi:</strong> "{rec.evidence_quote}" ({cleanCitation(rec.citation?.source)}, Halaman {rec.citation?.page || "-"})
+                          </div>
+                        )}
                       </div>
-
-                      {rec.longitudinal_progress && (
-                        <div className="p-3 bg-subtle rounded-xl border border-line text-xs space-y-0.5">
-                          <span className="font-bold text-heading">Evaluasi Kunjungan Sebelumnya:</span>
-                          <p className="text-body leading-relaxed">{rec.longitudinal_progress}</p>
-                        </div>
-                      )}
-
-                      {rec.food_guide && (
-                        <div className="p-3 bg-subtle rounded-xl border border-line text-xs space-y-1">
-                          <span className="font-bold text-heading flex items-center gap-1.5">
-                            <Utensils className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Panduan Bahan Pangan Lokal & Takaran:</span>
-                          </span>
-                          <p className="text-body leading-relaxed pl-5">{rec.food_guide}</p>
-                        </div>
-                      )}
-
-                      {rec.action_steps && rec.action_steps.length > 0 && (
-                        <div className="text-xs space-y-1">
-                          <span className="font-bold text-heading block">Langkah Tindakan Meja Posyandu:</span>
-                          <ul className="list-disc pl-5 space-y-1 text-body">
-                            {rec.action_steps.map((st, sIdx) => (
-                              <li key={sIdx}>{st}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
-
-                    {/* BLOK 3: Wawasan Tambahan AI (DIPISAHKAN TEGAS DARI BUKU KIA) */}
-                    {rec.ai_insight && (
-                      <div className="p-4 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/60 space-y-1.5 text-xs">
-                        <div className="flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-300 uppercase tracking-wide text-xs">
-                          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span>Catatan Tambahan AI (Bukan Teks Baku Buku KIA &bull; Saran Kontekstual Posyandu)</span>
-                        </div>
-                        <p className="text-sm text-body leading-relaxed pl-5.5">
-                          {rec.ai_insight}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-          </div>
 
-          {/* Section II.B: Comprehensive Care Plan (4 Minimalist Neutral Cards) */}
-          {carePlan && carePlan.food_and_nutrition && (
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-bold text-heading flex items-center gap-2">
-                    <Utensils className="w-4 h-4 text-emerald-500" />
-                    <span>3. Panduan Menu Harian & Tanda Bahaya Rujukan</span>
+            {/* Sub-Bab: 4 Pilar Tumbuh Kembang (Harian) */}
+            {carePlan && carePlan.food_and_nutrition && (
+              <div className="border-t-2 border-line pt-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-line-light pb-2">
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-heading">
+                    Panduan Pola Asuh 4 Pilar (1.000 HPK)
+                  </h4>
+                  <span className="text-xs text-caption">
+                    Disesuaikan untuk: <strong>{carePlan.age_or_trimester_label}</strong>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Pilar 1: Gizi & Makanan */}
+                  <div
+                    onClick={() =>
+                      setDetailModal({
+                        type: "care_food",
+                        badge: "Panduan Gizi & Menu Harian",
+                        title: carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title,
+                        data: carePlan.food_and_nutrition,
+                      })
+                    }
+                    className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-bold text-heading">1. Gizi & Porsi MP-ASI</span>
+                      </div>
+                      <p className="text-xs text-body leading-relaxed">
+                        Tekstur: <strong>{carePlan.food_and_nutrition.texture_and_consistency || carePlan.food_and_nutrition.stage_and_texture || "Padat Bergizi"}</strong> &bull; {carePlan.food_and_nutrition.frequency_and_portion}
+                      </p>
+                    </div>
+                    <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
+                      <span>Lihat 5 jadwal makan & resep</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+
+                  {/* Pilar 2: ASI & Nutrisi Medis */}
+                  {carePlan.milk_and_supplements && (
+                    <div
+                      onClick={() =>
+                        setDetailModal({
+                          type: "care_milk",
+                          badge: "Pemberian Susu & Nutrisi Medis",
+                          title: carePlan.milk_and_supplements.title,
+                          data: carePlan.milk_and_supplements,
+                        })
+                      }
+                      className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Baby className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                          <span className="text-xs font-bold text-heading">2. ASI & Nutrisi Medis</span>
+                        </div>
+                        <p className="text-xs text-body leading-relaxed">
+                          {carePlan.milk_and_supplements.primary_source || carePlan.milk_and_supplements.recommended_type || "ASI Eksklusif / Lanjutan"}
+                        </p>
+                      </div>
+                      <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
+                        <span>Lihat aturan suplementasi</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Pilar 3: Stimulasi Motorik */}
+                  {carePlan.activity_and_stimulation && (
+                    <div
+                      onClick={() =>
+                        setDetailModal({
+                          type: "care_activity",
+                          badge: "Stimulasi Perkembangan",
+                          title: carePlan.activity_and_stimulation.title,
+                          data: carePlan.activity_and_stimulation,
+                        })
+                      }
+                      className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-xs font-bold text-heading">3. Stimulasi & Motorik</span>
+                        </div>
+                        <p className="text-xs text-body leading-relaxed">
+                          Target: <strong>{carePlan.activity_and_stimulation.milestones_target || carePlan.activity_and_stimulation.focus_area || "Perkembangan Usia"}</strong>
+                        </p>
+                      </div>
+                      <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
+                        <span>Lihat panduan stimulasi</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Pilar 4: Tanda Bahaya Rujukan */}
+                  {Array.isArray(carePlan.danger_signs) && carePlan.danger_signs.length > 0 && (
+                    <div
+                      onClick={() =>
+                        setDetailModal({
+                          type: "care_danger",
+                          badge: "Protokol Rujukan Puskesmas",
+                          title: "Tanda Bahaya Klinis & Syarat Rujukan Puskesmas Segera",
+                          data: carePlan.danger_signs,
+                        })
+                      }
+                      className="group cursor-pointer p-4 bg-card border-2 border-rose-200 dark:border-rose-900/60 rounded-xl flex flex-col justify-between gap-2.5 hover:border-rose-400 transition-colors"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">4. Segera Rujuk Jika:</span>
+                        </div>
+                        <p className="text-xs text-rose-700 dark:text-rose-300 font-medium line-clamp-2">
+                          {carePlan.danger_signs.slice(0, 2).join(" • ")}
+                        </p>
+                      </div>
+                      <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1 border-t border-rose-100 dark:border-rose-900/40">
+                        <span>Lihat ({carePlan.danger_signs.length}) tanda bahaya</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ═══ BAGIAN III: BUKTI RUJUKAN RESMI STANDAR KEMENKES RI ═══ */}
+          {verifications.length > 0 && (
+            <section className="bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
+              <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="border-l-4 border-indigo-600 pl-3.5 py-0.5">
+                  <h3 className="text-base sm:text-lg font-bold text-heading">
+                    3. Bukti Rujukan Resmi Standar Kemenkes RI
                   </h3>
-                  <p className="text-xs sm:text-sm text-caption mt-0.5">
-                    Panduan edukasi keluarga di Meja 4 Posyandu &bull; Disesuaikan untuk{" "}
-                    <strong>{carePlan.age_or_trimester_label}</strong>
+                  <p className="text-xs text-caption mt-0.5">
+                    Verifikasi kesesuaian tindakan terhadap rujukan Buku KIA 2024 & PNPK Kemenkes RI
                   </p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Card 1: Makanan & Menu Sehari */}
-                <div
-                  onClick={() =>
-                    setDetailModal({
-                      type: "care_food",
-                      badge: "Panduan Gizi & Menu Harian",
-                      title: carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title,
-                      data: carePlan.food_and_nutrition,
-                    })
-                  }
-                  className="group card-interactive cursor-pointer p-5 bg-card border border-line rounded-2xl flex flex-col justify-between gap-4"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center shrink-0">
-                        <Utensils className="w-4 h-4 text-emerald-500" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-caption">1. Makanan & Menu Sehari</span>
-                        <h4 className="text-base font-bold text-heading leading-snug">
-                          {carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title}
-                        </h4>
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-caption leading-relaxed line-clamp-2">
-                      {carePlan.food_and_nutrition.texture_and_consistency ||
-                        carePlan.food_and_nutrition.stage_and_texture}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                    <span>Lihat jadwal menu 5 waktu makan & porsi</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Card 2: ASI, Susu & Suplementasi */}
-                {carePlan.milk_and_supplements && (
-                  <div
-                    onClick={() =>
-                      setDetailModal({
-                        type: "care_milk",
-                        badge: "Panduan ASI, Susu & Suplementasi",
-                        title: carePlan.milk_and_supplements.headline || carePlan.milk_and_supplements.title,
-                        data: carePlan.milk_and_supplements,
-                      })
-                    }
-                    className="group card-interactive cursor-pointer p-5 bg-card border border-line rounded-2xl flex flex-col justify-between gap-4"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center shrink-0">
-                          <Droplets className="w-4 h-4 text-sky-500" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-caption">2. ASI, Susu & Suplementasi</span>
-                          <h4 className="text-base font-bold text-heading leading-snug">
-                            {carePlan.milk_and_supplements.headline || carePlan.milk_and_supplements.title}
-                          </h4>
-                        </div>
-                      </div>
-
-                      {carePlan.milk_and_supplements.compliance_badge && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>ASI Standar Emas Mutlak • PKMK Khusus Resep Dokter</span>
-                        </div>
-                      )}
-
-                      <p className="text-sm text-caption leading-relaxed line-clamp-2">
-                        {carePlan.milk_and_supplements.primary_source ||
-                          carePlan.milk_and_supplements.recommended_type}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                      <span>Lihat aturan pemberian & keamanan medis</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Card 3: Aktivitas Fisik, Stimulasi & Tidur */}
-                {carePlan.activity_and_stimulation && (
-                  <div
-                    onClick={() =>
-                      setDetailModal({
-                        type: "care_activity",
-                        badge: "Aktivitas Fisik & Stimulasi Harian",
-                        title: carePlan.activity_and_stimulation.headline || carePlan.activity_and_stimulation.title,
-                        data: carePlan.activity_and_stimulation,
-                      })
-                    }
-                    className="group card-interactive cursor-pointer p-5 bg-card border border-line rounded-2xl flex flex-col justify-between gap-4"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center shrink-0">
-                          <Baby className="w-4 h-4 text-amber-500" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-caption">3. Aktivitas & Stimulasi</span>
-                          <h4 className="text-base font-bold text-heading leading-snug">
-                            {carePlan.activity_and_stimulation.headline || carePlan.activity_and_stimulation.title}
-                          </h4>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-caption leading-relaxed line-clamp-2">
-                        {(carePlan.activity_and_stimulation.daily_activities ||
-                          carePlan.activity_and_stimulation.recommended_activities ||
-                          [])[0] || "Panduan stimulasi tumbuh kembang harian sesuai usia."}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                      <span>Lihat daftar stimulasi & pola tidur</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Card 4: Kewaspadaan Tanda Bahaya */}
-                {Array.isArray(carePlan.danger_signs) && carePlan.danger_signs.length > 0 && (
-                  <div
-                    onClick={() =>
-                      setDetailModal({
-                        type: "care_danger",
-                        badge: "Indikasi Rujukan Cepat Puskesmas",
-                        title: "Kewaspadaan Tanda Bahaya Klinis",
-                        dangerSigns: carePlan.danger_signs,
-                      })
-                    }
-                    className="group card-interactive cursor-pointer p-5 bg-card border border-line rounded-2xl flex flex-col justify-between gap-4"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-subtle border border-line flex items-center justify-center shrink-0">
-                          <AlertTriangle className="w-4 h-4 text-rose-500" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-caption">4. Kewaspadaan Medis</span>
-                          <h4 className="text-base font-bold text-heading leading-snug">
-                            Tanda Bahaya & Indikasi Rujukan Puskesmas
-                          </h4>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-caption leading-relaxed line-clamp-2">
-                        {carePlan.danger_signs[0]}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                      <span>Lihat semua ({carePlan.danger_signs.length}) tanda bahaya</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Section III: Verifications (Agent 3) */}
-          {verifications.length > 0 && (
-            <div className="space-y-3.5">
-              <h3 className="text-base font-bold text-heading flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>4. Bukti Verifikasi Rujukan Resmi Kemenkes RI</span>
-              </h3>
 
               <div className="border border-line rounded-xl overflow-hidden">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-subtle text-caption text-xs font-semibold border-b border-line uppercase tracking-wider">
                     <tr>
-                      <th className="p-3.5 w-12 text-center">No</th>
-                      <th className="p-3.5 w-1/3">Poin Rekomendasi</th>
-                      <th className="p-3.5 w-1/4">Dokumen Sitasi</th>
-                      <th className="p-3.5 text-center">Status Grounding</th>
-                      <th className="p-3.5">Bukti Kutipan Ilmiah</th>
+                      <th className="p-3 w-12 text-center">No</th>
+                      <th className="p-3 w-1/3">Poin Rekomendasi</th>
+                      <th className="p-3 w-1/4">Dokumen Sitasi</th>
+                      <th className="p-3 text-center">Status Kesesuaian</th>
+                      <th className="p-3">Bukti Kutipan Resmi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line-light">
                     {verifications.map((v, i) => (
                       <tr key={i} className="hover:bg-subtle transition-colors">
-                        <td className="p-3.5 text-center font-bold text-dim">
+                        <td className="p-3 text-center font-bold text-dim">
                           {v.recommendation_index || i + 1}
                         </td>
-                        <td className="p-3.5 font-semibold text-heading">
+                        <td className="p-3 font-semibold text-heading">
                           {v.title}
                         </td>
-                        <td className="p-3.5 text-caption">
+                        <td className="p-3 text-caption">
                           {cleanCitation(v.citation_source)} <br />
-                          <span className="text-xs text-dim font-mono">Halaman {v.citation_page}</span>
+                          <span className="text-xs text-dim">Halaman {v.citation_page}</span>
                         </td>
-                        <td className="p-3.5 text-center">
+                        <td className="p-3 text-center">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-heading border border-line">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                             {v.verification_status}
                           </span>
                         </td>
-                        <td className="p-3.5 text-body max-w-md">
+                        <td className="p-3 text-body max-w-md">
                           {v.evidence && (
-                            <p className="italic bg-subtle p-2.5 rounded-lg border border-line mb-1 text-xs text-body">
+                            <p className="italic bg-subtle p-2 rounded-lg border border-line mb-1 text-xs text-body">
                               "{v.evidence}"
                             </p>
                           )}
@@ -1227,8 +1272,26 @@ const ValidasiLaporan = () => {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
           )}
+
+          {/* Kolom Tanda Tangan Resmi (Tampil Khusus Saat Dicetak A4) */}
+          <div className="hidden print:grid grid-cols-2 gap-8 pt-8 border-t-2 border-slate-400 mt-8 break-inside-avoid text-xs text-center">
+            <div className="space-y-16">
+              <p className="text-slate-700">Petugas / Kader Posyandu Pemeriksa,</p>
+              <div>
+                <p className="font-bold underline text-sm text-slate-900">{meta.kader_name || "(..............................................)"}</p>
+                <p className="text-slate-600">Kader Posyandu Desa {meta.village_name || "Airmadidi"}</p>
+              </div>
+            </div>
+            <div className="space-y-16">
+              <p className="text-slate-700">Mengetahui / Memvalidasi:<br />Bidan Desa / Nakes Puskesmas,</p>
+              <div>
+                <p className="font-bold underline text-sm text-slate-900">{report.validated_by || "(..............................................)"}</p>
+                <p className="text-slate-600">Puskesmas Airmadidi</p>
+              </div>
+            </div>
+          </div>
 
           {/* Validation Notice / Rejection Reason Display */}
           {report.status === "REJECTED" && report.rejection_reason && (
@@ -1245,7 +1308,7 @@ const ValidasiLaporan = () => {
         </div>
 
         {/* Action Bar (Footer) */}
-        <div className="p-5 sm:p-6 border-t border-line bg-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="no-print p-5 sm:p-6 border-t border-line bg-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs sm:text-sm text-caption text-center sm:text-left">
             {report.status === "APPROVED" ? (
               <span className="text-heading font-semibold flex items-center gap-1.5">
@@ -1261,7 +1324,7 @@ const ValidasiLaporan = () => {
               </span>
             ) : (
               <span>
-                Human-in-the-loop: Kader berwenang mengesahkan atau meminta 1x revisi graf AI
+                Pemeriksaan Petugas: Kader berwenang mengesahkan laporan atau mengajukan 1x permohonan revisi asuhan
               </span>
             )}
           </div>
@@ -1284,7 +1347,7 @@ const ValidasiLaporan = () => {
                   className="btn-interactive flex items-center justify-center gap-1.5 px-4 py-2.5 border border-line bg-card hover:bg-muted text-heading rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <XCircle className="w-4 h-4 text-rose-500" />
-                  <span>{revisionCount >= 1 ? "Batas Revisi Habis" : "Tolak & Minta Revisi AI (1x)"}</span>
+                  <span>{revisionCount >= 1 ? "Batas Revisi Habis" : "Minta Revisi Asuhan (1x)"}</span>
                 </button>
 
                 <button
@@ -1303,14 +1366,14 @@ const ValidasiLaporan = () => {
 
             {/* ─── Kader Rating Widget (1 - 5 Bintang) ─── */}
       {report.status === "APPROVED" && (
-        <div className="p-5 bg-card border border-line rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="no-print p-5 bg-card border border-line rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-heading flex items-center gap-2">
               <Star className="w-4 h-4 text-amber-500" />
-              <span>Evaluasi Kualitas Analisis Multi-Agent AI oleh Kader</span>
+              <span>Evaluasi Rekomendasi Klinis oleh Petugas</span>
             </h4>
             <p className="text-xs text-caption">
-              Berikan penilaian 1 - 5 bintang terhadap ketepatan saran AI. Penilaian &ge; 4 disimpan sebagai contoh pembelajaran acuan, sedangkan &le; 2 ditandai untuk evaluasi supervisi dokter.
+              Berikan penilaian 1 - 5 bintang terhadap ketepatan saran klinis. Penilaian &ge; 4 disimpan sebagai contoh pembelajaran acuan, sedangkan &le; 2 ditandai untuk evaluasi supervisi dokter.
             </p>
           </div>
           <div className="flex items-center gap-3 self-start sm:self-auto">
@@ -1663,19 +1726,29 @@ const ValidasiLaporan = () => {
                 </>
               )}
 
-              {detailModal.type === "care_danger" && Array.isArray(detailModal.dangerSigns) && (
-                <div className="p-4 bg-subtle border border-line rounded-xl space-y-2.5">
-                  <p className="text-sm font-bold text-heading flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-                    <span>Segera Rujuk ke Puskesmas Airmadidi Apabila Ditemukan Tanda Berikut:</span>
-                  </p>
+              {detailModal.type === "care_danger" && (
+                <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+                    <span className="text-sm font-bold text-rose-800 dark:text-rose-300">
+                      Segera Rujuk ke Puskesmas Airmadidi Apabila Ditemukan Tanda Bahaya Berikut:
+                    </span>
+                  </div>
                   <ul className="text-sm text-body space-y-2 pl-6 list-disc">
-                    {detailModal.dangerSigns.map((ds, dIdx) => (
+                    {(Array.isArray(detailModal.data)
+                      ? detailModal.data
+                      : Array.isArray(detailModal.dangerSigns)
+                      ? detailModal.dangerSigns
+                      : (carePlan?.danger_signs || [])
+                    ).map((ds, dIdx) => (
                       <li key={dIdx} className="leading-relaxed">
                         {ds}
                       </li>
                     ))}
                   </ul>
+                  <div className="p-3 bg-card border border-rose-200 dark:border-rose-900/40 rounded-lg text-xs text-rose-700 dark:text-rose-300">
+                    💡 <strong>Prosedur Kader:</strong> Segera dampingi keluarga balita ke Puskesmas Airmadidi dengan membawa Buku KIA dan KTP/KK.
+                  </div>
                 </div>
               )}
 
@@ -1914,7 +1987,7 @@ const ValidasiLaporan = () => {
           >
             <div className="flex justify-between items-center">
               <h3 id="modal-reject-title" className="text-base font-bold text-heading">
-                Catatan Revisi untuk AI Agent (Maks 1x)
+                Catatan Koreksi / Permohonan Revisi Laporan (Maks. 1x)
               </h3>
               <button
                 onClick={() => setShowRejectModal(false)}

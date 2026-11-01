@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { RefreshCw, ExternalLink } from "lucide-react";
+import { RefreshCw, ExternalLink, ShieldAlert, ArrowRight } from "lucide-react";
 
 const SkeletonCard = () => (
   <div className="bg-card p-4 rounded-xl border border-line space-y-2 animate-pulse">
@@ -87,9 +87,11 @@ const KaderDashboard = () => {
     summary?.phase_breakdown?.toddlers ??
     (summary?.total_children ? Math.max(0, summary.total_children - newbornsCount) : 0);
 
-  // Tren bulan berjalan
+  // Tren bulan berjalan & Metrik Stunting
   const trendPoints = summary?.monthly_trend || [];
   const lastPoint = trendPoints[trendPoints.length - 1] || { visits: 0, stunting: 0, kek: 0, anemia: 0 };
+  const stuntingCount = lastPoint?.stunting || 0;
+  const stuntingRate = toddlersCount > 0 ? ((stuntingCount / toddlersCount) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -394,83 +396,76 @@ const KaderDashboard = () => {
 
         {/* Kolom Kanan: Aksi Layanan Meja Posyandu + Distribusi 3 Fase 1.000 HPK (lg:col-span-5) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          {/* Kartu A: Pintasan Aksi Meja Layanan */}
-          <div className="bg-card rounded-xl border border-line p-4 sm:p-5 flex-1 flex flex-col justify-between">
+          {/* Kartu A: Panel Monitoring Khusus Stunting (1.000 HPK) */}
+          <div className="bg-card rounded-xl border border-line p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-heading">
-                  Aksi Meja Layanan Posyandu
+              <div className="flex items-center justify-between mb-1.5">
+                <h3 className="text-base font-bold text-heading flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  <span>Monitoring Stunting & Gizi Baduta</span>
                 </h3>
-                <span className="text-xs text-caption">Akses Cepat</span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${
+                  stuntingCount > 0
+                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                }`}>
+                  {stuntingCount > 0 ? `${stuntingCount} Kasus Aktif` : "0 Kasus (Aman)"}
+                </span>
               </div>
-              <p className="text-xs text-caption mb-3">
-                Pintasan ke modul penimbangan, pendaftaran, dan laporan:
+              <p className="text-xs text-caption leading-relaxed">
+                Evaluasi status antropometri Panjang/Tinggi Badan menurut Umur (PB/U) balita usia 0–24 bulan:
               </p>
 
-              <div className="grid grid-cols-2 gap-2">
-                {/* Aksi 1: Catat Kunjungan */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/kader/input-kunjungan")}
-                  className="p-3 rounded-lg border border-line hover:bg-muted text-left transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-semibold text-heading block">
-                    Input Kunjungan
-                  </span>
-                  <span className="text-xs text-caption block mt-0.5">
-                    Hasil timbang & ukur
-                  </span>
-                </button>
-
-                {/* Aksi 2: Tambah Pasien */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/kader/data-pasien")}
-                  className="p-3 rounded-lg border border-line hover:bg-muted text-left transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-semibold text-heading block">
-                    Daftar Sasaran
-                  </span>
-                  <span className="text-xs text-caption block mt-0.5">
-                    Ibu hamil & balita
-                  </span>
-                </button>
-
-                {/* Aksi 3: Validasi Laporan Draft */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/kader/laporan-kia")}
-                  className="p-3 rounded-lg border border-line hover:bg-muted text-left transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-heading">
-                      Validasi Draft
+              {/* 2 Indikator Kunci Stunting */}
+              <div className="grid grid-cols-2 gap-2.5 my-3">
+                <div className="p-3 bg-subtle rounded-lg border border-line space-y-1">
+                  <span className="text-xs text-caption block">Prevalensi di Posyandu</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-bold text-heading tabular-nums">
+                      {stuntingRate}%
                     </span>
-                    {(summary?.pending_validation || 0) > 0 && (
-                      <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                        {summary.pending_validation}
-                      </span>
-                    )}
+                    <span className="text-xs text-caption">dari {toddlersCount} anak</span>
                   </div>
-                  <span className="text-xs text-caption block mt-0.5">
-                    Pengesahan kader
-                  </span>
-                </button>
+                  <span className="text-xs text-caption block">Standar WHO &lt; 20%</span>
+                </div>
 
-                {/* Aksi 4: Pusat Monitoring 1.000 HPK */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/kader/monitoring-kia")}
-                  className="p-3 rounded-lg border border-line hover:bg-muted text-left transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-semibold text-heading block">
-                    Monitoring HPK
+                <div className="p-3 bg-subtle rounded-lg border border-line space-y-1">
+                  <span className="text-xs text-caption block">Ambang Batas Kemenkes</span>
+                  <div className="text-sm font-bold text-heading">
+                    PB/U &lt; -2 SD
+                  </div>
+                  <span className="text-xs text-rose-600 dark:text-rose-400 block font-medium">
+                    &lt; -3 SD: Sangat Pendek
                   </span>
-                  <span className="text-xs text-caption block mt-0.5">
-                    Kurva KMS & timeline
-                  </span>
-                </button>
+                </div>
               </div>
+
+              {/* Protokol Cepat Intervensi PMT Lokal */}
+              <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1.5">
+                <span className="font-semibold text-heading block">Protokol Respon Posyandu:</span>
+                <ul className="space-y-1 text-caption">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-sky-600 dark:text-sky-400 font-bold">•</span>
+                    <span><strong>Protein Hewani:</strong> Beri 1 butir telur/hari & ikan laut segar (tude/cakalang).</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-sky-600 dark:text-sky-400 font-bold">•</span>
+                    <span><strong>Rujukan Dokter:</strong> Rujuk bila BB tidak naik 2x (2T) atau kurva KMS di bawah garis merah.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-line flex items-center justify-between text-xs">
+              <span className="text-caption font-medium">Kecamatan Airmadidi</span>
+              <button
+                type="button"
+                onClick={() => navigate("/kader/monitoring-kia?tab=personal")}
+                className="font-semibold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>Buka Detail Pasien di Monitoring</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
@@ -585,15 +580,13 @@ const KaderDashboard = () => {
                     </td>
 
                     <td className="px-4 py-3">
-                      {p.overall_status === "RISIKO_TINGGI" ? (
-                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium text-rose-700 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40">
-                          Risiko Tinggi
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40">
-                          Perlu Perhatian
-                        </span>
-                      )}
+                      <span className={`text-xs font-semibold ${
+                        p.overall_status === "RISIKO_TINGGI"
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}>
+                        {p.overall_status === "RISIKO_TINGGI" ? "Risiko Tinggi" : "Perlu Perhatian"}
+                      </span>
                     </td>
 
                     <td className="px-4 py-3 max-w-xs">

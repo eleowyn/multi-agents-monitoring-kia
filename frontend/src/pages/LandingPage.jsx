@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -312,11 +312,112 @@ const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/EYaF5jMDJizmTPXZ9";
 const INSTAGRAM_URL = "https://www.instagram.com/uptd_puskesmas_airmadidi";
 const FACEBOOK_URL = "https://www.facebook.com/search/top/?q=UPTD%20Puskesmas%20Airmadidi";
 
+/**
+ * Lightweight, accessible counter hook using requestAnimationFrame.
+ * Honors prefers-reduced-motion for accessibility.
+ */
+const useAnimatedCounter = (target, duration = 1200) => {
+  const [count, setCount] = useState(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      return target;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setCount(target);
+      return;
+    }
+
+    let startTimestamp = null;
+    let frameId;
+
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      // easeOutExpo for snappy start and gentle deceleration
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setCount(Math.round(ease * target));
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(step);
+      }
+    };
+
+    frameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameId);
+  }, [target, duration]);
+
+  return count;
+};
+
+/**
+ * Reusable ScrollReveal wrapper using native IntersectionObserver.
+ * Triggers once when the element enters the viewport with a gentle pop-up effect.
+ * Honors prefers-reduced-motion for accessibility.
+ */
+const ScrollReveal = ({ children, className = "", delay = 0, threshold = 0.08 }) => {
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      return true;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setIsVisible(true);
+      return;
+    }
+
+    const node = ref.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(node);
+        }
+      },
+      { threshold, rootMargin: "0px 0px -30px 0px" }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        transitionDelay: `${delay}ms`,
+        transitionDuration: "450ms",
+        transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
+      className={`transition-all ${
+        isVisible
+          ? "opacity-100 translate-y-0 scale-100"
+          : "opacity-0 translate-y-4 scale-[0.96] pointer-events-none"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
 const LandingPage = () => {
   const { user } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [selectedModal, setSelectedModal] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Animated counters for hero key metrics
+  const countDays = useAnimatedCounter(1000, 1400);
+  const countBrain = useAnimatedCounter(80, 1200);
+  const countVillages = useAnimatedCounter(9, 1000);
 
   const dashboardPath = user
     ? user.role === "ADMIN"
@@ -464,10 +565,10 @@ const LandingPage = () => {
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <a
                   href="#fase-1000-hpk"
-                  className="btn-interactive inline-flex items-center gap-2 px-5 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all"
+                  className="btn-interactive animate-shimmer group inline-flex items-center gap-2 px-5 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-all"
                 >
                   <span>Pelajari Panduan 1.000 HPK</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </a>
                 <a
                   href="#profil-lokasi"
@@ -482,13 +583,15 @@ const LandingPage = () => {
             <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-slide-in-up stagger-1">
               <a
                 href="#fase-1000-hpk"
-                className="card-interactive p-5 rounded-2xl bg-subtle border border-line flex flex-col justify-between gap-2"
+                className="card-interactive p-5 rounded-2xl bg-subtle border border-line hover:border-sky-300 dark:hover:border-sky-700 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-1"
               >
                 <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
                   Periode Emas
                 </span>
                 <div>
-                  <p className="text-2xl font-bold text-heading">1.000 Hari</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums tracking-tight">
+                    {countDays.toLocaleString("id-ID")} Hari
+                  </p>
                   <p className="text-sm font-medium text-label mt-0.5">Kehamilan s/d Usia 2 Tahun</p>
                   <p className="text-xs text-caption mt-1 leading-relaxed">
                     270 hari di dalam kandungan ditambah 730 hari dua tahun pertama kehidupan anak.
@@ -498,13 +601,15 @@ const LandingPage = () => {
 
               <a
                 href="#fun-facts-golden-age"
-                className="card-interactive p-5 rounded-2xl bg-subtle border border-line flex flex-col justify-between gap-2"
+                className="card-interactive p-5 rounded-2xl bg-subtle border border-line hover:border-amber-300 dark:hover:border-amber-700 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-1"
               >
                 <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                   Golden Age
                 </span>
                 <div>
-                  <p className="text-2xl font-bold text-heading">80% Otak Anak</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums tracking-tight">
+                    {countBrain}% Otak Anak
+                  </p>
                   <p className="text-sm font-medium text-label mt-0.5">Tumbuh Sebelum Usia 2 Tahun</p>
                   <p className="text-xs text-caption mt-1 leading-relaxed">
                     Masa paling menentukan bagi kecerdasan, daya tahan tubuh, dan tinggi badan anak.
@@ -514,13 +619,15 @@ const LandingPage = () => {
 
               <a
                 href="#panduan-gizi"
-                className="card-interactive p-5 rounded-2xl bg-subtle border border-line flex flex-col justify-between gap-2"
+                className="card-interactive p-5 rounded-2xl bg-subtle border border-line hover:border-emerald-300 dark:hover:border-emerald-700 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-1"
               >
                 <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                   Nutrisi Keluarga
                 </span>
                 <div>
-                  <p className="text-2xl font-bold text-heading">ASI & MP-ASI</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+                    ASI & MP-ASI
+                  </p>
                   <p className="text-sm font-medium text-label mt-0.5">Pangan Lokal Minahasa</p>
                   <p className="text-xs text-caption mt-1 leading-relaxed">
                     Panduan ASI eksklusif, ikan tude/cakalang, telur, hati ayam, dan daun kelor.
@@ -530,13 +637,15 @@ const LandingPage = () => {
 
               <a
                 href="#profil-lokasi"
-                className="card-interactive p-5 rounded-2xl bg-subtle border border-line flex flex-col justify-between gap-2"
+                className="card-interactive p-5 rounded-2xl bg-subtle border border-line hover:border-rose-300 dark:hover:border-rose-700 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-1"
               >
                 <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
                   Jejaring Layanan
                 </span>
                 <div>
-                  <p className="text-2xl font-bold text-heading">9 Desa / Kel.</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums tracking-tight">
+                    {countVillages} Desa / Kel.
+                  </p>
                   <p className="text-sm font-medium text-label mt-0.5">Posyandu Kec. Airmadidi</p>
                   <p className="text-xs text-caption mt-1 leading-relaxed">
                     Pelayanan Posyandu, Pustu, dan Poskesdes binaan UPTD Puskesmas Airmadidi.
@@ -553,56 +662,59 @@ const LandingPage = () => {
         id="fase-1000-hpk"
         className="py-14 sm:py-18 max-w-[1440px] w-full mx-auto px-5 sm:px-8 lg:px-12 space-y-8"
       >
-        <div className="max-w-2xl space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-caption">
-            Panduan Kesehatan Ibu & Anak
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
-            3 Fase Penting dalam 1.000 Hari Pertama Kehidupan
-          </h2>
-          <p className="text-sm sm:text-base text-caption leading-relaxed">
-            Pilih masing-masing fase untuk membaca panduan pemeriksaan rutin, asupan gizi harian, serta tanda bahaya yang perlu diwaspadai.
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className="max-w-2xl space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-caption">
+              Panduan Kesehatan Ibu & Anak
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+              3 Fase Penting dalam 1.000 Hari Pertama Kehidupan
+            </h2>
+            <p className="text-sm sm:text-base text-caption leading-relaxed">
+              Pilih masing-masing fase untuk membaca panduan pemeriksaan rutin, asupan gizi harian, serta tanda bahaya yang perlu diwaspadai.
+            </p>
+          </div>
+        </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PHASES_1000_HPK.map((phase) => {
+          {PHASES_1000_HPK.map((phase, idx) => {
             const Icon = phase.icon;
             return (
-              <div
-                key={phase.id}
-                onClick={() =>
-                  setSelectedModal({
-                    type: "phase",
-                    badge: phase.badge,
-                    title: phase.title,
-                    points: phase.points,
-                    dangerSigns: phase.dangerSigns,
-                  })
-                }
-                className="group card-interactive cursor-pointer rounded-2xl border border-line bg-card p-6 flex flex-col justify-between gap-6"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-subtle border border-line flex items-center justify-center">
-                      <Icon className={`w-5 h-5 ${phase.iconColor}`} />
+              <ScrollReveal key={phase.id} className="h-full">
+                <div
+                  onClick={() =>
+                    setSelectedModal({
+                      type: "phase",
+                      badge: phase.badge,
+                      title: phase.title,
+                      points: phase.points,
+                      dangerSigns: phase.dangerSigns,
+                    })
+                  }
+                  className="group card-interactive h-full cursor-pointer rounded-2xl border border-line hover:border-sky-300 dark:hover:border-sky-700 bg-card p-6 flex flex-col justify-between gap-6 transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-subtle border border-line flex items-center justify-center group-hover:scale-105 group-hover:bg-sky-50 dark:group-hover:bg-sky-950/40 transition-all duration-300">
+                        <Icon className={`w-5 h-5 ${phase.iconColor}`} />
+                      </div>
+                      <span className="text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-subtle border border-line">
+                        {phase.badge}
+                      </span>
                     </div>
-                    <span className="text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-subtle border border-line">
-                      {phase.badge}
-                    </span>
+
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-heading">{phase.title}</h3>
+                      <p className="text-sm text-caption leading-relaxed">{phase.summary}</p>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-bold text-heading">{phase.title}</h3>
-                    <p className="text-sm text-caption leading-relaxed">{phase.summary}</p>
+                  <div className="pt-4 border-t border-line-light flex items-center justify-between text-sm font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                    <span>Lihat panduan lengkap</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
-
-                <div className="pt-4 border-t border-line-light flex items-center justify-between text-sm font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                  <span>Lihat panduan lengkap</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </div>
+              </ScrollReveal>
             );
           })}
         </div>
@@ -611,55 +723,58 @@ const LandingPage = () => {
       {/* ─── Section 2: Panduan Praktis Gizi Lokal, ASI/Susu & Aktivitas ─── */}
       <section id="panduan-gizi" className="py-14 sm:py-18 bg-card border-y border-line">
         <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 space-y-8">
-          <div className="max-w-2xl space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-caption">
-              Pedoman Gizi & Perawatan Harian
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
-              Panduan Makanan/MP-ASI, ASI & Stimulasi Anak
-            </h2>
-            <p className="text-sm sm:text-base text-caption leading-relaxed">
-              Pemenuhan gizi seimbang berbahan pangan lokal Minahasa Utara serta stimulasi harian sesuai Buku KIA Kemenkes RI.
-            </p>
-          </div>
+          <ScrollReveal>
+            <div className="max-w-2xl space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-caption">
+                Pedoman Gizi & Perawatan Harian
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+                Panduan Makanan/MP-ASI, ASI & Stimulasi Anak
+              </h2>
+              <p className="text-sm sm:text-base text-caption leading-relaxed">
+                Pemenuhan gizi seimbang berbahan pangan lokal Minahasa Utara serta stimulasi harian sesuai Buku KIA Kemenkes RI.
+              </p>
+            </div>
+          </ScrollReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {NUTRITION_GUIDES.map((guide) => {
+            {NUTRITION_GUIDES.map((guide, idx) => {
               const Icon = guide.icon;
               return (
-                <div
-                  key={guide.id}
-                  onClick={() =>
-                    setSelectedModal({
-                      type: "nutrition",
-                      badge: guide.badge,
-                      title: guide.title,
-                      details: guide.details,
-                    })
-                  }
-                  className="group card-interactive cursor-pointer p-6 bg-page rounded-2xl border border-line flex flex-col justify-between gap-6"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-card border border-line flex items-center justify-center">
-                        <Icon className={`w-5 h-5 ${guide.iconColor}`} />
+                <ScrollReveal key={guide.id} className="h-full">
+                  <div
+                    onClick={() =>
+                      setSelectedModal({
+                        type: "nutrition",
+                        badge: guide.badge,
+                        title: guide.title,
+                        details: guide.details,
+                      })
+                    }
+                    className="group card-interactive h-full cursor-pointer p-6 bg-page rounded-2xl border border-line hover:border-emerald-300 dark:hover:border-emerald-700 flex flex-col justify-between gap-6 transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-card border border-line flex items-center justify-center group-hover:scale-105 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/40 transition-all duration-300">
+                          <Icon className={`w-5 h-5 ${guide.iconColor}`} />
+                        </div>
+                        <span className="text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-card border border-line">
+                          {guide.badge}
+                        </span>
                       </div>
-                      <span className="text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-card border border-line">
-                        {guide.badge}
-                      </span>
+
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-bold text-heading">{guide.title}</h3>
+                        <p className="text-sm text-caption leading-relaxed">{guide.summary}</p>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-bold text-heading">{guide.title}</h3>
-                      <p className="text-sm text-caption leading-relaxed">{guide.summary}</p>
+                    <div className="pt-4 border-t border-line flex items-center justify-between text-sm font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                      <span>Lihat detail & contoh menu</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-line flex items-center justify-between text-sm font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                    <span>Lihat detail & contoh menu</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </div>
+                </ScrollReveal>
               );
             })}
           </div>
@@ -671,48 +786,51 @@ const LandingPage = () => {
         id="fun-facts-golden-age"
         className="py-14 sm:py-18 max-w-[1440px] w-full mx-auto px-5 sm:px-8 lg:px-12 space-y-8"
       >
-        <div className="max-w-2xl space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-caption flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Tahukah Bunda? • Fakta Kesehatan Ibu & Anak</span>
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
-            Fakta Menarik Seputar Masa Golden Age (1.000 HPK)
-          </h2>
-          <p className="text-sm sm:text-base text-caption leading-relaxed">
-            Pengetahuan sederhana namun penting bagi orang tua untuk mendukung tumbuh kembang optimal buah hati sejak dalam kandungan.
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className="max-w-2xl space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-caption flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Tahukah Bunda? • Fakta Kesehatan Ibu & Anak</span>
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+              Fakta Menarik Seputar Masa Golden Age (1.000 HPK)
+            </h2>
+            <p className="text-sm sm:text-base text-caption leading-relaxed">
+              Pengetahuan sederhana namun penting bagi orang tua untuk mendukung tumbuh kembang optimal buah hati sejak dalam kandungan.
+            </p>
+          </div>
+        </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {GOLDEN_AGE_FUN_FACTS.map((fact) => (
-            <div
-              key={fact.id}
-              onClick={() =>
-                setSelectedModal({
-                  type: "step",
-                  badge: fact.badge,
-                  title: fact.title,
-                  content: fact.fullDetail,
-                })
-              }
-              className="group card-interactive cursor-pointer p-6 bg-card rounded-2xl border border-line flex flex-col justify-between gap-5"
-            >
-              <div className="space-y-3">
-                <span className="inline-block text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-subtle border border-line">
-                  {fact.badge}
-                </span>
-                <h3 className="text-base sm:text-lg font-bold text-heading leading-snug">
-                  {fact.title}
-                </h3>
-                <p className="text-sm text-caption leading-relaxed">{fact.shortDesc}</p>
-              </div>
+          {GOLDEN_AGE_FUN_FACTS.map((fact, idx) => (
+            <ScrollReveal key={fact.id} className="h-full">
+              <div
+                onClick={() =>
+                  setSelectedModal({
+                    type: "step",
+                    badge: fact.badge,
+                    title: fact.title,
+                    content: fact.fullDetail,
+                  })
+                }
+                className="group card-interactive h-full cursor-pointer p-6 bg-card rounded-2xl border border-line hover:border-amber-300 dark:hover:border-amber-700 flex flex-col justify-between gap-5 transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="space-y-3">
+                  <span className="inline-block text-xs font-medium text-caption px-2.5 py-1 rounded-md bg-subtle border border-line">
+                    {fact.badge}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-heading leading-snug">
+                    {fact.title}
+                  </h3>
+                  <p className="text-sm text-caption leading-relaxed">{fact.shortDesc}</p>
+                </div>
 
-              <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                <span>Baca penjelasan lengkap</span>
-                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <div className="pt-3 border-t border-line-light flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                  <span>Baca penjelasan lengkap</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </section>
@@ -720,48 +838,53 @@ const LandingPage = () => {
       {/* ─── Section 4: Alur 5 Langkah Pelayanan Posyandu ─── */}
       <section id="alur-posyandu" className="py-14 sm:py-18 bg-card border-y border-line">
         <div className="max-w-[1440px] w-full mx-auto px-5 sm:px-8 lg:px-12 space-y-8">
-          <div className="max-w-2xl space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-caption">
-              Alur Pelayanan Masyarakat
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
-              5 Langkah Pelayanan di Posyandu
-            </h2>
-            <p className="text-sm sm:text-base text-caption leading-relaxed">
-              Tahapan pelayanan kesehatan ibu hamil, bayi, dan balita saat berkunjung ke Posyandu di Kecamatan Airmadidi.
-            </p>
-          </div>
+          <ScrollReveal>
+            <div className="max-w-2xl space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-caption">
+                Alur Pelayanan Masyarakat
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+                5 Langkah Pelayanan di Posyandu
+              </h2>
+              <p className="text-sm sm:text-base text-caption leading-relaxed">
+                Tahapan pelayanan kesehatan ibu hamil, bayi, dan balita saat berkunjung ke Posyandu di Kecamatan Airmadidi.
+              </p>
+            </div>
+          </ScrollReveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {POSYANDU_5_STEPS.map((item, idx) => (
-              <div
-                key={idx}
-                onClick={() =>
-                  setSelectedModal({
-                    type: "step",
-                    badge: `${item.step} Posyandu`,
-                    title: item.title,
-                    content: item.fullDetail,
-                  })
-                }
-                className="group card-interactive cursor-pointer p-5 bg-page rounded-2xl border border-line flex flex-col justify-between gap-5"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-caption px-2.5 py-1 rounded-md bg-card border border-line">
-                      {item.step}
-                    </span>
-                    <span className="text-xs font-bold text-dim">0{idx + 1}</span>
+              <ScrollReveal key={idx} className="h-full">
+                <div
+                  onClick={() =>
+                    setSelectedModal({
+                      type: "step",
+                      badge: `${item.step} Posyandu`,
+                      title: item.title,
+                      content: item.fullDetail,
+                    })
+                  }
+                  className="group card-interactive h-full cursor-pointer p-5 bg-page rounded-2xl border border-line hover:border-sky-300 dark:hover:border-sky-700 flex flex-col justify-between gap-5 transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-caption px-2.5 py-1 rounded-md bg-card border border-line">
+                        {item.step}
+                      </span>
+                      <span className="text-xs font-bold text-dim group-hover:text-sky-600 dark:group-hover:text-sky-400 group-hover:scale-110 transition-all duration-200">
+                        0{idx + 1}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-heading leading-snug">{item.title}</h3>
+                    <p className="text-sm text-caption leading-relaxed">{item.shortDesc}</p>
                   </div>
-                  <h3 className="text-base font-bold text-heading leading-snug">{item.title}</h3>
-                  <p className="text-sm text-caption leading-relaxed">{item.shortDesc}</p>
-                </div>
 
-                <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                  <span>Lihat detail</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-semibold text-label group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                    <span>Lihat detail</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -772,23 +895,26 @@ const LandingPage = () => {
         id="profil-lokasi"
         className="py-14 sm:py-18 max-w-[1440px] w-full mx-auto px-5 sm:px-8 lg:px-12 space-y-10"
       >
-        <div className="max-w-2xl space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-caption">
-            Profil & Wilayah Kerja Puskesmas
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
-            UPTD Puskesmas Airmadidi & Jejaring Posyandu
-          </h2>
-          <p className="text-sm sm:text-base text-caption leading-relaxed">
-            Fasilitas Kesehatan Tingkat Pertama (FKTP) di Kabupaten Minahasa Utara dengan tata nilai pelayanan{" "}
-            <strong className="text-heading">SEHATI</strong> (Santun, Empati, Harmonis, Adil, Tanggap, Inovatif).
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className="max-w-2xl space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-caption">
+              Profil & Wilayah Kerja Puskesmas
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+              UPTD Puskesmas Airmadidi & Jejaring Posyandu
+            </h2>
+            <p className="text-sm sm:text-base text-caption leading-relaxed">
+              Fasilitas Kesehatan Tingkat Pertama (FKTP) di Kabupaten Minahasa Utara dengan tata nilai pelayanan{" "}
+              <strong className="text-heading">SEHATI</strong> (Santun, Empati, Harmonis, Adil, Tanggap, Inovatif).
+            </p>
+          </div>
+        </ScrollReveal>
 
         {/* Profile, Services & Interactive Map Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           {/* Left: Puskesmas Profile, Services & Social Media */}
-          <div className="lg:col-span-6 p-6 sm:p-7 bg-card rounded-2xl border border-line flex flex-col justify-between gap-6 shadow-xs">
+          <ScrollReveal className="lg:col-span-6 h-full">
+            <div className="h-full p-6 sm:p-7 bg-card rounded-2xl border border-line flex flex-col justify-between gap-6 shadow-xs">
             <div className="space-y-5">
               {/* Official Identity Header */}
               <div className="flex items-center gap-4 pb-4 border-b border-line">
@@ -886,9 +1012,11 @@ const LandingPage = () => {
               </a>
             </div>
           </div>
+          </ScrollReveal>
 
           {/* Right: Embedded Google Maps Location */}
-          <div className="lg:col-span-6 bg-card rounded-2xl border border-line overflow-hidden flex flex-col justify-between">
+          <ScrollReveal className="lg:col-span-6 h-full">
+            <div className="h-full bg-card rounded-2xl border border-line overflow-hidden flex flex-col justify-between">
             <div className="p-4 border-b border-line flex items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-bold text-heading">Peta Lokasi UPTD Puskesmas Airmadidi</p>
@@ -914,6 +1042,7 @@ const LandingPage = () => {
               />
             </div>
           </div>
+          </ScrollReveal>
         </div>
 
         {/* 9 Desa & Kelurahan Posyandu Grid (Clean Minimalist without Repetitive Icons) */}
@@ -923,19 +1052,20 @@ const LandingPage = () => {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {VILLAGES_AIRMADIDI.map((v, idx) => (
-              <div
-                key={idx}
-                className="p-5 bg-card rounded-2xl border border-line flex flex-col justify-between gap-2"
-              >
-                <div>
-                  <h4 className="text-base font-bold text-heading">{v.name}</h4>
-                  <p className="text-sm text-label font-medium mt-0.5">{v.posyandu}</p>
+              <ScrollReveal key={idx} className="h-full">
+                <div
+                  className="card-interactive h-full p-5 bg-card rounded-2xl border border-line hover:border-sky-200 dark:hover:border-sky-800 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-0.5"
+                >
+                  <div>
+                    <h4 className="text-base font-bold text-heading">{v.name}</h4>
+                    <p className="text-sm text-label font-medium mt-0.5">{v.posyandu}</p>
+                  </div>
+                  <p className="text-xs text-caption flex items-center gap-1.5 pt-2 border-t border-line-light">
+                    <Clock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                    <span>Jadwal Rutin: {v.schedule}</span>
+                  </p>
                 </div>
-                <p className="text-xs text-caption flex items-center gap-1.5 pt-2 border-t border-line-light">
-                  <Clock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                  <span>Jadwal Rutin: {v.schedule}</span>
-                </p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
