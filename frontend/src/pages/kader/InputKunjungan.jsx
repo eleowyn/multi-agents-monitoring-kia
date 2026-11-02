@@ -91,6 +91,49 @@ const FormField = ({ id, label, hint, children, className = "" }) => (
 const INPUT_CLASS =
   "w-full h-10 px-3 bg-card dark:bg-slate-900/90 border border-line dark:border-slate-700 rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-150 shadow-2xs";
 
+const getPatientPhaseBadge = (p) => {
+  if (!p) return { label: "Pasien", color: "bg-subtle text-caption border-line" };
+  const isMother = p.patient_type === "MOTHER";
+  if (isMother) {
+    const hasChild = (p.children_count && p.children_count > 0) || (p.children && p.children.length > 0);
+    if (hasChild) {
+      return {
+        label: "Ibu Balita",
+        color: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+      };
+    }
+    return {
+      label: "Ibu Hamil",
+      color: "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800",
+    };
+  }
+  if (p.birth_date) {
+    const bDate = new Date(p.birth_date);
+    const now = new Date();
+    const diffDays = Math.floor((now - bDate) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 28) {
+      return {
+        label: "Neonatus (0-28 Hari)",
+        color: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+      };
+    }
+    if (diffDays < 365) {
+      return {
+        label: "Bayi (< 1 Tahun)",
+        color: "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800",
+      };
+    }
+    return {
+      label: "Baduta (1-2 Tahun)",
+      color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    };
+  }
+  return {
+    label: "Baduta",
+    color: "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800",
+  };
+};
+
 const InputKunjungan = () => {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -537,13 +580,14 @@ const InputKunjungan = () => {
                       <p className={`font-bold text-xs sm:text-sm truncate ${isSelected ? "text-sky-700 dark:text-sky-300" : "text-heading"}`}>
                         {p.name}
                       </p>
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 border ${
-                        isMother
-                          ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
-                          : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
-                      }`}>
-                        {isMother ? "Ibu Hamil" : "Baduta"}
-                      </span>
+                      {(() => {
+                        const badge = getPatientPhaseBadge(p);
+                        return (
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 border ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <p className="text-xs text-body dark:text-slate-300 font-medium mt-1">
                       NIK: {p.nik}
@@ -561,9 +605,14 @@ const InputKunjungan = () => {
             <div className="p-3.5 bg-sky-50/50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-sky-700 dark:text-sky-300 font-bold block">Pasien Terpilih:</span>
-                <span className="px-1.5 py-0.2 rounded text-[11px] font-semibold bg-card border border-line text-caption">
-                  {selectedPatient.patient_type === "MOTHER" ? "Ibu Hamil" : "Baduta"}
-                </span>
+                {(() => {
+                  const badge = getPatientPhaseBadge(selectedPatient);
+                  return (
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${badge.color}`}>
+                      {badge.label}
+                    </span>
+                  );
+                })()}
               </div>
               <p className="text-heading font-bold text-sm">
                 {selectedPatient.name}
@@ -576,18 +625,32 @@ const InputKunjungan = () => {
                   Ibu: <strong className="text-heading font-bold">{selectedPatient.mother_name}</strong>
                 </p>
               )}
-              {selectedPatient.hpk_status && (
+              {(hpkLiveInfo || selectedPatient.hpk_status) && (
                 <div className="pt-2 mt-1.5 border-t border-sky-200/60 dark:border-sky-800/50">
                   <div className="flex justify-between text-xs text-heading font-bold mb-1">
-                    <span>Hari ke-{selectedPatient.hpk_status.hpk_day} / 1.000 HPK</span>
-                    <span className="text-sky-600 dark:text-sky-400">{selectedPatient.hpk_status.progress_percent}%</span>
+                    <span>
+                      Hari ke-{hpkLiveInfo && !hpkLiveInfo.isInvalid ? hpkLiveInfo.day : (selectedPatient.hpk_status?.hpk_day || "-")} / 1.000 HPK
+                    </span>
+                    <span className="text-sky-600 dark:text-sky-400">
+                      {hpkLiveInfo && !hpkLiveInfo.isInvalid ? hpkLiveInfo.percent : (selectedPatient.hpk_status?.progress_percent || 0)}%
+                    </span>
                   </div>
                   <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-line/40">
                     <div
                       className="h-full bg-sky-600 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, selectedPatient.hpk_status.progress_percent || 0)}%` }}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          hpkLiveInfo && !hpkLiveInfo.isInvalid
+                            ? parseFloat(hpkLiveInfo.percent) || 0
+                            : selectedPatient.hpk_status?.progress_percent || 0
+                        )}%`,
+                      }}
                     />
                   </div>
+                  <p className="text-[10px] text-caption mt-1.5 leading-snug">
+                    *1.000 HPK: 270 hari masa janin kehamilan + {selectedPatient.patient_type === "MOTHER" ? "usia gestasi" : "usia anak sejak lahir"}.
+                  </p>
                 </div>
               )}
             </div>

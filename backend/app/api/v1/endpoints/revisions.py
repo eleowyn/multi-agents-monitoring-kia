@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -296,3 +297,39 @@ def validate_revision_by_admin(
     db.refresh(rev)
 
     return _enrich_revision_response(rev, db)
+
+
+class DoctorActionRequest(BaseModel):
+    notes: Optional[str] = None
+
+
+@router.post("/{revision_id}/approve", response_model=RevisionResponse)
+def approve_revision_by_doctor(
+    revision_id: int,
+    action_in: Optional[DoctorActionRequest] = None,
+    db: Session = Depends(get_db),
+    doctor: User = Depends(_require_admin)
+):
+    notes = action_in.notes if action_in else None
+    return validate_revision_by_admin(
+        revision_id=revision_id,
+        val_req=RevisionValidationRequest(status=RevisionStatus.APPROVED, admin_notes=notes),
+        db=db,
+        admin=doctor,
+    )
+
+
+@router.post("/{revision_id}/reject", response_model=RevisionResponse)
+def reject_revision_by_doctor(
+    revision_id: int,
+    action_in: Optional[DoctorActionRequest] = None,
+    db: Session = Depends(get_db),
+    doctor: User = Depends(_require_admin)
+):
+    notes = action_in.notes if action_in else None
+    return validate_revision_by_admin(
+        revision_id=revision_id,
+        val_req=RevisionValidationRequest(status=RevisionStatus.REJECTED, admin_notes=notes),
+        db=db,
+        admin=doctor,
+    )

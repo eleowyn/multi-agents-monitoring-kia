@@ -2,7 +2,7 @@ import os
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typing import List, Optional, Dict, Any
 
 from app.core.database import get_db
@@ -117,8 +117,10 @@ def _enrich_patient(db: Session, p: Patient) -> Patient:
     else:
         p.mother_name = None
 
-    # Safely extract children_count
-    if hasattr(p, "children") and isinstance(p.children, (list, tuple, set)):
+    # Safely extract children_count via direct count query for reliability
+    if p_type_str == "MOTHER":
+        p.children_count = db.query(func.count(Patient.id)).filter(Patient.mother_id == p.id).scalar() or 0
+    elif hasattr(p, "children") and isinstance(p.children, (list, tuple, set)):
         p.children_count = len(p.children)
     else:
         p.children_count = 0

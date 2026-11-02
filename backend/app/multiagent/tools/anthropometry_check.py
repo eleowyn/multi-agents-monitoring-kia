@@ -111,3 +111,44 @@ def check_bblr_and_gestation(
         "risk_flags": risk_flags
     }
 
+
+def check_head_circumference(head_circ_cm: float, age_in_months: int = 0) -> Dict[str, Any]:
+    """
+    Evaluasi Lingkar Kepala (Neonatus & Baduta) berbasis Buku KIA 2024 / Standar WHO.
+    - Ambang batas lahir (Neonatus): 33 - 37 cm.
+    - < 33 cm: Mikrosefali (Risiko gangguan perkembangan otak / Z-Score < -2 SD).
+    - > 37 cm: Makrosefali (Risiko hidrosefalus / penumpukan cairan / Z-Score > +2 SD).
+    """
+    if head_circ_cm <= 15.0 or head_circ_cm >= 65.0:
+        raise ValueError(f"Nilai lingkar kepala {head_circ_cm} cm di luar rentang fisiologis masuk akal.")
+
+    risk_flags = []
+    status = "NORMAL"
+    label = "Normal (33 - 37 cm)"
+
+    if head_circ_cm < 33.0:
+        status = "MIKROSEFALI"
+        label = "Mikrosefali (< 33 cm)"
+        risk_flags.append({
+            "indicator": "LINGKAR_KEPALA",
+            "flag": "MIKROSEFALI",
+            "head_circumference_cm": head_circ_cm,
+            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (< 33 cm) mengindikasikan mikrosefali dan memerlukan pemantauan stimulasi serta rujukan dokter puskesmas."
+        })
+    elif head_circ_cm > 37.0:
+        status = "MAKROSEFALI"
+        label = "Makrosefali (> 37 cm)"
+        risk_flags.append({
+            "indicator": "LINGKAR_KEPALA",
+            "flag": "MAKROSEFALI",
+            "head_circumference_cm": head_circ_cm,
+            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (> 37 cm) mengindikasikan makrosefali (risiko hidrosefalus) dan memerlukan pemeriksaan medis lanjutan."
+        })
+
+    return {
+        "head_circumference_cm": head_circ_cm,
+        "status": status,
+        "status_label": label,
+        "risk_flags": risk_flags
+    }
+

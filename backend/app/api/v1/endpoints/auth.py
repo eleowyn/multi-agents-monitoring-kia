@@ -66,7 +66,7 @@ def seed_default_users(db: Session):
             username="dokter",
             email="dokter@puskesmas-airmadidi.go.id",
             hashed_password=get_password_hash("dokter123"),
-            full_name="dr. Penanggung Jawab KIA",
+            full_name="Penanggung Jawab KIA",
             role=UserRole.DOKTER,
             posyandu_name="Puskesmas Airmadidi",
             village_name="Kecamatan Airmadidi"
@@ -74,6 +74,9 @@ def seed_default_users(db: Session):
         db.add(dokter)
         db.commit()
         print(" [SEED] Akun demo Dokter (dokter / dokter123) berhasil dibuat.")
+    elif dokter_exist and "dr." in (dokter_exist.full_name or ""):
+        dokter_exist.full_name = "Penanggung Jawab KIA"
+        db.commit()
 
 
 @router.post("/login", response_model=Token)
@@ -125,5 +128,13 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if "dr." in (current_user.full_name or ""):
+        current_user.full_name = current_user.full_name.replace("dr. ", "").replace("dr.", "").strip()
+        try:
+            db.add(current_user)
+            db.commit()
+            db.refresh(current_user)
+        except Exception:
+            pass
     return current_user

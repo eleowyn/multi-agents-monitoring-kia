@@ -34,11 +34,12 @@ const AIRMADIDI_VILLAGES_FALLBACK = [
 ];
 
 const MonitoringKia = () => {
-  const { user, isKader, isAdmin } = useAuth();
+  const { user, isKader, isAdmin, isDokter } = useAuth();
+  const isSupervisor = isAdmin || isDokter;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Primary Tab State: Kader selalu personal, Admin bisa agregat / personal
+  // Primary Tab State: Kader selalu personal, Supervisor (Admin/Dokter) bisa agregat / personal
   const [activeTab, setActiveTab] = useState(
     isKader ? "personal" : (searchParams.get("tab") || "agregat")
   );
@@ -68,12 +69,12 @@ const MonitoringKia = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  // 1. Ambil data agregat hanya jika pengguna adalah Admin
+  // 1. Ambil data agregat jika pengguna adalah Supervisor (Admin atau Dokter)
   useEffect(() => {
-    if (isAdmin) {
+    if (isSupervisor) {
       fetchPosyanduAggregates();
     }
-  }, [isAdmin]);
+  }, [isSupervisor]);
 
   const fetchPosyanduAggregates = async (isManual = false) => {
     try {
@@ -203,7 +204,7 @@ const MonitoringKia = () => {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => {
-              if (activeTab === "agregat" && isAdmin) fetchPosyanduAggregates(true);
+              if (activeTab === "agregat" && isSupervisor) fetchPosyanduAggregates(true);
               else if (selectedPatientId) fetchPatientLongitudinal(selectedPatientId, true);
             }}
             disabled={loadingAggregates || loadingLongitudinal || refreshing}
@@ -244,8 +245,8 @@ const MonitoringKia = () => {
         </div>
       )}
 
-      {/* ═══ TAB SWITCHER: Khusus Admin (Kader langsung ke personal pasien) ═══ */}
-      {isAdmin && (
+      {/* ═══ TAB SWITCHER: Khusus Supervisor Admin & Dokter (Kader langsung ke personal pasien) ═══ */}
+      {isSupervisor && (
         <div className="flex items-center justify-between border-b border-line gap-4 animate-fade-in">
           <div className="flex items-center gap-6 overflow-x-auto">
             <button
@@ -282,7 +283,7 @@ const MonitoringKia = () => {
       {/* ═══════════════════════════════════════════════════════════════════════
           TAB 1: MONITORING AGREGAT POSYANDU & WILAYAH (KHUSUS ADMIN)
           ═══════════════════════════════════════════════════════════════════════ */}
-      {isAdmin && activeTab === "agregat" && (
+      {isSupervisor && activeTab === "agregat" && (
         <div className="space-y-6 animate-fade-in">
           {/* Filter Bar Wilayah Posyandu */}
           <div className="bg-card rounded-xl border border-line shadow-card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -799,6 +800,17 @@ const MonitoringKia = () => {
                                 {v.child_length_cm ?? v.birth_length_cm ?? "-"} cm
                               </strong>
                             </div>
+                            {(v.head_circumference_cm || v.child_head_circumference_cm) && (
+                              <>
+                                <span className="text-dim">&bull;</span>
+                                <div>
+                                  <span>LK: </span>
+                                  <strong className="text-heading">
+                                    {v.head_circumference_cm || v.child_head_circumference_cm} cm
+                                  </strong>
+                                </div>
+                              </>
+                            )}
                             <span className="text-dim">•</span>
                             <div>
                               <span>Z-Score PB/U: </span>

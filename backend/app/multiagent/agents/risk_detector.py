@@ -9,7 +9,7 @@ from app.multiagent.state import AgentState
 from app.multiagent.tools.who_zscore import calculate_who_zscore
 from app.multiagent.tools.kspr import calculate_kspr
 from app.multiagent.tools.anemia import classify_maternal_anemia
-from app.multiagent.tools.anthropometry_check import check_kek_lila, check_bblr_and_gestation
+from app.multiagent.tools.anthropometry_check import check_kek_lila, check_bblr_and_gestation, check_head_circumference
 from app.multiagent.tools.hpk_tracker import calculate_1000_hpk_status, check_visit_plausibility
 from app.multiagent.prompts.risk_detector_prompt import RISK_DETECTOR_SYSTEM_PROMPT
 from app.multiagent.llm_utils import (
@@ -196,6 +196,9 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
     elif phase == "BAYI_BARU_LAHIR":
         birth_weight = visit_data.get("birth_weight_gram")
         gest_age = visit_data.get("gestational_age_at_birth_weeks")
+        head_circ = visit_data.get("head_circumference_cm")
+        imd = visit_data.get("early_initiation_breastfeeding")
+
         if birth_weight is not None:
             res_bblr = check_bblr_and_gestation(
                 birth_weight_gram=float(birth_weight),
@@ -204,6 +207,24 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
             det_results["bblr"] = res_bblr
             risk_flags.extend(res_bblr["risk_flags"])
             points.append(f"Bayi lahir dengan berat {birth_weight} gram ({res_bblr['weight_label']}).")
+
+        if head_circ is not None:
+            try:
+                res_hc = check_head_circumference(float(head_circ), age_in_months=0)
+                det_results["head_circumference"] = res_hc
+                risk_flags.extend(res_hc["risk_flags"])
+                if res_hc["status"] != "NORMAL":
+                    points.append(f"Lingkar kepala saat lahir {head_circ} cm ({res_hc['status_label']}).")
+            except Exception:
+                pass
+
+        if str(imd).strip().lower() in ["tidak", "no", "false"]:
+            risk_flags.append({
+                "indicator": "IMD",
+                "flag": "IMD_TIDAK_DILAKUKAN",
+                "detail": "Inisiasi Menyusu Dini (IMD) tidak dilakukan dalam 1 jam pertama kelahiran, mengurangi proteksi kolostrum awal.",
+            })
+            points.append("Inisiasi Menyusu Dini (IMD) tidak terlaksana.")
 
         _append_maternal_carryover_flags(maternal_history, risk_flags, points, phase_label="bayi baru lahir")
 
@@ -233,6 +254,16 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
             f"BB/U Z={bb_u.get('z_score', '-')} ({bb_u.get('category', '-')}), "
             f"BB/PB Z={bb_pb.get('z_score', '-')} ({bb_pb.get('category', '-')})."
         )
+
+        # Pola Asuh MP-ASI Adekuat / Kurang Adekuat
+        feeding = str(visit_data.get("feeding_status") or "").upper()
+        if "TIDAK_ADEKUAT" in feeding or "KURANG" in feeding:
+            risk_flags.append({
+                "indicator": "POLA_MAKAN_MPASI",
+                "flag": "MPASI_KURANG_ADEKUAT",
+                "detail": "Asupan MP-ASI dinilai kurang adekuat dan defisit protein hewani, meningkatkan kerentanan weight faltering dan stunting.",
+            })
+            points.append("Pola asuh pemberian MP-ASI kurang adekuat / defisit protein hewani.")
 
         birth_weight = maternal_history.get("birth_weight_gram")
         if birth_weight is not None and birth_weight < BBLR_THRESHOLD_GRAM:

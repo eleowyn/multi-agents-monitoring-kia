@@ -209,6 +209,9 @@ const DataPasien = () => {
             </span>
           )}
           {cv.birth_length_cm && <span>PB Lahir: <strong>{cv.birth_length_cm} cm</strong></span>}
+          {(cv.head_circumference_cm || cv.child_head_circumference_cm) && (
+            <span>LK: <strong>{cv.head_circumference_cm || cv.child_head_circumference_cm} cm</strong></span>
+          )}
           {cv.gestational_age_at_birth_weeks && <span>Gestasi: <strong>{cv.gestational_age_at_birth_weeks} mg</strong></span>}
           {cv.early_initiation_breastfeeding && <span>IMD: <strong>{cv.early_initiation_breastfeeding}</strong></span>}
         </div>
@@ -331,7 +334,9 @@ const DataPasien = () => {
                         ? "text-pink-600 dark:text-pink-400"
                         : "text-sky-600 dark:text-sky-400"
                         }`}>
-                        {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
+                        {p.patient_type === "MOTHER"
+                          ? (p.children_count > 0 ? "Ibu Balita" : "Ibu Hamil")
+                          : `Anak (${p.gender || "-"})`}
                       </span>
                       {p.mother_name && (
                         <p className="text-xs text-pink-700 dark:text-pink-300 font-medium mt-1">
@@ -405,12 +410,16 @@ const DataPasien = () => {
                   <p className="font-bold text-heading text-base">{p.name}</p>
                   <p className="text-xs text-caption font-mono mt-0.5">NIK: {p.nik}</p>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${p.patient_type === "MOTHER"
-                  ? "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800"
-                  : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
-                  }`}>
-                  {p.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${p.gender || "-"})`}
-                </span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${p.patient_type === "MOTHER"
+                    ? (p.children_count > 0
+                        ? "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                        : "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800")
+                    : "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                    }`}>
+                    {p.patient_type === "MOTHER"
+                      ? (p.children_count > 0 ? "Ibu Balita" : "Ibu Hamil")
+                      : `Anak (${p.gender || "-"})`}
+                  </span>
               </div>
               {p.hpk_status && (
                 <div className="space-y-1">
@@ -463,10 +472,14 @@ const DataPasien = () => {
                     Monitoring Longitudinal 1.000 HPK: {selectedLongitudinal.patient.name}
                   </h3>
                   <span className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${selectedLongitudinal.patient.patient_type === "MOTHER"
-                    ? "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30"
+                    ? (selectedLongitudinal.patient.children_count > 0
+                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                        : "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30")
                     : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
                     }`}>
-                    {selectedLongitudinal.patient.patient_type === "MOTHER" ? "Ibu Hamil" : `Anak (${selectedLongitudinal.patient.gender || "-"})`}
+                    {selectedLongitudinal.patient.patient_type === "MOTHER"
+                      ? (selectedLongitudinal.patient.children_count > 0 ? "Ibu Balita" : "Ibu Hamil")
+                      : `Anak (${selectedLongitudinal.patient.gender || "-"})`}
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-caption font-mono mt-1">
@@ -566,6 +579,11 @@ const DataPasien = () => {
                         ? `${selectedLongitudinal.maternal_summary.birth_weight_gram} g ${selectedLongitudinal.maternal_summary.birth_weight_gram < 2500 ? "(BBLR)" : "(Normal)"}`
                         : "Belum tercatat"}
                     </span>
+                    {selectedLongitudinal.maternal_summary?.head_circumference_cm && (
+                      <span className="text-xs text-caption block mt-0.5">
+                        LK Lahir: {selectedLongitudinal.maternal_summary.head_circumference_cm} cm
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -12,6 +12,7 @@ import {
   X,
   HeartPulse,
   LogOut,
+  BookOpen,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -63,10 +64,14 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/admin/manage-kader", label: "Kelola Kader & Posyandu", icon: UserCheck },
     { to: "/admin/revisions", label: "Validasi Revisi Data", icon: FileEdit, count: pendingRevisions },
     { to: "/admin/audit-logs", label: "Audit Log Evaluator AI", icon: ShieldAlert },
+    { to: "/admin/knowledge-chunks", label: "Koleksi Rujukan & Chunks RAG", icon: BookOpen },
   ];
 
   const doctorLinks = [
-    { to: "/doctor/monitoring", label: "Monitoring & Validasi KIA", icon: HeartPulse, count: pendingRevisions },
+    { to: "/doctor/monitoring", label: "Dashboard & Kasus Berisiko", icon: HeartPulse },
+    { to: "/doctor/monitoring-kia", label: "Monitoring Posyandu & Pasien", icon: LayoutDashboard },
+    { to: "/doctor/revisions", label: "Validasi Revisi Data", icon: FileEdit, count: pendingRevisions },
+    { to: "/doctor/knowledge-chunks", label: "Basis Pengetahuan RAG", icon: BookOpen },
   ];
 
   let links = adminLinks;

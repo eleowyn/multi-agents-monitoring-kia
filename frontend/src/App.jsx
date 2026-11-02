@@ -18,6 +18,7 @@ import ManageKader from "./pages/admin/ManageKader";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminRevisions from "./pages/admin/AdminRevisions";
 import ManageReports from "./pages/admin/ManageReports";
+import AdminKnowledgeChunks from "./pages/admin/AdminKnowledgeChunks";
 import DoctorMonitoring from "./pages/doctor/DoctorMonitoring";
 
 const ProtectedLayout = ({ children, allowedRole, allowedRoles }) => {
@@ -184,10 +185,42 @@ function App() {
             }
           />
           <Route
+            path="/admin/knowledge-chunks"
+            element={
+              <ProtectedLayout allowedRoles={["ADMIN", "DOKTER"]}>
+                <AdminKnowledgeChunks />
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/doctor/monitoring"
             element={
               <ProtectedLayout allowedRoles={["DOKTER", "ADMIN"]}>
                 <DoctorMonitoring />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/doctor/monitoring-kia"
+            element={
+              <ProtectedLayout allowedRoles={["DOKTER", "ADMIN"]}>
+                <MonitoringKia />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/doctor/revisions"
+            element={
+              <ProtectedLayout allowedRoles={["DOKTER", "ADMIN"]}>
+                <AdminRevisions />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/doctor/knowledge-chunks"
+            element={
+              <ProtectedLayout allowedRoles={["DOKTER", "ADMIN"]}>
+                <AdminKnowledgeChunks />
               </ProtectedLayout>
             }
           />

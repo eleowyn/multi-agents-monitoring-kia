@@ -76,17 +76,22 @@ const formatIndicator = (ind) => {
   if (!ind) return "";
   const map = {
     PB_U: "Panjang/Tinggi Badan (PB/U)",
-    BB_U: "Berat Badan (BB/U)",
+    BB_U: "Berat Badan menurut Umur (BB/U)",
     BB_PB: "Status Gizi Akut (BB/PB)",
-    LONGITUDINAL_MATERNAL_KEK: "Riwayat Ibu KEK Saat Hamil",
-    LONGITUDINAL_MATERNAL_ANEMIA: "Riwayat Ibu Anemia Saat Hamil",
-    LONGITUDINAL_MATERNAL_KSPR: "Riwayat Risiko Obstetri (KSPR)",
+    LONGITUDINAL_MATERNAL_KEK: "Faktor Risiko Transmisi Maternal (1.000 HPK)",
+    LONGITUDINAL_MATERNAL_ANEMIA: "Faktor Risiko Transmisi Maternal (1.000 HPK)",
+    LONGITUDINAL_MATERNAL_KSPR: "Faktor Risiko Transmisi Maternal (1.000 HPK)",
+    LONGITUDINAL_BBLR: "Riwayat Kelahiran (BBLR)",
+    LONGITUDINAL_WEIGHT_TREND: "Tren Kenaikan Berat Badan (KMS)",
+    POLA_MAKAN_MPASI: "Pola Makan / Asupan MP-ASI",
     LILA: "Lingkar Lengan Atas (LiLA)",
+    LILA_KEK: "Lingkar Lengan Atas (LiLA)",
     HB: "Kadar Hemoglobin (Hb)",
     TEKANAN_DARAH: "Tekanan Darah",
     IMD: "Inisiasi Menyusu Dini (IMD)",
     LINGKAR_KEPALA: "Lingkar Kepala",
     BERAT_LAHIR: "Berat Bayi Lahir (BBLR)",
+    USIA_GESTASI: "Usia Gestasi Kelahiran",
     USIA_KEHAMILAN_LAHIR: "Usia Gestasi Kelahiran",
   };
   return map[ind] || ind.replace(/_/g, " ");
@@ -99,22 +104,29 @@ const humanRisk = (flag) => {
     KEHAMILAN_RISIKO_RENDAH_KRR: "Kehamilan Risiko Rendah (KRR)",
     STUNTING_SEVERELY_STUNTED: "Sangat Pendek / Severely Stunted",
     STUNTING_STUNTED: "Pendek / Stunted",
-    RISIKO_STUNTING_BERAT: "Sangat Pendek / Severely Stunted (PB/U < -3 SD)",
-    RISIKO_STUNTING: "Pendek / Stunted (PB/U < -2 SD)",
+    RISIKO_STUNTING_BERAT: "Sangat Pendek (PB/U < -3 SD)",
+    RISIKO_STUNTING: "Pendek (PB/U < -2 SD)",
+    SANGAT_PENDEK: "Sangat Pendek (PB/U < -3 SD)",
+    PENDEK: "Pendek (PB/U < -2 SD)",
     GIZI_BURUK_SEVERELY_UNDERWEIGHT: "BB Sangat Kurang",
     GIZI_KURANG_UNDERWEIGHT: "BB Kurang / Underweight",
+    RISIKO_UNDERWEIGHT: "Risiko BB Kurang / Underweight",
+    BB_KURANG: "Berat Badan Kurang / Underweight",
+    BB_SANGAT_KURANG: "Berat Badan Sangat Kurang",
     RISIKO_GIZI_BURUK: "Gizi Buruk / Severely Wasted",
     RISIKO_GIZI_KURANG: "Gizi Kurang / Wasted",
     WASTING_SEVERELY_WASTED: "Gizi Buruk / Severely Wasted",
     WASTING_WASTED: "Gizi Kurang / Wasted",
+    GIZI_BURUK: "Gizi Buruk / Severely Wasted",
+    GIZI_KURANG: "Gizi Kurang / Wasted",
     ANEMIA_BERAT: "Anemia Berat (Hb < 8.0 g/dL)",
     ANEMIA_SEDANG: "Anemia Sedang (Hb 8.0 - 9.9 g/dL)",
     ANEMIA_RINGAN: "Anemia Ringan (Hb 10.0 - 10.9 g/dL)",
     RISIKO_ANEMIA_BERAT: "Anemia Berat Maternal",
     RISIKO_ANEMIA_SEDANG: "Anemia Sedang Maternal",
     RISIKO_ANEMIA_RINGAN: "Anemia Ringan Maternal",
-    RISIKO_KEK: "Kurang Energi Kronis / KEK (LiLA < 23.5 cm)",
-    RISIKO_KEK_MATERNAL: "Kurang Energi Kronis / KEK (LiLA < 23.5 cm)",
+    RISIKO_KEK: "Kurang Energi Kronis (LiLA < 23.5 cm)",
+    RISIKO_KEK_MATERNAL: "Kurang Energi Kronis (LiLA < 23.5 cm)",
     BBLR: "Berat Bayi Lahir Rendah (< 2.500 g)",
     RISIKO_BBLR: "Berat Bayi Lahir Rendah (< 2.500 g)",
     BBLSR: "Berat Bayi Lahir Sangat Rendah (< 1.500 g)",
@@ -122,13 +134,15 @@ const humanRisk = (flag) => {
     RISIKO_PREMATUR: "Kelahiran Prematur (< 37 Minggu)",
     BB_TIDAK_NAIK_KMS: "Berat Badan Tidak Naik (KMS)",
     BB_TIDAK_NAIK_2T: "Berat Badan Tidak Naik 2x Berturut-turut (2T)",
-    BB_IBU_HAMIL_TURUN: "Penurunan Berat Badan Ibu Hamil Antar Kunjungan",
-    RIWAYAT_IBU_KEK: "Riwayat Maternal Ibu KEK Saat Hamil",
-    RIWAYAT_IBU_ANEMIA: "Riwayat Maternal Ibu Anemia Saat Hamil",
-    RIWAYAT_KEHAMILAN_RISIKO_TINGGI: "Riwayat Obstetri Kehamilan Risiko Tinggi (KSPR)",
-    RIWAYAT_BBLR_ANAK: "Riwayat Kelahiran Anak BBLR (< 2.500 g)",
-    MIKROSEFALI: "Mikrosefali (< -2 SD Lingkar Kepala)",
-    MAKROSEFALI: "Makrosefali (> +2 SD Lingkar Kepala)",
+    BB_IBU_HAMIL_TURUN: "Penurunan Berat Badan Ibu Hamil",
+    RIWAYAT_IBU_KEK: "Riwayat Ibu KEK Saat Hamil",
+    RIWAYAT_IBU_ANEMIA: "Riwayat Ibu Anemia Saat Hamil",
+    RIWAYAT_KEHAMILAN_RISIKO_TINGGI: "Riwayat Risiko Obstetri KRT (KSPR)",
+    RIWAYAT_BBLR_ANAK: "Riwayat Lahir BBLR (< 2.500 g)",
+    MIKROSEFALI: "Mikrosefali (< 33 cm Lingkar Kepala)",
+    MAKROSEFALI: "Makrosefali (> 37 cm Lingkar Kepala)",
+    MPASI_KURANG_ADEKUAT: "MP-ASI Kurang Adekuat / Defisit Protein Hewani",
+    IMD_TIDAK_DILAKUKAN: "IMD Tidak Dilakukan Saat Lahir",
   };
   return map[flag] || (flag ? flag.replace(/_/g, " ") : "-");
 };
@@ -176,6 +190,13 @@ const ValidasiLaporan = () => {
 
   const toggleReference = (recIdx) => {
     setExpandedReferences(prev => ({
+      ...prev,
+      [recIdx]: !prev[recIdx]
+    }));
+  };
+  const [openThoughts, setOpenThoughts] = useState({});
+  const toggleThought = (recIdx) => {
+    setOpenThoughts(prev => ({
       ...prev,
       [recIdx]: !prev[recIdx]
     }));
@@ -958,16 +979,20 @@ const ValidasiLaporan = () => {
                     key={i}
                     className="p-4 bg-card border border-line rounded-xl space-y-2.5 overflow-hidden shadow-2xs"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line/60 pb-2">
-                      <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-heading min-w-0">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                        <span className="truncate">{formatIndicator(flag.indicator)}</span>
+                    <div className="border-b border-line/60 pb-2.5 space-y-1">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-xs sm:text-sm text-heading leading-tight break-words">
+                            {formatIndicator(flag.indicator)}
+                          </p>
+                          <p className="text-[11px] sm:text-xs font-semibold text-amber-700 dark:text-amber-400 mt-0.5 leading-snug break-words">
+                            {humanRisk(flag.flag)}
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-[11px] sm:text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-semibold border border-amber-500/20 max-w-full break-words inline-block self-start sm:self-auto">
-                        {humanRisk(flag.flag)}
-                      </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-caption leading-relaxed pl-1">
+                    <p className="text-xs sm:text-sm text-caption leading-relaxed pl-6 break-words">
                       {flag.detail}
                     </p>
                   </div>
@@ -991,6 +1016,19 @@ const ValidasiLaporan = () => {
                 <p className="text-xs text-caption mt-0.5">
                   Protokol edukasi Meja 4 Posyandu berbasis Buku KIA 2024 & Pedoman Kemenkes RI
                 </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {(finalJson.recommender_mode === "LLM_REACT" || (recommendations[0] && recommendations[0].reasoning_mode === "LLM_REACT")) ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    Penalaran ReAct AI (Gemini + ChromaDB RAG)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    Mode Darurat Deterministik (Safety Net Standar PNPK)
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1023,9 +1061,20 @@ const ValidasiLaporan = () => {
                             {rec.title}
                           </h4>
                         </div>
-                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
-                          {rec.category || "Gizi KIA"}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
+                            {rec.category || "Gizi KIA"}
+                          </span>
+                          {(rec.reasoning_mode === "FALLBACK_DETERMINISTIC" || finalJson.recommender_mode === "MODE_FALLBACK") ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                              Safety Net PNPK
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                              ReAct AI
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Inti Instruksi Tindakan */}
@@ -1033,12 +1082,70 @@ const ValidasiLaporan = () => {
                         {rec.recommendation_text}
                       </p>
 
-                      {/* Porsi Pangan Lokal (Jika ada) */}
+                      {/* Dua Lapis: 1. Dasar Dokumen Rujukan RAG (Buku KIA / PNPK) */}
+                      {rec.citation && (
+                        <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs space-y-1">
+                          <div className="flex items-center gap-1.5 text-sky-800 dark:text-sky-300 font-bold">
+                            <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                            <span>Dasar Pedoman Resmi: {cleanCitation(rec.citation.source)} (Hal. {rec.citation.page || "-"})</span>
+                          </div>
+                          {rec.evidence_quote && (
+                            <p className="text-caption italic pl-5 leading-relaxed">
+                              "{rec.evidence_quote}"
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Dua Lapis: 2. Arahan Edukasi & Porsi Pangan Lokal (Sintesis AI) */}
                       {rec.food_guide && (
-                        <div className="flex items-center gap-2 text-xs bg-subtle/50 px-3 py-2 rounded-lg border border-line">
-                          <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="font-semibold text-heading shrink-0">Porsi Lokal:</span>
-                          <span className="text-body">{rec.food_guide}</span>
+                        <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
+                          <div className="flex items-center gap-1.5 font-bold text-heading">
+                            <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>Arahan Edukasi & Porsi Pangan Lokal (Penalaran Kontekstual AI):</span>
+                          </div>
+                          <p className="text-body pl-5 leading-relaxed">{rec.food_guide}</p>
+                        </div>
+                      )}
+
+                      {/* Accordion Jejak Penalaran ReAct & Token Audit */}
+                      {((rec.thought_process && rec.thought_process.length > 0) || agentTelemetry?.agent_2?.thought_process) && (
+                        <div className="no-print pt-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleThought(idx)}
+                            className="btn-interactive inline-flex items-center gap-1.5 text-xs text-caption hover:text-heading font-medium transition-colors cursor-pointer py-1"
+                          >
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openThoughts[idx] ? "rotate-180" : ""}`} />
+                            <span>{openThoughts[idx] ? "Tutup Jejak Penalaran ReAct & Audit AI" : "Lihat Jejak Penalaran ReAct & Audit AI"}</span>
+                          </button>
+                          {openThoughts[idx] && (
+                            <div className="mt-2 p-3 bg-subtle border border-line rounded-lg text-xs space-y-2 animate-fade-in font-mono">
+                              <div className="flex items-center justify-between text-[11px] text-caption border-b border-line pb-1.5">
+                                <span className="font-semibold text-heading">
+                                  Mode: {rec.reasoning_mode || agentTelemetry?.agent_2?.mode || "LLM_REACT"}
+                                </span>
+                                {agentTelemetry?.agent_2?.token_usage && (
+                                  <span>
+                                    Token: {agentTelemetry.agent_2.token_usage.total_tokens || 0} ({agentTelemetry.agent_2.token_usage.input_tokens || 0} in / {agentTelemetry.agent_2.token_usage.output_tokens || 0} out)
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-1 text-caption text-[11px] font-mono leading-relaxed">
+                                {(rec.thought_process || agentTelemetry?.agent_2?.thought_process || []).map((step, sIdx) => (
+                                  <p key={sIdx} className="flex items-start gap-1.5">
+                                    <span className="text-sky-600 dark:text-sky-400 font-bold shrink-0">&bull;</span>
+                                    <span>{step}</span>
+                                  </p>
+                                ))}
+                              </div>
+                              {agentTelemetry?.agent_2?.tools_invoked && (
+                                <p className="text-[10px] text-dim pt-1 border-t border-line-light">
+                                  Tools yang dipanggil: {agentTelemetry.agent_2.tools_invoked.join(", ")}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 

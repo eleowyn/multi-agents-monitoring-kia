@@ -10,87 +10,88 @@ KNOWLEDGE_BASE_DIR = os.path.abspath(
 )
 os.makedirs(KNOWLEDGE_BASE_DIR, exist_ok=True)
 
-# Dataset Baku Klinis (Buku KIA & PNPK Stunting KMK 1928/2022)
+# Dataset Baku Klinis Verbatim Murni (Buku KIA 2024 & PNPK Stunting KMK 1928/2022)
 DEFAULT_CLINICAL_GUIDELINES = [
     {
         "id": "kia_stunting_01",
         "category": "STUNTING_GIZI",
         "source": "Pedoman Nasional Pelayanan Kedokteran Tata Laksana Stunting (KMK No. HK.01.07/Menkes/1928/2022)",
-        "section": "Tata Laksana Balita Stunting dan Gizi Kurang",
-        "page": 18,
+        "section": "Pencegahan Stunting Tingkat Kader dan Puskesmas",
+        "page": 34,
         "content": (
-            "Balita dengan status stunting (PB/U atau TB/U < -2 SD) dan gizi kurang (BB/PB < -2 SD) "
-            "memerlukan intervensi gizi spesifik segera. Kader Posyandu harus merujuk anak ke Puskesmas "
-            "untuk konfirmasi klinis oleh dokter/tenaga gizi. Berikan edukasi pemberian Makanan Tambahan Pemulihan (PMT-P) "
-            "berbasis pangan lokal kaya protein hewani (telur, ikan, daging) minimal 1 butir telur per hari, "
-            "serta pemantauan kenaikan berat badan (weight faltering) setiap 2 minggu."
+            "Pencegahan primer dilakukan mulai dari tingkat kader di posyandu. Kader melakukan pemantauan pertumbuhan, "
+            "pengukuran Panjang Badan atau Tinggi Badan (PB atau TB) dan Berat Badan (BB) menggunakan alat dan metode pengukuran standar, "
+            "serta memberikan edukasi kepada orang tua/pengasuh mengenai pemberian ASI eksklusif dan MPASI dengan kandungan gizi lengkap "
+            "terutama protein hewani. Saat pelaksanaan posyandu, diusahakan Pemberian Makanan Tambahan (PMT) yang mengandung protein hewani "
+            "seperti telur, ayam, ikan, daging, susu dan produk olahan susu. Jika didapatkan anak dengan PB atau TB berdasarkan usia dan jenis "
+            "kelamin <-2 SD, BB/U <- 2 SD, atau weight faltering (kenaikan berat tidak memadai) dan growth deceleration (perlambatan pertumbuhan linier), "
+            "maka anak tersebut harus dirujuk ke Fasilitas Kesehatan Tingkat Pertama (FKTP) atau puskesmas."
         )
     },
     {
         "id": "kia_stunting_02",
         "category": "STUNTING_PENCEGAHAN",
-        "source": "Buku KIA Kesehatan Anak (Kemenkes RI 2020)",
-        "section": "Pemantauan Pertumbuhan dan Perkembangan Baduta",
-        "page": 32,
+        "source": "Buku KIA 2024 (Kemenkes RI)",
+        "section": "Pemenuhan Gizi Usia 6 - 24 Bulan (Syarat MPASI)",
+        "page": 31,
         "content": (
-            "Pencegahan stunting pada fase baduta (6-24 bulan) berfokus pada pemberian ASI Eksklusif hingga 6 bulan "
-            "dilanjutkan MP-ASI yang adekuat secara kualitas dan kuantitas. MP-ASI harus mengandung zat gizi makro dan mikro, "
-            "terutama zat besi dan zink dari sumber hewani. Pastikan kebersihan sanitasi air minum dan cuci tangan pakai sabun (CTPS) "
-            "untuk mencegah infeksi berulang seperti diare kronis yang menjadi pemicu utama gagal tumbuh."
+            "Melanjutkan pemberian ASI disertai Makanan Pendamping ASI (MPASI). Pemberian MPASI yang baik harus sesuai syarat berikut ini: "
+            "1. Tepat waktu: MPASI diberikan saat ASI saja sudah tidak mencukupi kebutuhan gizi bayi (usia 6 bulan). "
+            "2. Adekuat: MPASI memenuhi kebutuhan energi, protein, dan mikronutrien anak. Terutama protein hewani (ikan, telur, ayam, daging). "
+            "3. Aman dan higienis: Disiapkan dan disimpan dengan cara yang bersih. "
+            "4. Diberikan dengan cara yang benar: responsive feeding (peka terhadap tanda lapar dan kenyang anak)."
         )
     },
     {
         "id": "kia_maternal_kek",
         "category": "MATERNAL_KEK",
-        "source": "Buku KIA Kesehatan Ibu Hamil (Kemenkes RI 2020)",
-        "section": "Perawatan Ibu Hamil dengan Kurang Energi Kronis (KEK)",
-        "page": 14,
+        "source": "Buku KIA 2024 (Kemenkes RI)",
+        "section": "Pengukuran Lingkar Lengan Atas (LiLA) dan Pemantauan Gizi",
+        "page": 26,
         "content": (
-            "Ibu hamil dengan Lingkar Lengan Atas (LiLA) < 23.5 cm dinyatakan mengalami Kurang Energi Kronis (KEK). "
-            "KEK meningkatkan risiko Bayi Berat Lahir Rendah (BBLR) dan stunting pada anak di kemudian hari. "
-            "Tindakan kader: Berikan Makanan Tambahan (MT) Ibu Hamil kaya kalori dan protein selama 90 hari, "
-            "anjurkan konsumsi porsi kecil tapi sering, serta jadwalkan pemeriksaan ANC minimal 6 kali selama kehamilan "
-            "dengan pemantauan kenaikan berat badan ibu setiap bulan."
+            "Pengukuran Lingkar Lengan Atas (LiLA) dilakukan pada ibu hamil dan anak untuk skrining, deteksi dini dan rujukan masalah gizi. "
+            "Pada ibu hamil, batas LiLA kurang dari 23,5 cm mengindikasikan Kurang Energi Kronis (KEK) yang meningkatkan risiko berat lahir "
+            "rendah (BBLR) dan stunting pada janin. Ibu hamil dengan KEK memerlukan konfirmasi pengukuran oleh tenaga kesehatan di fasilitas "
+            "pelayanan kesehatan dan intervensi Pemberian Makanan Tambahan (PMT) pemulihan gizi."
         )
     },
     {
         "id": "kia_maternal_anemia",
         "category": "MATERNAL_ANEMIA",
-        "source": "Buku KIA Kesehatan Ibu Hamil (Kemenkes RI 2020)",
-        "section": "Penanganan Anemia pada Kehamilan",
-        "page": 16,
+        "source": "Buku KIA 2024 (Kemenkes RI)",
+        "section": "Pencegahan Anemia dan Konsumsi Tablet Tambah Darah (TTD)",
+        "page": 4,
         "content": (
-            "Ibu hamil dengan kadar Hemoglobin (Hb) < 11.0 g/dL (Trimester 1 & 3) atau < 10.5 g/dL (Trimester 2) "
-            "mengalami anemia. Anemia berisiko memicu perdarahan postpartum, persalinan prematur, dan janin BBLR. "
-            "Tindakan kader: Pastikan ibu meminum Tablet Tambah Darah (TTD) minimal 90 tablet selama kehamilan, "
-            "diminum malam hari dengan air putih atau jus jeruk (hindari teh/kopi/susu saat minum TTD), "
-            "serta tingkatkan konsumsi sayuran hijau gelap, hati ayam, dan daging merah."
+            "Minum tablet tambah darah (TTD)/multivitamin setiap hari selama kehamilan minimal 90 tablet untuk mencegah anemia defisiensi "
+            "zat besi. Minum pada malam hari sebelum tidur bersama air putih atau air jeruk, hindari minum bersama teh, kopi, atau susu "
+            "karena dapat menghambat penyerapan zat besi. Kenali dan cek tanda bahaya kehamilan dan segera periksa ke fasilitas pelayanan "
+            "kesehatan jika kadar Hemoglobin (Hb) di bawah 11 g/dL."
         )
     },
     {
         "id": "kia_neonatal_bblr",
         "category": "NEONATAL_BBLR",
-        "source": "Buku KIA Kesehatan Bayi Baru Lahir (Kemenkes RI 2020)",
-        "section": "Perawatan Bayi Berat Lahir Rendah (BBLR) di Rumah",
-        "page": 24,
+        "source": "Buku KIA 2024 (Kemenkes RI)",
+        "section": "Perawatan Metode Kanguru untuk Bayi Kecil",
+        "page": 25,
         "content": (
-            "Bayi dengan berat lahir < 2.500 gram (BBLR) rentan mengalami hipotermia, infeksi, dan gangguan pertumbuhan. "
-            "Kader Posyandu mendampingi keluarga untuk: Menerapkan Perawatan Metode Kanguru (PMK) untuk menjaga kehangatan suhu tubuh bayi, "
-            "memastikan pemberian ASI eksklusif sesering mungkin (setiap 2 jam), menunda memandikan bayi hingga suhu stabil, "
-            "serta segera merujuk jika bayi tampak malas menyusu, kuning, atau napas cepat."
+            "Jika berat lahir < 2500 gram atau usia kehamilan <= 37 minggu, bayi menggunakan Buku KIA Khusus Bayi Kecil. Lakukan perawatan "
+            "metode kanguru jika berat badan bayi < 2500 gram. Bayi kecil atau bayi prematur (< 37 minggu), bayi berat lahir rendah (< 2500 gram) "
+            "akan mendapatkan perawatan di Puskesmas, Rumah Sakit atau Klinik Bersalin untuk menjaga kehangatan suhu tubuh dan memantau "
+            "pemberian ASI eksklusif sesering mungkin."
         )
     },
     {
         "id": "kia_maternal_kspr",
         "category": "MATERNAL_RISIKO_TINGGI",
-        "source": "Pedoman Skrining Antenatal Poedji Rochjati (Kemenkes RI)",
-        "section": "Rujukan dan Tata Laksana Ibu Hamil Risiko Tinggi (KRT/KRST)",
-        "page": 9,
+        "source": "Buku KIA 2024 (Kemenkes RI)",
+        "section": "Skrining Kehamilan Risiko Tinggi dan Tanda Bahaya",
+        "page": 8,
         "content": (
-            "Ibu hamil dengan Skor KSPR 6-10 (Kehamilan Risiko Tinggi/KRT) atau >= 12 (Kehamilan Risiko Sangat Tinggi/KRST) "
-            "harus dirujuk untuk pemeriksaan Antenatal Care (ANC) oleh dokter spesialis obstetri/Puskesmas mampu PONED. "
-            "Kader Posyandu bertugas memantau kepatuhan kontrol kehamilan, mengedukasi tanda bahaya kehamilan (perdarahan, sakit kepala hebat, "
-            "pandangan kabur, kejang), serta menyusun Perencanaan Persalinan dan Pencegahan Komplikasi (P4K) termasuk calon donor darah."
+            "Pemeriksaan kehamilan oleh dokter dan tenaga kesehatan dilakukan minimal 6 kali selama kehamilan, termasuk skrining faktor risiko "
+            "obstetri. Kenali dan periksa tanda bahaya: perdarahan, bengkak kaki/tangan/wajah disertai sakit kepala/kejang, demam tinggi, "
+            "keluar air ketuban sebelum waktunya, atau gerakan bayi berkurang. Segera bawa ke fasilitas pelayanan kesehatan terdekat jika "
+            "ditemukan tanda kehamilan risiko tinggi."
         )
     }
 ]
@@ -166,6 +167,9 @@ def chunk_markdown_file(
             cat = "BADUTA_GIZI"
 
         if len(clean_text) <= 1200:
+            p_match = page_re.search(clean_text)
+            if p_match:
+                current_page = int(p_match.group(1) or p_match.group(2))
             chunks.append({
                 "id": f"{doc_prefix}_{sec_idx}_0",
                 "source": doc_source,
@@ -178,6 +182,9 @@ def chunk_markdown_file(
         else:
             parts = [clean_text[i:i + 1000] for i in range(0, len(clean_text), 850)]
             for p_idx, part in enumerate(parts):
+                part_match = page_re.search(part)
+                if part_match:
+                    current_page = int(part_match.group(1) or part_match.group(2))
                 chunks.append({
                     "id": f"{doc_prefix}_{sec_idx}_{p_idx}",
                     "source": doc_source,
@@ -295,10 +302,13 @@ def get_all_knowledge_chunks(
             "id": c_id,
             "source": m.get("source"),
             "section": m.get("section"),
+            "chapter": m.get("section") or m.get("chapter") or "Pedoman Klinis",
             "page": m.get("page"),
             "category": m.get("category"),
             "origin": m.get("origin"),
             "content": c,
+            "text": c,
+            "snippet": c[:280] + ("..." if len(c) > 280 else ""),
             "char_count": len(c),
             "estimated_tokens": max(1, len(c) // 4)
         })

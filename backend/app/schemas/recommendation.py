@@ -49,4 +49,12 @@ class RecommendationItem(BaseModel):
         default=None,
         description="Kutipan kalimat asli dari Buku KIA / PNPK Stunting sebagai bukti pendukung",
     )
+    reasoning_mode: Optional[str] = Field(
+        default="LLM_REACT",
+        description="Mode inferensi: LLM_REACT (Penalaran AI + ChromaDB) atau FALLBACK_DETERMINISTIC (Safety Net Standar PNPK)",
+    )
+    thought_process: Optional[List[str]] = Field(
+        default=None,
+        description="Jejak langkah penalaran ReAct multi-hop",
+    )
     citation: CitationModel = Field(..., description="Sitasi dokumen resmi")

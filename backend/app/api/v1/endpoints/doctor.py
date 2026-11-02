@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
@@ -31,9 +31,10 @@ def _require_doctor_or_admin(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/monitoring-summary")
 def get_doctor_monitoring_summary(
-    posyandu_name: Optional[str] = None,
-    village_name: Optional[str] = None,
-    month: Optional[str] = None,
+    posyandu: Optional[str] = Query(None),
+    posyandu_name: Optional[str] = Query(None),
+    village_name: Optional[str] = Query(None),
+    month: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(_require_doctor_or_admin),
 ):
@@ -48,11 +49,21 @@ def get_doctor_monitoring_summary(
     v_query = db.query(Visit).join(Patient, Visit.patient_id == Patient.id)
     r_query = db.query(Report).join(Patient, Report.patient_id == Patient.id)
 
-    if posyandu_name and posyandu_name != "Semua Posyandu":
-        p_query = p_query.filter(Patient.posyandu_name == posyandu_name)
-        v_query = v_query.filter(Patient.posyandu_name == posyandu_name)
-        r_query = r_query.filter(Patient.posyandu_name == posyandu_name)
-    if village_name and village_name != "Semua Desa":
+    target_pos = posyandu or posyandu_name
+    if target_pos and target_pos not in ("Semua Posyandu", "Semua", "", "None"):
+        # Ekstrak kata kunci inti nama posyandu / desa
+        clean_key = target_pos.split("(")[0].strip()
+        sub_key = target_pos.split("(")[1].replace(")", "").strip() if "(" in target_pos else clean_key
+        pos_filter = or_(
+            Patient.posyandu_name == target_pos,
+            Patient.posyandu_name.ilike(f"%{clean_key}%"),
+            Patient.village_name.ilike(f"%{clean_key}%"),
+            Patient.village_name.ilike(f"%{sub_key}%")
+        )
+        p_query = p_query.filter(pos_filter)
+        v_query = v_query.filter(pos_filter)
+        r_query = r_query.filter(pos_filter)
+    if village_name and village_name not in ("Semua Desa", "Semua", "", "None"):
         p_query = p_query.filter(Patient.village_name == village_name)
         v_query = v_query.filter(Patient.village_name == village_name)
         r_query = r_query.filter(Patient.village_name == village_name)
@@ -60,7 +71,7 @@ def get_doctor_monitoring_summary(
     total_patients = p_query.count()
     total_visits = v_query.count()
 
-    reports = r_query.all()
+    reports = r_query.order_by(Report.id.desc()).all()
     risky_reports = [r for r in reports if r.overall_status != "KONDISI_BAIK"]
 
     severe_stunting = 0
@@ -80,22 +91,29 @@ def get_doctor_monitoring_summary(
         if rating_val:
             ratings.append(float(rating_val))
 
-        flags = [f.get("flag", "") for f in (r.risk_flags or [])]
-        if any("STUNTING_BERAT" in fl for fl in flags):
+        raw_flags = r.risk_flags or []
+        flags = []
+        for f in raw_flags:
+            if isinstance(f, dict):
+                flags.append(f.get("flag", "") or f.get("indicator", ""))
+            elif isinstance(f, str):
+                flags.append(f)
+
+        if any("STUNTING_BERAT" in fl or "SEVERELY_STUNTED" in fl for fl in flags):
             severe_stunting += 1
         elif any("STUNTING" in fl for fl in flags):
             stunting += 1
 
-        if any("GIZI_BURUK" in fl or "WASTING" in fl for fl in flags):
+        if any("GIZI_BURUK" in fl or "WASTING" in fl or "UNDERWEIGHT" in fl for fl in flags):
             wasting += 1
         if any("KEK" in fl for fl in flags):
             kek += 1
         if any("ANEMIA" in fl for fl in flags):
             anemia += 1
-        if any("KSPR" in fl or "KRST" in fl for fl in flags):
+        if any("KSPR" in fl or "KRST" in fl or "KRT" in fl for fl in flags):
             high_kspr += 1
 
-        if r.overall_status != "KONDISI_BAIK":
+        if r.overall_status != "KONDISI_BAIK" or len(flags) > 0:
             v = r.visit
             p = r.patient
             conf = final_json.get("confidence", {})
@@ -105,11 +123,11 @@ def get_doctor_monitoring_summary(
                 "patient_id": r.patient_id,
                 "patient_name": p.name if p else "-",
                 "nik": p.nik if p else "-",
-                "gender": p.gender if p else "-",
+                "gender": (p.gender.value if hasattr(p.gender, "value") else str(p.gender)) if p and p.gender else "-",
                 "phase": v.phase.value if (v and hasattr(v.phase, "value")) else str(v.phase if v else "-"),
                 "visit_date": str(v.visit_date) if v else "-",
                 "village_name": p.village_name if p else "-",
-                "posyandu_name": p.posyandu_name if p else "-",
+                "posyandu_name": p.posyandu_name if (p and p.posyandu_name) else (p.village_name if p else "-"),
                 "overall_status": r.overall_status,
                 "risk_flags": flags,
                 "confidence_score": conf.get("confidence_score", 92.0),
@@ -123,24 +141,47 @@ def get_doctor_monitoring_summary(
         .count()
     )
 
-    avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 4.8
+    avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
+
+    posyandu_db = [r[0] for r in db.query(Patient.posyandu_name).filter(Patient.posyandu_name.isnot(None)).distinct().all() if r[0]]
+    all_9_posyandus = [
+        "Posyandu Mawar (Airmadidi Atas)",
+        "Posyandu Melati (Airmadidi Bawah)",
+        "Posyandu Anggrek (Sarongsong Satu)",
+        "Posyandu Cempaka (Sarongsong Dua)",
+        "Posyandu Flamboyan (Sukur)",
+        "Posyandu Teratai (Rap-Rap)",
+        "Posyandu Dahlia (Sawangan)",
+        "Posyandu Bougenville (Sampiri)",
+        "Posyandu Kenanga (Tanggari)",
+    ]
+    # Gabungkan distinct posyandu DB dan daftar 9 posyandu baku
+    posyandu_list = sorted(list(set(posyandu_db + all_9_posyandus)))
+
+    stats_dict = {
+        "total_patients": total_patients,
+        "total_visits": total_visits,
+        "at_risk_count": len(risky_patient_cases),
+        "total_risky_reports": len(risky_patient_cases),
+        "stunting_severe_count": severe_stunting,
+        "severe_stunting_count": severe_stunting,
+        "stunting_count": stunting,
+        "wasting_count": wasting,
+        "kek_count": kek,
+        "anemia_count": anemia,
+        "kspr_high_risk_count": high_kspr,
+        "high_kspr_count": high_kspr,
+        "pending_revisions_count": pending_revs_count,
+        "average_kader_rating": avg_rating,
+        "total_ratings_count": len(ratings),
+    }
 
     return {
-        "metrics": {
-            "total_patients": total_patients,
-            "total_visits": total_visits,
-            "total_risky_reports": len(risky_reports),
-            "severe_stunting_count": severe_stunting,
-            "stunting_count": stunting,
-            "wasting_count": wasting,
-            "kek_count": kek,
-            "anemia_count": anemia,
-            "high_kspr_count": high_kspr,
-            "pending_revisions_count": pending_revs_count,
-            "average_kader_rating": avg_rating,
-            "total_ratings_count": len(ratings),
-        },
-        "risky_patients": risky_patient_cases[:50],
+        "summary_stats": stats_dict,
+        "metrics": stats_dict,
+        "risky_reports": risky_patient_cases[:100],
+        "risky_patients": risky_patient_cases[:100],
+        "posyandu_list": posyandu_list,
     }
 
 
@@ -234,7 +275,7 @@ def print_lb3_kia_pdf(
         "total_visits": metrics["total_visits"],
         "printed_at": now_dt.strftime("%d/%m/%Y %H:%M WITA"),
         "printed_date": now_dt.strftime("%d %B %Y"),
-        "doctor_name": current_user.full_name or "dr. Penanggung Jawab KIA",
+        "doctor_name": (current_user.full_name or "Penanggung Jawab KIA").replace("dr. ", "").replace("dr.", "").strip(),
         "severe_stunting_count": metrics["severe_stunting_count"],
         "severe_stunting_pct": round((metrics["severe_stunting_count"] / tot_p) * 100.0, 1),
         "stunting_count": metrics["stunting_count"],
@@ -282,3 +323,72 @@ def list_knowledge_chunks(
         limit=limit,
     )
 
+
+@router.get("/report-citations")
+def get_report_rag_citations(
+    search: Optional[str] = Query(None),
+    report_id: Optional[int] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Menampilkan seluruh kutipan RAG yang dipakai pada laporan pemeriksaan klinis pasien.
+    Menghubungkan potongan chunk pedoman (Buku KIA / PNPK) dengan Nomor Laporan & Identitas Pasien.
+    """
+    query = db.query(Report).join(Patient, Report.patient_id == Patient.id).order_by(Report.id.desc())
+    if report_id:
+        query = query.filter(Report.id == report_id)
+    reports = query.limit(limit).all()
+
+    citations_list = []
+    for r in reports:
+        p = r.patient
+        v = r.visit
+        recs = r.recommendations or []
+        if isinstance(recs, dict):
+            recs = recs.get("recommendations", [])
+
+        for rec in recs:
+            if not isinstance(rec, dict):
+                continue
+            cit = rec.get("citation") or {}
+            if isinstance(cit, str):
+                cit = {"source": cit, "section": rec.get("category", "Pedoman Klinis"), "page": 1}
+
+            src = cit.get("source") or "Buku KIA 2024"
+            sec = cit.get("section") or cit.get("chapter") or rec.get("category") or "Pedoman Standar"
+            quote = rec.get("evidence_quote") or rec.get("recommendation_text") or cit.get("snippet") or "-"
+
+            if search:
+                s_lower = search.lower()
+                blob = f"{r.id} {p.name if p else ''} {p.nik if p else ''} {src} {sec} {quote} {rec.get('title', '')}".lower()
+                if s_lower not in blob:
+                    continue
+
+            citations_list.append({
+                "report_id": r.id,
+                "visit_id": r.visit_id,
+                "patient_id": r.patient_id,
+                "patient_name": p.name if p else "Pasien KIA",
+                "nik": p.nik if p else "-",
+                "gender": (p.gender.value if hasattr(p.gender, "value") else str(p.gender)) if p and p.gender else "-",
+                "village_name": p.village_name if p else "-",
+                "posyandu_name": p.posyandu_name or p.village_name or "Posyandu Airmadidi",
+                "visit_date": str(v.visit_date) if v else "-",
+                "phase": v.phase.value if (v and hasattr(v.phase, "value")) else str(v.phase if v else "-"),
+                "recommendation_title": rec.get("title", "Rencana Tindak Lanjut"),
+                "category": rec.get("category", "EDUKASI"),
+                "evidence_quote": quote,
+                "citation_source": src,
+                "citation_section": sec,
+                "citation_page": cit.get("page", 1),
+                "chunk_id": cit.get("chunk_id"),
+                "overall_status": r.overall_status,
+                "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+            })
+
+    return {
+        "total_citations": len(citations_list),
+        "citations": citations_list,
+    }

@@ -23,7 +23,7 @@ from app.schemas.recommendation import RecommendationItem, CitationModel
 logger = logging.getLogger(__name__)
 
 MODE_LLM_REACT = "LLM_REACT"
-MAX_REACT_STEPS = 1
+MAX_REACT_STEPS = 3
 
 
 def build_comprehensive_care_plan(
@@ -945,6 +945,8 @@ Tugas Anda:
                         "chunk_id": None,
                     }
                 item = _enrich_recommendation_item_fields(item, care_plan)
+                item["reasoning_mode"] = MODE_LLM_REACT
+                item["thought_process"] = list(thought_process)
                 # Auto-populate evidence quote & longitudinal progress if empty
                 # Auto-populate evidence quote & longitudinal progress if empty
                 default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
@@ -1270,5 +1272,11 @@ def _generate_rule_based_recommendations(
                 ],
                 "citation": citation,
             })
+
+    for r in recs:
+        r["reasoning_mode"] = "FALLBACK_DETERMINISTIC"
+        r["thought_process"] = [
+            "Mode Darurat Deterministik Aktif: Rekomendasi disusun berdasarkan standar PNPK Kemenkes RI karena API LLM offline / kuota terbatas."
+        ]
 
     return recs
