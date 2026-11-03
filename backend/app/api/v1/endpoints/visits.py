@@ -27,8 +27,9 @@ def create_visit_and_analyze(
     1. Mencatat data kunjungan ke MySQL.
     2. Menarik data riwayat longitudinal pasien.
     3. Mengeksekusi orkestrasi Multi-Agent LangGraph secara real-time.
-    4. Menyimpan draf laporan.
-    5. Mendaftarkan background task evaluasi audit biner per-agent secara paralel.
+    4. Jika terdeteksi anomali biologis (Early Exit di Agent 1), record visit di-rollback & raise 422.
+    5. Menyimpan draf laporan.
+    6. Mendaftarkan background task evaluasi audit biner per-agent secara paralel.
     """
     patient = db.query(Patient).filter(Patient.id == visit_in.patient_id).first()
     if not patient:
@@ -39,7 +40,7 @@ def create_visit_and_analyze(
         if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
-    # 1. Simpan Kunjungan
+    # 1. Simpan Kunjungan Sementara
     visit = Visit(
         patient_id=visit_in.patient_id,
         kader_id=current_user.id,
@@ -91,7 +92,24 @@ def create_visit_and_analyze(
     thread_config = {"configurable": {"thread_id": f"visit_{visit.id}"}}
     final_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
 
-    # 4. Simpan Hasil ke Tabel Reports
+    # 4. Validasi Early Exit: Jika data tidak plausibel secara biologis
+    if final_state.get("is_data_plausible") is False:
+        warnings = final_state.get("plausibility_warnings") or []
+        # Rollback & Hapus record visit agar tidak mencemari grafik riwayat anak di bulan berikutnya
+        db.delete(visit)
+        db.commit()
+
+        formatted_msg = (
+            "Data pemeriksaan berada di luar batas biologis wajar manusia:\n"
+            + "\n".join(f"{i+1}. {w}" for i, w in enumerate(warnings))
+            + "\n\nKunjungan dibatalkan dan tidak disimpan. Silakan periksa kembali angka pengukuran dan ketik ulang."
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=formatted_msg
+        )
+
+    # 5. Simpan Hasil ke Tabel Reports (Data Valid)
     report = Report(
         visit_id=visit.id,
         patient_id=patient.id,
@@ -109,7 +127,7 @@ def create_visit_and_analyze(
     db.commit()
     db.refresh(report)
 
-    # 5. Background Task: Evaluasi Paralel Per-Agent (Agent 1, Agent 2, Agent 3)
+    # 6. Background Task: Evaluasi Paralel Per-Agent (Agent 1, Agent 2, Agent 3)
     background_tasks.add_task(
         log_multiagent_parallel_evaluations,
         report_id=report.id,
@@ -132,4 +150,3 @@ def get_visit(
     if not visit:
         raise HTTPException(status_code=404, detail="Data kunjungan tidak ditemukan.")
     return visit
-

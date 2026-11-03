@@ -211,6 +211,12 @@ def check_visit_plausibility(phase: str, visit_data: Dict[str, Any]) -> Dict[str
         mw = visit_data.get("maternal_weight_kg")
         if mw is not None and not (30.0 <= float(mw) <= 160.0):
             warnings.append(f"Berat badan ibu ({mw} kg) di luar rentang wajar (30-160 kg).")
+        sys_bp = visit_data.get("systolic_bp")
+        if sys_bp is not None and not (60 <= int(sys_bp) <= 250):
+            warnings.append(f"Tekanan darah sistolik ({sys_bp} mmHg) di luar rentang wajar (60-250 mmHg).")
+        dia_bp = visit_data.get("diastolic_bp")
+        if dia_bp is not None and not (40 <= int(dia_bp) <= 150):
+            warnings.append(f"Tekanan darah diastolik ({dia_bp} mmHg) di luar rentang wajar (40-150 mmHg).")
 
     elif norm_phase == "BAYI_BARU_LAHIR":
         bw = visit_data.get("birth_weight_gram")
@@ -233,4 +239,3 @@ def check_visit_plausibility(phase: str, visit_data: Dict[str, Any]) -> Dict[str
         "warnings": warnings,
         "checked_phase": norm_phase,
     }
-

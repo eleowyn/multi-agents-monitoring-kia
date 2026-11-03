@@ -17,12 +17,14 @@ class AgentState(TypedDict):
     longitudinal_history: List[Dict[str, Any]]
     maternal_history: Optional[Dict[str, Any]] # Khusus anak: riwayat ibu saat hamil/melahirkan
     
-    # 3. Output dari Agent 1: Deteksi Risiko
+    # 3. Output dari Agent 1: Deteksi Risiko & Plausibilitas Biologis
     risk_flags: List[Dict[str, Any]]   # Daftar flag aktif (e.g. RISIKO_STUNTING, RISIKO_KEK)
     risk_narrative: str                # Narasi deskriptif temuan klinis
     deterministic_results: Dict[str, Any] # Rincian angka baku Z-score, KSPR, dsb.
     requires_rag: bool                 # Flag routing kondisional apakah perlu panggil Agent 2
     narrative_mode: str                # "LLM" (Stage 2 Gemini) | "MODE_FALLBACK" (narasi berbasis aturan)
+    is_data_plausible: Optional[bool]  # False jika terdeteksi data anomali biologis (Early Exit)
+    plausibility_warnings: Optional[List[str]] # Daftar peringatan anomali jika data tidak wajar
     
     # 4. Output dari Agent 2: Rekomendasi Klinis RAG (ReAct) & Care Plan 1.000 HPK
     recommendations: List[Dict[str, Any]] # Daftar rekomendasi klinis terstruktur & sitasi

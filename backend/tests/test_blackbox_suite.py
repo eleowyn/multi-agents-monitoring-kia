@@ -292,6 +292,36 @@ class TestModule3And4MultiAgentOrchestration:
         assert report.overall_status == "KONDISI_BAIK"
         assert len(report.risk_flags or []) == 0
 
+    def test_tc_mag_04_early_exit_data_anomali_biologis(self, db_session):
+        """TC-MAG-04: Data di luar batas biologis wajar manusia memicu Early Exit di Agent 1 dan rollback kunjungan."""
+        import pytest
+        from fastapi import HTTPException
+        kader = db_session.query(User).filter(User.username == "kader1").first()
+        patient = db_session.query(Patient).filter(Patient.nik == "7106010101230001").first()
+
+        # Input ekstrem: Bayi 12 bulan dengan BB 85.0 kg dan TB 190.0 cm (salah ketik kader)
+        v_in = VisitCreate(
+            patient_id=patient.id,
+            visit_date=date.today(),
+            phase=PhaseEnum.BADUTA,
+            age_in_months=12,
+            child_length_cm=190.0,  # Tidak wajar (wajar 40-110 cm)
+            child_weight_kg=85.0,   # Tidak wajar (wajar 1.5-25 kg)
+            weight_trend_kms="T",
+        )
+        bg = BackgroundTasks()
+        with pytest.raises(HTTPException) as exc_info:
+            create_visit_and_analyze(visit_in=v_in, background_tasks=bg, db=db_session, current_user=kader)
+
+        assert exc_info.value.status_code == 422
+        assert "di luar batas biologis" in exc_info.value.detail
+        assert "Berat badan baduta" in exc_info.value.detail
+        assert "Panjang/tinggi badan baduta" in exc_info.value.detail
+
+        # Pastikan record visit benar-benar di-rollback dan tidak tersimpan di database
+        corrupted_visit = db_session.query(Visit).filter(Visit.child_weight_kg == 85.0).first()
+        assert corrupted_visit is None, "Kunjungan data anomali harus di-rollback / dihapus dari database"
+
 
 # =============================================================================
 # MODUL 5: HUMAN-IN-THE-LOOP KADER (REVISI, VALIDASI & BOUNDARY SAFEGUARD)

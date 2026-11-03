@@ -101,7 +101,7 @@ const Login = () => {
               Platform Terpadu Pengawasan 1.000 Hari Pertama Kehidupan
             </h1>
             <p className="text-sky-100/90 text-sm xl:text-base leading-relaxed">
-              Membantu kader posyandu, bidan, dan dokter Puskesmas Airmadidi dalam deteksi dini, validasi status gizi, serta intervensi cepat risiko stunting dan pemantauan kesehatan ibu-anak.
+              Membantu kader posyandu dan bidan Puskesmas Airmadidi dalam deteksi dini, validasi status gizi, serta intervensi cepat risiko stunting dan pemantauan kesehatan ibu-anak.
             </p>
           </div>
 
@@ -214,7 +214,7 @@ const Login = () => {
             <div className="px-6 pt-8 pb-2 sm:px-8">
               <h2 className="text-xl font-bold text-heading">Masuk ke Sistem</h2>
               <p className="text-sm text-caption mt-1">
-                Khusus Kader Posyandu, Dokter, & Admin Puskesmas Kecamatan Airmadidi
+                Khusus Kader Posyandu & Admin Puskesmas Kecamatan Airmadidi
               </p>
             </div>
 

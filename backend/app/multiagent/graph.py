@@ -9,12 +9,15 @@ from app.multiagent.agents.verifier import verification_and_report_agent
 shared_checkpointer = MemorySaver()
 
 
-def should_route_to_recommender(state: AgentState) -> str:
+def should_route_from_risk_detector(state: AgentState) -> str:
     """
     Routing Kondisional LangGraph:
-    Hanya teruskan ke Agent Rekomendasi Klinis RAG jika terdapat
-    setidaknya satu flag risiko aktif yang memerlukan referensi rujukan.
+    1. Jika data tidak plausibel secara biologis (anomali), langsung CUT ke END (Early Exit).
+    2. Jika terdapat flag risiko aktif, teruskan ke Agent Rekomendasi Klinis RAG.
+    3. Jika tidak ada risiko (pasien sehat), langsung ke verifier.
     """
+    if state.get("is_data_plausible") is False:
+        return END
     if state.get("requires_rag", False):
         return "clinical_recommender"
     return "verifier"
@@ -35,13 +38,14 @@ def build_kia_multiagent_graph(checkpointer=shared_checkpointer):
     # 2. Atur Entry Point
     workflow.set_entry_point("risk_detector")
 
-    # 3. Percabangan Kondisional dari Agent 1
+    # 3. Percabangan Kondisional dari Agent 1 (mendukung Early Exit ke END)
     workflow.add_conditional_edges(
         "risk_detector",
-        should_route_to_recommender,
+        should_route_from_risk_detector,
         {
             "clinical_recommender": "clinical_recommender",
-            "verifier": "verifier"
+            "verifier": "verifier",
+            END: END
         }
     )
 

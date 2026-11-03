@@ -40,6 +40,54 @@ def risk_detection_agent(state: AgentState) -> Dict[str, Any]:
     spawned_at = datetime.now().isoformat(timespec="milliseconds")
 
     flags, det_results, rule_points = _stage1_deterministic(state)
+    is_plausible = det_results.get("plausibility", {}).get("is_plausible", True)
+    plausibility_warnings = det_results.get("plausibility", {}).get("warnings", [])
+
+    if not is_plausible:
+        t1 = time.perf_counter()
+        terminated_at = datetime.now().isoformat(timespec="milliseconds")
+        lifetime_ms = round(max(0.5, (t1 - t0) * 1000.0), 2)
+        formatted_warnings = "\n".join(f"{i+1}. {w}" for i, w in enumerate(plausibility_warnings))
+        error_narrative = (
+            "PERINGATAN ANOMALI DATA: Pengukuran antropometri/klinis berada di luar rentang biologis wajar manusia:\n"
+            f"{formatted_warnings}\n"
+            "Analisis dihentikan (Early Exit) untuk mencegah bias. Mohon periksa kembali alat ukur dan input data kader."
+        )
+        phase = state.get("phase", "BADUTA")
+        agent1_telemetry = {
+            "agent_id": "agent_1",
+            "agent_name": "Agent 1: Deteksi Risiko Deterministik & ReAct",
+            "execution_order": 1,
+            "execution_pattern": "SEQUENTIAL_STEP_1 (Early Exit / Data Anomali)",
+            "lifecycle_state": "TERMINATED_EARLY (Data Tidak Plausibel / Ditolak)",
+            "spawned_at": spawned_at,
+            "terminated_at": terminated_at,
+            "lifetime_ms": lifetime_ms,
+            "mode": MODE_FALLBACK,
+            "complexity_rank": "Paling Penting (Keselamatan Jiwa / Clinical Safety Gatekeeper)",
+            "complexity_reason": "Menolak pemrosesan data anomali biologis guna mencegah bias dan garbage-in garbage-out.",
+            "tools_invoked": ["check_visit_plausibility"],
+            "token_usage": extract_token_usage(None, prompt_text=error_narrative, output_text=error_narrative, is_llm_call=False),
+            "task_proof": {
+                "input_summary": f"Fase {phase}",
+                "output_summary": f"DITOLAK: {len(plausibility_warnings)} peringatan biologis",
+                "is_grounded_numeric_guard": True,
+            },
+        }
+        det_results["_agent1_telemetry"] = agent1_telemetry
+        existing_telemetry = dict(state.get("agent_telemetry") or {})
+        existing_telemetry["agent_1"] = agent1_telemetry
+
+        return {
+            "risk_flags": flags,
+            "risk_narrative": error_narrative,
+            "deterministic_results": det_results,
+            "requires_rag": False,
+            "narrative_mode": MODE_FALLBACK,
+            "is_data_plausible": False,
+            "plausibility_warnings": plausibility_warnings,
+            "agent_telemetry": existing_telemetry,
+        }
 
     narrative, mode, token_usage, react_tools = _stage2_react_narrative(state, flags, det_results, rule_points)
 
@@ -94,6 +142,8 @@ def risk_detection_agent(state: AgentState) -> Dict[str, Any]:
         "deterministic_results": det_results,
         "requires_rag": len(flags) > 0,
         "narrative_mode": mode,
+        "is_data_plausible": True,
+        "plausibility_warnings": [],
         "agent_telemetry": existing_telemetry,
     }
 
@@ -127,8 +177,20 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
         )
     )
     det_results["hpk_status"] = hpk_status
-    det_results["plausibility"] = check_visit_plausibility(phase, visit_data)
+    plausibility = check_visit_plausibility(phase, visit_data)
+    det_results["plausibility"] = plausibility
     points.append(f"Status 1.000 HPK: {hpk_status['summary_label']}.")
+
+    if not plausibility.get("is_plausible", True):
+        warnings = plausibility.get("warnings", [])
+        for w in warnings:
+            risk_flags.append({
+                "indicator": "DATA_PLAUSIBILITY",
+                "flag": "DATA_ANOMALI",
+                "detail": w,
+            })
+            points.append(f"PERINGATAN: {w}")
+        return risk_flags, det_results, points
 
     # ----------------- 1. FASE IBU HAMIL -----------------
     if phase == "IBU_HAMIL":
