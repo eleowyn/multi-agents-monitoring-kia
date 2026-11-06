@@ -269,19 +269,9 @@ def validate_revision_by_admin(
                     report.final_report_json = revised_state.get("final_report_json", {})
                     report.updated_at = datetime.utcnow()
 
-                    # Jika sebelumnya sudah berstatus APPROVED, generate ulang PDF resminya
-                    if report.status == ReportStatus.APPROVED and patient:
-                        from app.api.v1.endpoints.reports import _extract_visit_data
-                        filename = f"Laporan_KIA_{patient.nik}_{visit.visit_date}_revised.pdf"
-                        pdf_path = generate_visit_report_pdf(
-                            report_data=report.final_report_json,
-                            visit_date=str(visit.visit_date),
-                            kader_name=admin.full_name,
-                            validated_date=datetime.now().strftime("%d %B %Y"),
-                            filename=filename,
-                            visit_data=_extract_visit_data(visit)
-                        )
-                        report.pdf_path = pdf_path
+                    report.status = ReportStatus.DRAFT
+                    report.validated_at = None
+                    report.pdf_path = None
 
             rev.status = RevisionStatus.APPROVED
 

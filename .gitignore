@@ -88,7 +88,8 @@ datasets/
 !data/sample/*.csv
 
 # ===== Model & artefak ML =====
-models/
+/models/
+!backend/app/models/
 checkpoints/
 weights/
 *.pt

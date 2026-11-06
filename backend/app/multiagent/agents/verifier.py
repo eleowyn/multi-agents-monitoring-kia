@@ -412,17 +412,29 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
             sec_results = retrieve_clinical_guidelines(query=sec_query, n_results=1)
             if sec_results:
                 top_c = sec_results[0]
-                is_grounded = True
-                grounding_score = 0.85
-                status_verif = "AUTO_GROUNDED_SECONDARY"
-                notes = (
-                    f"Rujukan sekunder otomatis ditemukan di ChromaDB: {top_c.get('source')} "
-                    f"({top_c.get('section', '')})."
+                _, sec_score, _ = _lexical_grounding_check(
+                    rec_title=rec_title,
+                    rec_text=rec_text,
+                    citation={"source": top_c.get("source", ""), "section": top_c.get("section", "")},
+                    chunks=[top_c],
                 )
-                evidence_snippet = top_c.get("content", "")[:200] + "..."
-                citation["source"] = top_c.get("source", citation.get("source"))
-                citation["section"] = top_c.get("section", citation.get("section"))
-                citation["page"] = top_c.get("page", citation.get("page", 1))
+                dist = top_c.get("distance")
+                is_relevant = (dist is not None and dist < 0.45) or (sec_score >= 0.15)
+                if is_relevant:
+                    is_grounded = True
+                    grounding_score = round(max(0.70, sec_score), 2)
+                    status_verif = "AUTO_GROUNDED_SECONDARY"
+                    notes = (
+                        f"Rujukan sekunder otomatis ditemukan di ChromaDB: {top_c.get('source')} "
+                        f"({top_c.get('section', '')})."
+                    )
+                    evidence_snippet = top_c.get("content", "")[:200] + "..."
+                    citation["source"] = top_c.get("source", citation.get("source"))
+                    citation["section"] = top_c.get("section", citation.get("section"))
+                    citation["page"] = top_c.get("page", citation.get("page", 1))
+                else:
+                    status_verif = "UNVERIFIED"
+                    notes = f"Rujukan sekunder ChromaDB tidak cukup relevan (skor overlap: {sec_score:.2f}). {reasoning}"
             else:
                 status_verif = "UNVERIFIED"
                 notes = f"Klaim rekomendasi tidak ditemukan bukti pendukung langsung. {reasoning}"

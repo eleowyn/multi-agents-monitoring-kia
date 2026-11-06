@@ -112,3 +112,24 @@ cd c:\Users\ASUS\Documents\multiagentkia\backend
 ```
 
 _(Seluruh 23 test case dirancang lulus 100%)._
+
+
+PROGRAM Hitung_ZScore_PBU
+START
+  INPUT umur_bulan, jenis_kelamin, panjang_badan
+  BACA median_M dan SD dari tabel WHO Child Growth Standards (LHFA) sesuai umur & jenis kelamin
+  z_score = (panjang_badan - median_M) / SD
+  IF z_score < -3.0 THEN status = "Sangat Pendek"; flag = "RISIKO_STUNTING_BERAT"
+  ELSE IF z_score < -2.0 THEN status = "Pendek"; flag = "RISIKO_STUNTING"
+  ELSE status = "Normal"; flag = tidak ada
+  ENDIF
+  OUTPUT z_score, status, flag
+END
+
+
+
+
+Tambahkan langkah awal IF data tidak plausibel THEN SISTEM menghentikan graf (early exit) ENDIF.
+Ubah kondisi IF menjadi IF terdapat flag risiko aktif THEN.
+Ubah status Agent 3 menjadi (VERIFIED / AUTO_GROUNDED_SECONDARY / UNVERIFIED).
+Pindahkan blok evaluator ke setelah laporan disimpan.
