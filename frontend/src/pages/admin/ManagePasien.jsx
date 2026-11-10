@@ -14,6 +14,7 @@ import {
   Baby,
   Activity,
 } from "lucide-react";
+import { OFFICIAL_POSYANDU_BY_VILLAGE } from "../../constants/posyanduData";
 
 const ManagePasien = () => {
   const [patients, setPatients] = useState([]);
@@ -44,7 +45,9 @@ const ManagePasien = () => {
   const [newGender, setNewGender] = useState("L");
   const [newMotherId, setNewMotherId] = useState("");
   const [newVillage, setNewVillage] = useState("Airmadidi Atas");
-  const [newPosyandu, setNewPosyandu] = useState("");
+  const [newPosyandu, setNewPosyandu] = useState(
+    OFFICIAL_POSYANDU_BY_VILLAGE["Airmadidi Atas"]?.[0] || ""
+  );
 
   const motherList = patients.filter((p) => p.patient_type === "MOTHER");
 
@@ -560,7 +563,12 @@ const ManagePasien = () => {
                   <div className="relative">
                     <select
                       value={editVillage}
-                      onChange={(e) => setEditVillage(e.target.value)}
+                      onChange={(e) => {
+                        const nextV = e.target.value;
+                        setEditVillage(nextV);
+                        const opts = OFFICIAL_POSYANDU_BY_VILLAGE[nextV] || [];
+                        if (opts.length > 0) setEditPosyandu(opts[0]);
+                      }}
                       className={SELECT_CLASS}
                     >
                       <option value="Airmadidi Atas">Airmadidi Atas</option>
@@ -578,15 +586,21 @@ const ManagePasien = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-caption mb-1.5">
-                    Posyandu
+                    Posyandu (14 Titik Resmi)
                   </label>
                   <input
                     type="text"
-                    placeholder="Nama Posyandu..."
+                    list="edit-patient-posyandu-options"
+                    placeholder="Pilih atau ketik Posyandu..."
                     value={editPosyandu}
                     onChange={(e) => setEditPosyandu(e.target.value)}
                     className={INPUT_CLASS}
                   />
+                  <datalist id="edit-patient-posyandu-options">
+                    {(OFFICIAL_POSYANDU_BY_VILLAGE[editVillage] || []).map((pos) => (
+                      <option key={pos} value={pos} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -745,7 +759,12 @@ const ManagePasien = () => {
                   <div className="relative">
                     <select
                       value={newVillage}
-                      onChange={(e) => setNewVillage(e.target.value)}
+                      onChange={(e) => {
+                        const nextV = e.target.value;
+                        setNewVillage(nextV);
+                        const opts = OFFICIAL_POSYANDU_BY_VILLAGE[nextV] || [];
+                        if (opts.length > 0) setNewPosyandu(opts[0]);
+                      }}
                       className={SELECT_CLASS}
                     >
                       <option value="Airmadidi Atas">Airmadidi Atas</option>
@@ -763,15 +782,21 @@ const ManagePasien = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-caption mb-1.5">
-                    Posyandu
+                    Posyandu (14 Titik Resmi)
                   </label>
                   <input
                     type="text"
-                    placeholder="Posyandu Mawar..."
+                    list="create-patient-posyandu-options"
+                    placeholder="Pilih atau ketik Posyandu..."
                     value={newPosyandu}
                     onChange={(e) => setNewPosyandu(e.target.value)}
                     className={INPUT_CLASS}
                   />
+                  <datalist id="create-patient-posyandu-options">
+                    {(OFFICIAL_POSYANDU_BY_VILLAGE[newVillage] || []).map((pos) => (
+                      <option key={pos} value={pos} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

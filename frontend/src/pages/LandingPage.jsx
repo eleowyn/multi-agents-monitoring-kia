@@ -1,7 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import api from "../services/api";
+import {
+  DEFAULT_NOVEMBER_2026_SCHEDULES,
+  formatScheduleDateIndo,
+  parseScheduleDateParts,
+} from "../constants/posyanduData";
 import {
   Heart,
   MapPin,
@@ -13,6 +19,8 @@ import {
   Utensils,
   Droplets,
   Clock,
+  Calendar,
+  UserCheck,
   X,
   ChevronRight,
   Menu,
@@ -413,17 +421,57 @@ const LandingPage = () => {
   const { isDark, toggleTheme } = useTheme();
   const [selectedModal, setSelectedModal] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [publicSchedules, setPublicSchedules] = useState(DEFAULT_NOVEMBER_2026_SCHEDULES);
+  const [generalNote, setGeneralNote] = useState("Wajib Membawa FC Kartu Keluarga & Buku KIA");
+  const [scheduleView, setScheduleView] = useState("calendar"); // "calendar" | "cards"
+  const [selectedVillageChip, setSelectedVillageChip] = useState("ALL");
 
   // Animated counters for hero key metrics
   const countDays = useAnimatedCounter(1000, 1400);
   const countBrain = useAnimatedCounter(80, 1200);
-  const countVillages = useAnimatedCounter(9, 1000);
+  const countPosyandu = useAnimatedCounter(publicSchedules.length || 14, 1000);
 
   const dashboardPath = user
     ? user.role === "ADMIN"
       ? "/admin/dashboard"
       : "/kader/dashboard"
     : "/login";
+
+  useEffect(() => {
+    api
+      .get("/schedules/public")
+      .then((res) => {
+        if (res.data?.schedules?.length > 0) {
+          setPublicSchedules(res.data.schedules);
+        }
+        if (res.data?.general_note) {
+          setGeneralNote(res.data.general_note);
+        }
+      })
+      .catch(() => {
+        // Fallback aman ke 14 jadwal November 2026 bawaan jika server belum menyala
+      });
+  }, []);
+
+  const activePublicSchedules = useMemo(() => {
+    const active = publicSchedules.filter((s) => s.status !== "DIBATALKAN");
+    if (selectedVillageChip === "ALL") return active;
+    return active.filter((s) => s.village_name === selectedVillageChip);
+  }, [publicSchedules, selectedVillageChip]);
+
+  const calendarCellsNov2026 = useMemo(() => {
+    const cells = [];
+    for (let i = 0; i < 6; i += 1) {
+      cells.push({ day: null, iso: null, items: [] });
+    }
+    for (let day = 1; day <= 30; day += 1) {
+      const dd = String(day).padStart(2, "0");
+      const iso = `2026-11-${dd}`;
+      const items = activePublicSchedules.filter((s) => s.schedule_date === iso);
+      cells.push({ day, iso, items });
+    }
+    return cells;
+  }, [activePublicSchedules]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -475,6 +523,9 @@ const LandingPage = () => {
             </a>
             <a href="#alur-posyandu" className="hover:text-heading transition-colors whitespace-nowrap">
               5 Langkah Posyandu
+            </a>
+            <a href="#jadwal-posyandu" className="hover:text-heading transition-colors whitespace-nowrap">
+              Jadwal Posyandu
             </a>
             <a href="#profil-lokasi" className="hover:text-heading transition-colors whitespace-nowrap">
               Profil & Lokasi
@@ -533,6 +584,13 @@ const LandingPage = () => {
                 className="px-3 py-2 rounded-lg hover:bg-subtle hover:text-heading"
               >
                 5 Langkah Posyandu
+              </a>
+              <a
+                href="#jadwal-posyandu"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg hover:bg-subtle hover:text-heading"
+              >
+                Jadwal 14 Posyandu
               </a>
               <a
                 href="#profil-lokasi"
@@ -636,7 +694,7 @@ const LandingPage = () => {
               </a>
 
               <a
-                href="#profil-lokasi"
+                href="#jadwal-posyandu"
                 className="card-interactive p-5 rounded-2xl bg-subtle border border-line hover:border-rose-300 dark:hover:border-rose-700 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-1"
               >
                 <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
@@ -644,11 +702,11 @@ const LandingPage = () => {
                 </span>
                 <div>
                   <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums tracking-tight">
-                    {countVillages} Desa / Kel.
+                    {countPosyandu} Posyandu
                   </p>
-                  <p className="text-sm font-medium text-label mt-0.5">Posyandu Kec. Airmadidi</p>
+                  <p className="text-sm font-medium text-label mt-0.5">9 Kelurahan & Desa Airmadidi</p>
                   <p className="text-xs text-caption mt-1 leading-relaxed">
-                    Pelayanan Posyandu, Pustu, dan Poskesdes binaan UPTD Puskesmas Airmadidi.
+                    Jadwal pelayanan 14 titik Posyandu binaan UPTD Puskesmas Airmadidi.
                   </p>
                 </div>
               </a>
@@ -1045,29 +1103,193 @@ const LandingPage = () => {
           </ScrollReveal>
         </div>
 
-        {/* 9 Desa & Kelurahan Posyandu Grid (Clean Minimalist without Repetitive Icons) */}
-        <div className="space-y-4 pt-2">
-          <h3 className="text-lg font-bold text-heading">
-            Jejaring Posyandu di 9 Kelurahan & Desa se-Kecamatan Airmadidi
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {VILLAGES_AIRMADIDI.map((v, idx) => (
-              <ScrollReveal key={idx} className="h-full">
-                <div
-                  className="card-interactive h-full p-5 bg-card rounded-2xl border border-line hover:border-sky-200 dark:hover:border-sky-800 flex flex-col justify-between gap-2 transition-all duration-300 hover:-translate-y-0.5"
+        {/* 14 Titik Jadwal Posyandu di 9 Kelurahan & Desa (Terhubung Langsung dengan Manajemen Jadwal Admin) */}
+        <div id="jadwal-posyandu" className="space-y-5 pt-4 scroll-mt-20">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-3 border-b border-line">
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Jadwal Pelayanan Resmi • UPTD Puskesmas Airmadidi</span>
+              </p>
+              <h3 className="text-xl sm:text-2xl font-bold text-heading">
+                Jadwal 14 Posyandu di 9 Kelurahan & Desa se-Kecamatan Airmadidi
+              </h3>
+              <p className="text-sm text-caption">
+                Jadwal kegiatan diperbarui langsung oleh Administrator UPTD Puskesmas Airmadidi.{" "}
+                <strong className="text-amber-700 dark:text-amber-300">
+                  Catatan: {generalNote}
+                </strong>
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedVillageChip}
+                onChange={(e) => setSelectedVillageChip(e.target.value)}
+                aria-label="Filter jadwal berdasarkan Kelurahan atau Desa"
+                className="px-3 py-2 bg-card border border-line rounded-xl text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+              >
+                <option value="ALL">Semua Wilayah (9 Kel./Desa • {publicSchedules.length} Posyandu)</option>
+                <option value="Sukur">Kelurahan Sukur</option>
+                <option value="Airmadidi Atas">Kelurahan Airmadidi Atas</option>
+                <option value="Sampiri">Desa Sampiri</option>
+                <option value="Tanggari">Desa Tanggari</option>
+                <option value="Airmadidi Bawah">Kelurahan Airmadidi Bawah</option>
+                <option value="Rap-Rap">Kelurahan Rap-Rap</option>
+                <option value="Sarongsong Satu">Kelurahan Sarongsong Satu</option>
+                <option value="Sarongsong Dua">Kelurahan Sarongsong Dua</option>
+                <option value="Sawangan">Desa Sawangan</option>
+              </select>
+
+              <div className="inline-flex p-1 bg-subtle border border-line rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setScheduleView("calendar")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    scheduleView === "calendar"
+                      ? "bg-card text-heading shadow-xs border border-line"
+                      : "text-caption hover:text-heading"
+                  }`}
                 >
-                  <div>
-                    <h4 className="text-base font-bold text-heading">{v.name}</h4>
-                    <p className="text-sm text-label font-medium mt-0.5">{v.posyandu}</p>
-                  </div>
-                  <p className="text-xs text-caption flex items-center gap-1.5 pt-2 border-t border-line-light">
-                    <Clock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                    <span>Jadwal Rutin: {v.schedule}</span>
-                  </p>
-                </div>
-              </ScrollReveal>
-            ))}
+                  Kalender Bulanan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleView("cards")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    scheduleView === "cards"
+                      ? "bg-card text-heading shadow-xs border border-line"
+                      : "text-caption hover:text-heading"
+                  }`}
+                >
+                  Daftar 14 Posyandu ({activePublicSchedules.length})
+                </button>
+              </div>
+            </div>
           </div>
+
+          {scheduleView === "calendar" ? (
+            <div className="bg-card rounded-2xl border border-line p-4 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-line">
+                <p className="text-sm font-bold text-heading">
+                  Kalender Jadwal Posyandu • November 2026
+                </p>
+                <span className="text-xs text-caption">
+                  Catatan: {generalNote}
+                </span>
+              </div>
+
+              <div className="hidden sm:grid sm:grid-cols-7 gap-2 text-center text-xs font-bold text-label uppercase tracking-wider">
+                <div className="py-2 bg-subtle rounded-lg border border-line">Sen</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Sel</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Rab</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Kam</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Jum</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Sab</div>
+                <div className="py-2 bg-subtle rounded-lg border border-line">Min</div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+                {calendarCellsNov2026.map((cell, idx) =>
+                  cell.day === null ? (
+                    <div
+                      key={`empty-${idx}`}
+                      className="hidden sm:block min-h-[96px] rounded-xl bg-subtle/40 border border-line-light"
+                    />
+                  ) : (
+                    <div
+                      key={cell.iso}
+                      className={`min-h-[96px] p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                        cell.items.length > 0
+                          ? "bg-sky-50/60 dark:bg-sky-950/25 border-sky-200 dark:border-sky-800/60"
+                          : "bg-card border-line"
+                      } ${cell.items.length === 0 ? "hidden sm:flex" : "flex"}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-heading tabular-nums">
+                          {cell.day} Nov
+                        </span>
+                        {cell.items.length > 0 && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sky-600 text-white">
+                            {cell.items[0].start_time} WITA
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5 mt-2">
+                        {cell.items.map((ev) => (
+                          <div
+                            key={ev.id}
+                            onClick={() =>
+                              setSelectedModal({
+                                type: "step",
+                                badge: `Jadwal Posyandu • ${formatScheduleDateIndo(ev.schedule_date)}`,
+                                title: ev.posyandu_name,
+                                content: `Wilayah: ${ev.village_name}\nWaktu Pelayanan: ${ev.start_time} – ${ev.end_time} WITA (${ev.routine_pattern || "Bulanan"})\nPenanggung Jawab: ${ev.kader_name}\nAgenda Layanan: ${ev.service_agenda}\nCatatan Warga: ${ev.notes || generalNote}`,
+                              })
+                            }
+                            className="p-2 rounded-lg bg-card border border-line hover:border-sky-400 cursor-pointer transition-colors space-y-0.5"
+                          >
+                            <p className="text-xs font-bold text-heading leading-snug">
+                              {ev.posyandu_name}
+                            </p>
+                            <p className="text-[11px] text-caption">
+                              {ev.village_name}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activePublicSchedules.map((item) => {
+                const dateParts = parseScheduleDateParts(item.schedule_date);
+                return (
+                  <ScrollReveal key={item.id} className="h-full">
+                    <div className="card-interactive h-full p-4 sm:p-5 bg-card rounded-2xl border border-line hover:border-sky-300 dark:hover:border-sky-700 flex gap-4 items-start transition-all duration-200">
+                      {/* Blok Kalender Bersih */}
+                      <div className="shrink-0 w-14 sm:w-16 py-2 sm:py-2.5 px-1 rounded-xl bg-subtle border border-line flex flex-col items-center justify-center text-center select-none">
+                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-caption">
+                          {dateParts.dayName.slice(0, 3)}
+                        </span>
+                        <span className="text-xl sm:text-2xl font-bold text-heading tabular-nums leading-none my-0.5 sm:my-1">
+                          {dateParts.dayNum}
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] font-medium text-caption">
+                          {dateParts.monthName}
+                        </span>
+                      </div>
+
+                      {/* Konten Terstruktur Tanpa Ikon Berlebihan */}
+                      <div className="min-w-0 flex-1 space-y-1.5 flex flex-col justify-between h-full">
+                        <div className="space-y-1">
+                          <h4 className="text-sm sm:text-base font-bold text-heading truncate">
+                            {item.posyandu_name}
+                          </h4>
+                          <p className="text-xs text-label font-medium">
+                            {item.village_name} &bull; <span className="tabular-nums">{item.start_time}–{item.end_time} WITA</span>
+                          </p>
+                          <p className="text-xs text-caption leading-relaxed line-clamp-2">
+                            {item.service_agenda}
+                          </p>
+                        </div>
+
+                        {item.kader_name && (
+                          <div className="pt-2 border-t border-line-light text-[11px] text-caption">
+                            PJ: <span className="text-heading font-medium">{item.kader_name}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </ScrollReveal>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1119,6 +1341,11 @@ const LandingPage = () => {
                 <li>
                   <a href="#alur-posyandu" className="hover:text-heading transition-colors">
                     5 Langkah Posyandu
+                  </a>
+                </li>
+                <li>
+                  <a href="#jadwal-posyandu" className="hover:text-heading transition-colors">
+                    Jadwal 14 Posyandu
                   </a>
                 </li>
                 <li>
@@ -1312,7 +1539,7 @@ const LandingPage = () => {
 
               {selectedModal.type === "step" && (
                 <div className="p-4 bg-subtle rounded-xl border border-line">
-                  <p className="text-sm sm:text-base text-body leading-relaxed">{selectedModal.content}</p>
+                  <p className="text-sm sm:text-base text-body leading-relaxed whitespace-pre-line">{selectedModal.content}</p>
                 </div>
               )}
             </div>

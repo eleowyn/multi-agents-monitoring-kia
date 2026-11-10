@@ -240,7 +240,7 @@ const AuditLogs = () => {
                         <p className="font-semibold text-heading font-mono text-xs">#{log.id}</p>
                         {log.report_id && (
                           <Link
-                            to={`/kader/validasi/${log.report_id}`}
+                            to={`/kader/validasi-laporan/${log.report_id}`}
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 text-xs text-caption hover:text-sky-600 dark:hover:text-sky-400 mt-0.5"
                           >

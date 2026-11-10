@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api, { getErrorMessage } from "../../services/api";
 import { Plus, Search, Shield, X, Trash2 } from "lucide-react";
+import { OFFICIAL_POSYANDU_BY_VILLAGE } from "../../constants/posyanduData";
 
 const ManageKader = () => {
   const [kaders, setKaders] = useState([]);
@@ -9,7 +10,9 @@ const ManageKader = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [posyanduName, setPosyanduName] = useState("");
+  const [posyanduName, setPosyanduName] = useState(
+    OFFICIAL_POSYANDU_BY_VILLAGE["Airmadidi Atas"]?.[0] || ""
+  );
   const [villageName, setVillageName] = useState("Airmadidi Atas");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -453,23 +456,17 @@ const ManageKader = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-label mb-1">
-                    Nama Posyandu
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Posyandu Mawar"
-                    value={posyanduName}
-                    onChange={(e) => setPosyanduName(e.target.value)}
-                    className={INPUT_CLASS}
-                  />
-                </div>
-                <div>
                   <label className="block font-semibold text-label mb-1">Desa</label>
                   <select
                     value={villageName}
-                    onChange={(e) => setVillageName(e.target.value)}
+                    onChange={(e) => {
+                      const nextVillage = e.target.value;
+                      setVillageName(nextVillage);
+                      const options = OFFICIAL_POSYANDU_BY_VILLAGE[nextVillage] || [];
+                      if (options.length > 0) {
+                        setPosyanduName(options[0]);
+                      }
+                    }}
                     className={INPUT_CLASS}
                   >
                     <option value="Airmadidi Atas">Airmadidi Atas</option>
@@ -482,6 +479,25 @@ const ManageKader = () => {
                     <option value="Sampiri">Sampiri</option>
                     <option value="Tanggari">Tanggari</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-label mb-1">
+                    Nama Posyandu (14 Titik Resmi)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    list="kader-posyandu-options"
+                    placeholder="Pilih atau ketik Posyandu..."
+                    value={posyanduName}
+                    onChange={(e) => setPosyanduName(e.target.value)}
+                    className={INPUT_CLASS}
+                  />
+                  <datalist id="kader-posyandu-options">
+                    {(OFFICIAL_POSYANDU_BY_VILLAGE[villageName] || []).map((pos) => (
+                      <option key={pos} value={pos} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

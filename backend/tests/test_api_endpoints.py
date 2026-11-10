@@ -252,3 +252,64 @@ def test_admin_toggle_kader_status_and_deactivated_login():
     del_res = client.delete(f"/api/v1/admin/kaders/{kader_id}", headers=admin_headers)
     assert del_res.status_code == 200
 
+
+def test_posyandu_schedules_crud_and_conflict_validation():
+    """Menguji Manajemen Jadwal Posyandu (Bab 4 Tabel 23, Gambar 36, dan Gambar 53) serta 14 titik Posyandu."""
+    # 1. Endpoint publik harus mengembalikan minimal 14 jadwal ter-seed di 9 kelurahan/desa
+    pub_res = client.get("/api/v1/schedules/public")
+    assert pub_res.status_code == 200
+    pub_data = pub_res.json()
+    assert pub_data["total_villages"] == 9
+    assert pub_data["total_posyandu"] == 14
+    assert len(pub_data["schedules"]) >= 14
+
+    # 2. Login sebagai Admin
+    admin_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    admin_token = admin_login.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # 3. Buat jadwal baru pada tanggal yang belum bentrok
+    create_res = client.post("/api/v1/schedules/", headers=admin_headers, json={
+        "village_name": "Airmadidi Atas",
+        "posyandu_name": "Kel. Airmadidi Atas (SBY)",
+        "schedule_date": "2026-12-01",
+        "start_time": "08:00",
+        "end_time": "11:30",
+        "routine_pattern": "Selasa Minggu ke-1",
+        "service_agenda": "Penimbangan Balita, Pemeriksaan ANC & Konseling 1.000 HPK",
+        "kader_name_fallback": "Kader Posyandu SBY",
+        "status": "TERJADWAL",
+        "notes": "Wajib Membawa FC Kartu Keluarga & Buku KIA"
+    })
+    assert create_res.status_code == 200
+    created_schedule = create_res.json()
+    schedule_id = created_schedule["id"]
+
+    # 4. Uji Skenario Alternatif 4a (Tabel 23): Jadwal bentrok di tanggal, jam, dan lokasi Posyandu yang sama -> 400 Bad Request
+    conflict_res = client.post("/api/v1/schedules/", headers=admin_headers, json={
+        "village_name": "Airmadidi Atas",
+        "posyandu_name": "Kel. Airmadidi Atas (SBY)",
+        "schedule_date": "2026-12-01",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "routine_pattern": "Selasa Minggu ke-1",
+        "service_agenda": "Jadwal Duplikat Bentrok",
+        "status": "TERJADWAL"
+    })
+    assert conflict_res.status_code == 400
+    assert "bentrok" in conflict_res.json()["detail"].lower()
+
+    # 5. Update jadwal (mis. ubah jam dan agenda) dan pastikan tersinkronisasi ke endpoint publik
+    update_res = client.put(f"/api/v1/schedules/{schedule_id}", headers=admin_headers, json={
+        "start_time": "08:30",
+        "service_agenda": "Penimbangan Balita & Imunisasi Terpadu"
+    })
+    assert update_res.status_code == 200
+    assert update_res.json()["start_time"] == "08:30"
+    assert update_res.json()["service_agenda"] == "Penimbangan Balita & Imunisasi Terpadu"
+
+    # 6. Hapus jadwal uji
+    del_res = client.delete(f"/api/v1/schedules/{schedule_id}", headers=admin_headers)
+    assert del_res.status_code == 200
+
+

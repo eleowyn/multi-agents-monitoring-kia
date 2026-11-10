@@ -63,17 +63,17 @@ def get_dashboard_summary(
     for pid, p_reps in reports_by_pid.items():
         latest = max(p_reps, key=lambda r: r.id)
         flags = latest.risk_flags or []
-        if any("STUNTING" in f.get("flag", "") for f in flags):
+        if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
             total_stunting += 1
-        if any("KEK" in f.get("flag", "") for f in flags):
+        if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
             total_kek += 1
-        if any("ANEMIA" in f.get("flag", "") for f in flags):
+        if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
             total_anemia += 1
 
     # Rekapitulasi per desa
     village_breakdown = []
     for v_name in AIRMADIDI_VILLAGES:
-        v_patients = db.query(Patient).filter(Patient.village_name == v_name).all()
+        v_patients = db.query(Patient).filter(Patient.village_name.ilike(f"%{v_name}%")).all()
         p_ids = [p.id for p in v_patients]
         
         v_reports = db.query(Report).filter(Report.patient_id.in_(p_ids)).all() if p_ids else []
@@ -88,11 +88,11 @@ def get_dashboard_summary(
         for pid, p_reps in v_reports_by_pid.items():
             latest = max(p_reps, key=lambda r: r.id)
             flags = latest.risk_flags or []
-            if any("STUNTING" in f.get("flag", "") for f in flags):
+            if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
                 stunt_v += 1
-            if any("KEK" in f.get("flag", "") for f in flags):
+            if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
                 kek_v += 1
-            if any("ANEMIA" in f.get("flag", "") for f in flags):
+            if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
                 anemia_v += 1
             if latest.overall_status == "RISIKO_TINGGI":
                 high_risk_v += 1
@@ -243,7 +243,7 @@ def get_dashboard_summary(
         if key not in buckets:
             continue
         for f in (r.risk_flags or []):
-            f_name = f.get("flag", "")
+            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
             if "STUNTING" in f_name:
                 buckets[key]["stunting"].add(r.patient_id)
             if "KEK" in f_name:

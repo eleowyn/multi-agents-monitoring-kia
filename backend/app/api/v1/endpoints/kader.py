@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
@@ -13,6 +13,19 @@ from app.models.user import User, UserRole
 from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
+
+
+def _build_kader_scope_filter(current_user: User):
+    kader_filters = []
+    if current_user.village_name:
+        v_clean = current_user.village_name.strip()
+        kader_filters.append(Patient.village_name == v_clean)
+        kader_filters.append(Patient.village_name.ilike(f"%{v_clean}%"))
+    if current_user.posyandu_name:
+        p_clean = current_user.posyandu_name.strip()
+        kader_filters.append(Patient.posyandu_name == p_clean)
+        kader_filters.append(Patient.posyandu_name.ilike(f"%{p_clean}%"))
+    return or_(*kader_filters) if kader_filters else None
 
 
 class PriorityPatientItem(BaseModel):
@@ -76,9 +89,11 @@ def get_kader_dashboard_summary(
     village = current_user.village_name or "Airmadidi Atas"
 
     # Base query pasien wilayah kader
+    scope_cond = _build_kader_scope_filter(current_user) if current_user.role == UserRole.KADER else None
+
     patient_q = db.query(Patient)
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        patient_q = patient_q.filter(Patient.village_name == current_user.village_name)
+    if scope_cond is not None:
+        patient_q = patient_q.filter(scope_cond)
 
     total_patients = patient_q.count()
     total_mothers = patient_q.filter(Patient.patient_type == "MOTHER").count()
@@ -112,8 +127,8 @@ def get_kader_dashboard_summary(
         db.query(Visit)
         .join(Patient, Visit.patient_id == Patient.id)
     )
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        visit_q = visit_q.filter(Patient.village_name == current_user.village_name)
+    if scope_cond is not None:
+        visit_q = visit_q.filter(scope_cond)
 
     monthly_visits = visit_q.filter(Visit.visit_date >= first_of_month).count()
 
@@ -123,8 +138,8 @@ def get_kader_dashboard_summary(
         .join(Patient, Report.patient_id == Patient.id)
         .join(Visit, Report.visit_id == Visit.id)
     )
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        report_q = report_q.filter(Patient.village_name == current_user.village_name)
+    if scope_cond is not None:
+        report_q = report_q.filter(scope_cond)
 
     pending_validation = report_q.filter(Report.status == ReportStatus.DRAFT).count()
     high_risk_count = report_q.filter(Report.overall_status == "RISIKO_TINGGI").count()

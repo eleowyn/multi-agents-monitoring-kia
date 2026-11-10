@@ -10,7 +10,12 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { RefreshCw, ExternalLink, ShieldAlert, ArrowRight } from "lucide-react";
+import { RefreshCw, ExternalLink, ShieldAlert, ArrowRight, Calendar, Clock, MapPin, UserCheck } from "lucide-react";
+import {
+  formatScheduleDateIndo,
+  parseScheduleDateParts,
+  DEFAULT_NOVEMBER_2026_SCHEDULES,
+} from "../../constants/posyanduData";
 
 const SkeletonCard = () => (
   <div className="bg-card p-4 rounded-xl border border-line space-y-2 animate-pulse">
@@ -22,6 +27,7 @@ const SkeletonCard = () => (
 
 const KaderDashboard = () => {
   const [summary, setSummary] = useState(null);
+  const [villageSchedules, setVillageSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -43,9 +49,20 @@ const KaderDashboard = () => {
         setLoading(true);
       }
       setError("");
-      const res = await api.get("/kader/dashboard-summary");
+      const [res, schedRes] = await Promise.all([
+        api.get("/kader/dashboard-summary"),
+        api.get("/schedules/").catch(() => ({ data: DEFAULT_NOVEMBER_2026_SCHEDULES })),
+      ]);
       previousPendingCount.current = res.data?.pending_validation ?? null;
       setSummary(res.data);
+      const targetVillage = res.data?.village_name || "Airmadidi Atas";
+      const allScheds = schedRes.data || [];
+      const filteredScheds = allScheds.filter(
+        (s) =>
+          s.status !== "DIBATALKAN" &&
+          (!targetVillage || s.village_name?.toLowerCase() === targetVillage.toLowerCase())
+      );
+      setVillageSchedules(filteredScheds.length > 0 ? filteredScheds : allScheds.slice(0, 3));
       const now = new Date();
       setLastUpdated(
         now.toLocaleTimeString("id-ID", {
@@ -387,6 +404,15 @@ const KaderDashboard = () => {
                       dot={{ r: 2.5, fill: "#d97706" }}
                       activeDot={{ r: 4 }}
                     />
+                    <Line
+                      type="monotone"
+                      dataKey="anemia"
+                      name="Ibu Anemia"
+                      stroke="#ea580c"
+                      strokeWidth={1.5}
+                      dot={{ r: 2.5, fill: "#ea580c" }}
+                      activeDot={{ r: 4 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -455,6 +481,80 @@ const KaderDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ═══ Panel Jadwal Posyandu Wilayah Kerja (Tersinkronisasi dari Admin Puskesmas) ═══ */}
+      <div className="bg-card rounded-xl border border-line p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pb-3 border-b border-line">
+          <div>
+            <h2 className="text-base font-bold text-heading">
+              Jadwal Posyandu Wilayah Kerja ({summary?.village_name || "Airmadidi"})
+            </h2>
+            <p className="text-xs text-caption mt-0.5">
+              Agenda kegiatan resmi penetapan UPTD Puskesmas Airmadidi
+            </p>
+          </div>
+          <span className="text-xs text-caption font-medium">
+            {villageSchedules.length} Jadwal Terdaftar
+          </span>
+        </div>
+
+        {villageSchedules.length === 0 ? (
+          <p className="text-xs text-caption py-3">
+            Belum ada jadwal kegiatan Posyandu aktif untuk wilayah kerja ini.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {villageSchedules.map((sch) => {
+              const dateParts = parseScheduleDateParts(sch.schedule_date);
+              return (
+                <div
+                  key={sch.id}
+                  className="p-3.5 rounded-xl bg-subtle border border-line flex gap-3.5 items-start hover:border-sky-300 dark:hover:border-sky-800 transition-colors"
+                >
+                  {/* Blok Tanggal Kalender Bersih */}
+                  <div className="shrink-0 w-14 py-2 px-1 rounded-lg bg-card border border-line flex flex-col items-center justify-center text-center select-none">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-caption">
+                      {dateParts.dayName.slice(0, 3)}
+                    </span>
+                    <span className="text-xl font-bold text-heading tabular-nums leading-none my-0.5">
+                      {dateParts.dayNum}
+                    </span>
+                    <span className="text-[10px] font-medium text-caption">
+                      {dateParts.monthName}
+                    </span>
+                  </div>
+
+                  {/* Konten Jadwal */}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h3 className="text-sm font-bold text-heading truncate">
+                      {sch.posyandu_name}
+                    </h3>
+                    <p className="text-xs text-label font-medium tabular-nums">
+                      {sch.start_time}–{sch.end_time} WITA
+                    </p>
+                    <p className="text-xs text-caption line-clamp-2 leading-relaxed">
+                      {sch.service_agenda}
+                    </p>
+                    {sch.kader_name && (
+                      <p className="text-[11px] text-caption pt-1 border-t border-line-light">
+                        PJ: <span className="text-heading font-medium">{sch.kader_name}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Catatan Berkas Terpadu & Tenang */}
+        <div className="pt-2.5 text-xs text-caption flex items-center justify-between border-t border-line">
+          <p>
+            <strong className="text-heading font-medium">Catatan Pelayanan:</strong>{" "}
+            Warga wajib membawa fotokopi Kartu Keluarga (KK) dan Buku KIA.
+          </p>
         </div>
       </div>
 

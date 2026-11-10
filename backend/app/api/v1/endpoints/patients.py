@@ -313,9 +313,9 @@ def get_posyandu_aggregates(
             if p_reports:
                 latest_report = max(p_reports, key=lambda r: r.id)
                 flags = latest_report.risk_flags or []
-                has_stunt = any("STUNTING" in f.get("flag", "") for f in flags)
-                has_kek = any("KEK" in f.get("flag", "") for f in flags)
-                has_anemia = any("ANEMIA" in f.get("flag", "") for f in flags)
+                has_stunt = any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
+                has_kek = any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
+                has_anemia = any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
                 
                 if has_stunt: stunting_count += 1
                 if has_kek: kek_count += 1
@@ -335,7 +335,7 @@ def get_posyandu_aggregates(
                 if p.birth_date:
                     days_age = (date.today() - p.birth_date).days
                     if days_age >= 730:
-                        if p_reports and any("STUNTING" in f.get("flag", "") for f in (max(p_reports, key=lambda r: r.id).risk_flags or [])):
+                        if p_reports and any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in (max(p_reports, key=lambda r: r.id).risk_flags or [])):
                             grad_evaluasi += 1
                         else:
                             grad_optimal += 1
@@ -407,6 +407,22 @@ def get_posyandu_aggregates(
 
 
 
+def _is_patient_in_kader_scope(patient: Patient, current_user: User) -> bool:
+    if current_user.role != UserRole.KADER:
+        return True
+    u_vill = (current_user.village_name or "").strip().lower()
+    p_vill = (patient.village_name or "").strip().lower()
+    if u_vill and p_vill:
+        if u_vill == p_vill or u_vill in p_vill or p_vill in u_vill:
+            return True
+    u_pos = (current_user.posyandu_name or "").strip().lower()
+    p_pos = (patient.posyandu_name or "").strip().lower()
+    if u_pos and p_pos:
+        if u_pos == p_pos or u_pos in p_pos or p_pos in u_pos:
+            return True
+    return not u_vill or not p_vill
+
+
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(
     patient_id: int,
@@ -417,9 +433,8 @@ def get_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
-            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+    if not _is_patient_in_kader_scope(patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     return _enrich_patient(db, patient)
 
@@ -570,9 +585,8 @@ def get_longitudinal_history(
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
-            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+    if not _is_patient_in_kader_scope(patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     enriched_patient = _enrich_patient(db, patient)
     own_visits_orm = (
@@ -634,9 +648,8 @@ def get_patient_trend_for_kader_or_admin(
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
-            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+    if not _is_patient_in_kader_scope(patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     visits = db.query(Visit).filter(Visit.patient_id == patient_id).order_by(Visit.visit_date.asc(), Visit.id.asc()).all()
     points = []

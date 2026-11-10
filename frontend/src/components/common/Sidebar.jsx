@@ -13,6 +13,7 @@ import {
   HeartPulse,
   LogOut,
   BookOpen,
+  Calendar,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -62,6 +63,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/admin/reports", label: "Kelola Laporan Kunjungan", icon: FileText },
     { to: "/admin/manage-pasien", label: "Kelola Data Pasien", icon: Users },
     { to: "/admin/manage-kader", label: "Kelola Kader & Posyandu", icon: UserCheck },
+    { to: "/admin/jadwal-posyandu", label: "Manajemen Jadwal Posyandu", icon: Calendar },
     { to: "/admin/revisions", label: "Validasi Revisi Data", icon: FileEdit, count: pendingRevisions },
     { to: "/admin/audit-logs", label: "Audit Log Evaluator AI", icon: ShieldAlert },
     { to: "/admin/knowledge-chunks", label: "Koleksi Rujukan & Chunks RAG", icon: BookOpen },

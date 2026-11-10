@@ -43,9 +43,9 @@ def list_reports(
     )
 
     if current_user.role == UserRole.KADER and current_user.village_name:
-        query = query.filter(Patient.village_name == current_user.village_name)
+        query = query.filter(Patient.village_name.ilike(f"%{current_user.village_name.strip()}%"))
     elif village_name:
-        query = query.filter(Patient.village_name == village_name)
+        query = query.filter(Patient.village_name.ilike(f"%{village_name.strip()}%"))
 
     if status:
         query = query.filter(Report.status == status)
@@ -552,7 +552,7 @@ def validate_report_by_kader(
     patient = db.query(Patient).filter(Patient.id == report.patient_id).first()
 
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
+        if patient.village_name and current_user.village_name.strip().lower() not in patient.village_name.strip().lower() and patient.village_name.strip().lower() not in current_user.village_name.strip().lower():
             raise HTTPException(status_code=403, detail="Akses ditolak: Laporan ini milik Posyandu desa lain.")
 
     if val_req.status == ReportStatus.APPROVED:

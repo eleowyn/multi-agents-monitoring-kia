@@ -4,6 +4,7 @@ from app.models.visit import Visit, PhaseEnum
 from app.models.report import Report, ReportStatus
 from app.models.audit_log import AuditLog
 from app.models.revision import RevisionRequest, RevisionStatus
+from app.models.schedule import PosyanduSchedule, ScheduleStatus
 
 __all__ = [
     "User",
@@ -17,6 +18,8 @@ __all__ = [
     "ReportStatus",
     "AuditLog",
     "RevisionRequest",
-    "RevisionStatus"
+    "RevisionStatus",
+    "PosyanduSchedule",
+    "ScheduleStatus",
 ]
 

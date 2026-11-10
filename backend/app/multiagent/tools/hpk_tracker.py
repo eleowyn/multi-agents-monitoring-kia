@@ -98,11 +98,11 @@ def calculate_1000_hpk_status(
         exact_days = (v_date - b_date).days
 
     if norm_phase == "BAYI_BARU_LAHIR":
-        if exact_days is not None and 0 <= exact_days <= 28:
+        if exact_days is not None and exact_days >= 0:
             child_age_days = exact_days
         else:
             child_age_days = 7
-        child_age_months = 0
+        child_age_months = child_age_days // 30
     elif age_in_months is not None:
         child_age_months = max(0, int(age_in_months))
         if exact_days is not None and abs(exact_days - (child_age_months * 30)) <= 35:
@@ -134,7 +134,7 @@ def calculate_1000_hpk_status(
     else:
         phase_code = "BADUTA"
         phase_segment = "FASE_3_BADUTA"
-        phase_progress = round((min(730, max(29, child_age_days)) / 730.0) * 100, 1)
+        phase_progress = round(((min(730, max(29, child_age_days)) - 28) / 702.0) * 100, 1)
         if child_age_months < 6:
             phase_label = f"Fase 3: Baduta 1-24 Bulan ({child_age_months} Bulan • Masa ASI Eksklusif)"
             milestone = (

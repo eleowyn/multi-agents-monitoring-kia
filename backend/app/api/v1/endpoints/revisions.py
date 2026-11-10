@@ -114,7 +114,9 @@ def submit_revision_request(
 
     # Data Scoping: Pastikan kader melayani di desa yang sama
     if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
+        u_vill = current_user.village_name.strip().lower()
+        p_vill = (patient.village_name or "").strip().lower()
+        if p_vill and u_vill not in p_vill and p_vill not in u_vill:
             raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     # Cek jika sudah ada pengajuan pending untuk kunjungan ini

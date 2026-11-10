@@ -16,6 +16,15 @@ export const AuthProvider = ({ children }) => {
       } catch (e) {
         console.error("Error parsing user data", e);
       }
+      api
+        .get("/auth/me")
+        .then((res) => {
+          if (res.data) {
+            localStorage.setItem("user_data", JSON.stringify(res.data));
+            setUser(res.data);
+          }
+        })
+        .catch(() => {});
     }
     setLoading(false);
   }, []);

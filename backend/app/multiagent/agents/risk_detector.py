@@ -638,8 +638,9 @@ def detect_weight_faltering(longitudinal: List[Dict[str, Any]], visit_data: Dict
             )
         return result
 
-    prev_trend = longitudinal[-1].get("weight_trend_kms") if longitudinal else None
-    if visit_data.get("weight_trend_kms") == "TIDAK_NAIK" and prev_trend == "TIDAK_NAIK":
+    prev_trend = str(longitudinal[-1].get("weight_trend_kms") or "").strip().upper() if longitudinal else ""
+    curr_trend = str(visit_data.get("weight_trend_kms") or "").strip().upper()
+    if curr_trend in ("TIDAK_NAIK", "T") and prev_trend in ("TIDAK_NAIK", "T"):
         result.update({
             "is_faltering": True,
             "method": "KMS_TREND",

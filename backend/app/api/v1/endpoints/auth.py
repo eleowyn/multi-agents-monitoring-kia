@@ -50,7 +50,7 @@ def seed_default_users(db: Session):
             username="admin",
             email="admin@puskesmas-airmadidi.go.id",
             hashed_password=get_password_hash("admin123"),
-            full_name="Lana Admin Puskesmas",
+            full_name="Admin Puskesmas",
             role=UserRole.ADMIN,
             posyandu_name="Puskesmas Airmadidi",
             village_name="Kecamatan Airmadidi"
@@ -76,6 +76,11 @@ def seed_default_users(db: Session):
         print(" [SEED] Akun demo Dokter (dokter / dokter123) berhasil dibuat.")
     elif dokter_exist and "dr." in (dokter_exist.full_name or ""):
         dokter_exist.full_name = "Penanggung Jawab KIA"
+        db.commit()
+
+    admin_exist = db.query(User).filter(User.username == "admin").first()
+    if admin_exist and admin_exist.full_name == "Lana Admin Puskesmas":
+        admin_exist.full_name = "Admin Puskesmas"
         db.commit()
 
 
@@ -129,8 +134,14 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    updated = False
     if "dr." in (current_user.full_name or ""):
         current_user.full_name = current_user.full_name.replace("dr. ", "").replace("dr.", "").strip()
+        updated = True
+    if current_user.username == "admin" and current_user.full_name == "Lana Admin Puskesmas":
+        current_user.full_name = "Admin Puskesmas"
+        updated = True
+    if updated:
         try:
             db.add(current_user)
             db.commit()

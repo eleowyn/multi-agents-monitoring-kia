@@ -1,0 +1,263 @@
+/**
+ * Pemetaan resmi 14 titik Posyandu di 9 Kelurahan/Desa Kecamatan Airmadidi
+ * Sesuai poster resmi UPTD Puskesmas Airmadidi (Jadwal Posyandu November 2026).
+ */
+export const AIRMADIDI_VILLAGES = [
+  "Sukur",
+  "Airmadidi Atas",
+  "Sampiri",
+  "Tanggari",
+  "Airmadidi Bawah",
+  "Rap-Rap",
+  "Sarongsong Satu",
+  "Sarongsong Dua",
+  "Sawangan",
+];
+
+export const OFFICIAL_POSYANDU_BY_VILLAGE = {
+  Sukur: ["Kelurahan Sukur", "Kel. Sukur (Musafir)"],
+  "Airmadidi Atas": [
+    "Kel. Airmadidi Atas (SBY)",
+    "Kel. Airmadidi Atas (Lokon)",
+    "Kelurahan Airmadidi Atas",
+  ],
+  Sampiri: ["Desa Sampiri"],
+  Tanggari: ["Desa Tanggari"],
+  "Airmadidi Bawah": [
+    "Kelurahan Airmadidi Bawah",
+    "Kelurahan Airmadidi Bawah (Yordan)",
+    "Kelurahan Airmadidi Bawah (Inadukan)",
+  ],
+  "Rap-Rap": ["Kelurahan Rap-Rap"],
+  "Sarongsong Satu": ["Kelurahan Sarongsong I"],
+  "Sarongsong Dua": ["Kelurahan Sarongsong II"],
+  Sawangan: ["Desa Sawangan"],
+};
+
+export const ALL_OFFICIAL_POSYANDU = Object.values(OFFICIAL_POSYANDU_BY_VILLAGE).flat();
+
+export const DEFAULT_NOVEMBER_2026_SCHEDULES = [
+  {
+    id: 1,
+    village_name: "Sukur",
+    posyandu_name: "Kelurahan Sukur",
+    schedule_date: "2026-11-02",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-1 (Senin) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Sukur",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 2,
+    village_name: "Airmadidi Atas",
+    posyandu_name: "Kel. Airmadidi Atas (SBY)",
+    schedule_date: "2026-11-03",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-1 (Selasa) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Airmadidi Atas (SBY)",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 3,
+    village_name: "Sampiri",
+    posyandu_name: "Desa Sampiri",
+    schedule_date: "2026-11-04",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-1 (Rabu) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Desa Sampiri",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 4,
+    village_name: "Airmadidi Atas",
+    posyandu_name: "Kel. Airmadidi Atas (Lokon)",
+    schedule_date: "2026-11-09",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-2 (Senin) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Airmadidi Atas (Lokon)",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 5,
+    village_name: "Tanggari",
+    posyandu_name: "Desa Tanggari",
+    schedule_date: "2026-11-10",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-2 (Selasa) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Desa Tanggari",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 6,
+    village_name: "Airmadidi Bawah",
+    posyandu_name: "Kelurahan Airmadidi Bawah",
+    schedule_date: "2026-11-11",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-2 (Rabu) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Airmadidi Bawah",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 7,
+    village_name: "Rap-Rap",
+    posyandu_name: "Kelurahan Rap-Rap",
+    schedule_date: "2026-11-13",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-2 (Jumat) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Rap-Rap",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 8,
+    village_name: "Sarongsong Satu",
+    posyandu_name: "Kelurahan Sarongsong I",
+    schedule_date: "2026-11-16",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-3 (Senin) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Sarongsong I",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 9,
+    village_name: "Airmadidi Bawah",
+    posyandu_name: "Kelurahan Airmadidi Bawah (Yordan)",
+    schedule_date: "2026-11-17",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-3 (Selasa) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Airmadidi Bawah (Yordan)",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 10,
+    village_name: "Sarongsong Dua",
+    posyandu_name: "Kelurahan Sarongsong II",
+    schedule_date: "2026-11-18",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-3 (Rabu) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Sarongsong II",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 11,
+    village_name: "Sukur",
+    posyandu_name: "Kel. Sukur (Musafir)",
+    schedule_date: "2026-11-20",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-3 (Jumat) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Sukur (Musafir)",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 12,
+    village_name: "Airmadidi Atas",
+    posyandu_name: "Kelurahan Airmadidi Atas",
+    schedule_date: "2026-11-23",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-4 (Senin) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Kel. Airmadidi Atas",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 13,
+    village_name: "Sawangan",
+    posyandu_name: "Desa Sawangan",
+    schedule_date: "2026-11-25",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-4 (Rabu) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Desa Sawangan",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+  {
+    id: 14,
+    village_name: "Airmadidi Bawah",
+    posyandu_name: "Kelurahan Airmadidi Bawah (Inadukan)",
+    schedule_date: "2026-11-27",
+    start_time: "08:00",
+    end_time: "11:30",
+    routine_pattern: "Minggu ke-4 (Jumat) • 08.00 WITA",
+    service_agenda: "Penimbangan, Pengukuran Antropometri, Imunisasi, Vitamin A & ANC Ibu Hamil",
+    kader_name: "Kader Posyandu Airmadidi Bawah (Inadukan)",
+    status: "TERJADWAL",
+    notes: "Wajib Membawa FC Kartu Keluarga & Buku KIA",
+  },
+];
+
+export const formatScheduleDateIndo = (isoDate) => {
+  if (!isoDate) return "-";
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+export const parseScheduleDateParts = (isoDate) => {
+  if (!isoDate) return { dayName: "-", dayNum: "-", monthName: "-", year: "-" };
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return { dayName: "-", dayNum: "-", monthName: "-", year: "-" };
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Ags",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des",
+  ];
+  return {
+    dayName: days[d.getDay()],
+    dayNum: String(d.getDate()).padStart(2, "0"),
+    monthName: months[d.getMonth()],
+    year: String(d.getFullYear()),
+  };
+};
+
+

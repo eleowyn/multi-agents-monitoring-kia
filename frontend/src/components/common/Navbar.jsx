@@ -62,12 +62,15 @@ const Navbar = ({ onToggleSidebar }) => {
               </div>
               <div className="hidden sm:flex flex-col justify-center leading-tight">
                 <span className="text-xs font-bold text-heading truncate max-w-[200px]">
-                  {(user?.full_name || user?.username || (isKader ? "Kader Posyandu" : "Administrator")).replace("dr. ", "").replace("dr.", "")}
+                  {(user?.full_name || user?.username || (isKader ? "Kader Posyandu" : "Admin Puskesmas"))
+                    .replace("dr. ", "")
+                    .replace("dr.", "")
+                    .replace(/^Lana\s+/i, "")}
                 </span>
                 <span className="text-xs text-caption font-medium truncate max-w-[220px] mt-0.5">
                   {isKader
                     ? `${user?.posyandu_name || "Posyandu"} • ${user?.village_name || "Kec. Airmadidi"}`
-                    : `${user?.posyandu_name || "Puskesmas Airmadidi"} • ${user?.village_name || "Kec. Airmadidi"}`}
+                    : user?.posyandu_name || "Puskesmas Airmadidi"}
                 </span>
               </div>
             </div>

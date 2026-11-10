@@ -18,6 +18,7 @@ import ManageKader from "./pages/admin/ManageKader";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminRevisions from "./pages/admin/AdminRevisions";
 import ManageReports from "./pages/admin/ManageReports";
+import ManageJadwal from "./pages/admin/ManageJadwal";
 import AdminKnowledgeChunks from "./pages/admin/AdminKnowledgeChunks";
 import DoctorMonitoring from "./pages/doctor/DoctorMonitoring";
 
@@ -157,6 +158,14 @@ function App() {
             element={
               <ProtectedLayout allowedRole="ADMIN">
                 <ManageKader />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/jadwal-posyandu"
+            element={
+              <ProtectedLayout allowedRole="ADMIN">
+                <ManageJadwal />
               </ProtectedLayout>
             }
           />
