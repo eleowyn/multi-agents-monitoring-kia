@@ -12,7 +12,7 @@ from app.models.report import Report
 from app.models.revision import RevisionRequest
 from app.models.audit_log import AuditLog
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, LongitudinalHistoryResponse
-from app.schemas.admin import BulkDeleteRequest, PatientTrendPoint, PatientTrendResponse
+from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
 from app.models.user import User, UserRole
 from app.multiagent.tools.hpk_tracker import calculate_1000_hpk_status
@@ -635,45 +635,3 @@ def get_longitudinal_history(
         "child_visits": child_visits,
         "visits": own_visits_rich,
     }
-
-
-@router.get("/{patient_id}/trend", response_model=PatientTrendResponse)
-def get_patient_trend_for_kader_or_admin(
-    patient_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Riwayat pengukuran per kunjungan untuk grafik tren individu pasien (Kader & Admin)."""
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
-
-    if not _is_patient_in_kader_scope(patient, current_user):
-        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
-
-    visits = db.query(Visit).filter(Visit.patient_id == patient_id).order_by(Visit.visit_date.asc(), Visit.id.asc()).all()
-    points = []
-    for v in visits:
-        latest_report = max(v.reports, key=lambda r: r.id) if v.reports else None
-        points.append(PatientTrendPoint(
-            visit_date=str(v.visit_date),
-            phase=v.phase.value if hasattr(v.phase, "value") else str(v.phase),
-            age_in_months=v.age_in_months,
-            child_weight_kg=v.child_weight_kg,
-            child_length_cm=v.child_length_cm,
-            birth_weight_gram=v.birth_weight_gram,
-            birth_length_cm=v.birth_length_cm,
-            lila_cm=v.lila_cm,
-            hb_level=v.hb_level,
-            maternal_weight_kg=v.maternal_weight_kg,
-            overall_status=latest_report.overall_status if latest_report else None,
-        ))
-
-    p_type = patient.patient_type.value if hasattr(patient.patient_type, "value") else str(patient.patient_type)
-    return PatientTrendResponse(
-        patient_id=patient.id,
-        patient_name=patient.name,
-        patient_type=p_type,
-        village_name=patient.village_name,
-        points=points,
-    )
