@@ -180,6 +180,8 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
     plausibility = check_visit_plausibility(phase, visit_data)
     det_results["plausibility"] = plausibility
     points.append(f"Status 1.000 HPK: {hpk_status['summary_label']}.")
+    for w in hpk_status.get("warnings") or []:
+        points.append(f"Catatan data: {w}")
 
     if not plausibility.get("is_plausible", True):
         warnings = plausibility.get("warnings", [])
@@ -205,8 +207,10 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
                 points.append(f"Ukuran LiLA ibu normal ({lila} cm).")
 
         hb = visit_data.get("hb_level")
-        trimester = visit_data.get("trimester") or 1
-        if hb is not None:
+        trimester = visit_data.get("trimester") or hpk_status.get("trimester")
+        if hb is not None and not trimester:
+            points.append(f"Kadar Hb {hb} g/dL tidak dapat diklasifikasikan karena trimester/usia kehamilan belum diisi.")
+        if hb is not None and trimester:
             res_anemia = classify_maternal_anemia(float(hb), trimester=int(trimester))
             det_results["anemia"] = res_anemia
             risk_flags.extend(res_anemia["risk_flags"])
@@ -249,7 +253,7 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
             risk_flags.append({
                 "indicator": "LONGITUDINAL_MATERNAL_ANEMIA",
                 "flag": "ANEMIA_PERSISTEN_ANTAR_KUNJUNGAN",
-                "detail": "Kondisi Anemia ibu hamil bersifat persisten (Hb < 11,0 g/dL pada kunjungan sebelumnya dan saat ini).",
+                "detail": "Kondisi Anemia ibu hamil bersifat persisten (Hb di bawah ambang trimester pada kunjungan sebelumnya dan saat ini).",
             })
         if mat_trend.get("detail"):
             points.append(mat_trend["detail"])
@@ -272,7 +276,7 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
 
         if head_circ is not None:
             try:
-                res_hc = check_head_circumference(float(head_circ), age_in_months=0)
+                res_hc = check_head_circumference(float(head_circ), age_in_months=0, gender=patient_data.get("gender"))
                 det_results["head_circumference"] = res_hc
                 risk_flags.extend(res_hc["risk_flags"])
                 if res_hc["status"] != "NORMAL":
@@ -292,19 +296,24 @@ def _stage1_deterministic(state: AgentState) -> Tuple[List[Dict[str, Any]], Dict
 
     # ----------------- 3. FASE BADUTA (1 - 24 BULAN) -----------------
     elif phase == "BADUTA":
-        age_months = visit_data.get("age_in_months")
-        if age_months is None:
-            age_months = 12
+        # Usia diambil dari tanggal lahir (hpk_status); isian kader hanya dipakai bila tanggal lahir tidak ada
+        age_months = hpk_status.get("child_age_months") if hpk_status.get("data_available") else visit_data.get("age_in_months")
         weight = visit_data.get("child_weight_kg")
         length = visit_data.get("child_length_cm")
-        gender = patient_data.get("gender") or "L"
+        gender = patient_data.get("gender")
 
-        res_zscore = calculate_who_zscore(
-            gender=gender,
-            age_in_months=int(age_months),
-            weight_kg=float(weight) if weight else None,
-            length_cm=float(length) if length else None,
-        )
+        res_zscore = {"indicators": {}, "risk_flags": []}
+        if age_months is None or not gender:
+            points.append("Z-score WHO tidak dihitung: usia anak atau jenis kelamin belum tersedia.")
+        elif int(age_months) > 24:
+            points.append(f"Z-score WHO tidak dihitung: usia {age_months} bulan di luar periode 1.000 HPK (0-24 bulan).")
+        else:
+            res_zscore = calculate_who_zscore(
+                gender=gender,
+                age_in_months=int(age_months),
+                weight_kg=float(weight) if weight else None,
+                length_cm=float(length) if length else None,
+            )
         det_results["who_zscore"] = res_zscore
         risk_flags.extend(res_zscore["risk_flags"])
 
@@ -410,6 +419,12 @@ def _append_maternal_carryover_flags(
         points.append(f"Terdapat riwayat obstetri kehamilan risiko tinggi pada Ibu {m_name} ({kspr_cat}, Skor {kspr_score}).")
 
 
+def _is_anemic(hb: Any, trimester: Any) -> bool:
+    if trimester not in (1, 2, 3):
+        return False
+    return classify_maternal_anemia(float(hb), trimester=int(trimester))["status"] != "NORMAL"
+
+
 def detect_maternal_longitudinal_trend(
     longitudinal: List[Dict[str, Any]], visit_data: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -451,7 +466,8 @@ def detect_maternal_longitudinal_trend(
     prev_hb = prev.get("hb_level")
     if curr_hb is not None and prev_hb is not None:
         result["hb_delta"] = round(float(curr_hb) - float(prev_hb), 2)
-        if float(curr_hb) < 11.0 and float(prev_hb) < 11.0:
+        # Ambang anemia mengikuti trimester masing-masing kunjungan (TM2: 10,5 g/dL; TM1/3: 11,0 g/dL)
+        if _is_anemic(curr_hb, visit_data.get("trimester")) and _is_anemic(prev_hb, prev.get("trimester")):
             result["is_persistent_anemia"] = True
             notes.append(f"Anemia ibu hamil belum teratasi sejak kunjungan sebelumnya (Hb {prev_hb} g/dL -> {curr_hb} g/dL).")
 
@@ -472,12 +488,12 @@ def compute_zscore_longitudinal_delta(
 
     prev = baduta_visits[-1]
     prev_age = prev.get("age_in_months")
-    if prev_age is None:
+    if prev_age is None or not gender or not current_zscore.get("indicators"):
         return None
 
     try:
         prev_z = calculate_who_zscore(
-            gender=gender or "L",
+            gender=gender,
             age_in_months=int(prev_age),
             weight_kg=float(prev["child_weight_kg"]) if prev.get("child_weight_kg") else None,
             length_cm=float(prev["child_length_cm"]) if prev.get("child_length_cm") else None,
@@ -564,7 +580,7 @@ def build_visit_comparison_summary(
                     "previous": p_val,
                     "current": c_val,
                     "delta": f"{'+' if diff and diff > 0 else ''}{diff} g/dL" if diff is not None else "-",
-                    "status": "NORMAL" if (c_val and float(c_val) >= 11.0) else "ANEMIA",
+                    "status": ("-" if c_val is None else ("ANEMIA" if _is_anemic(c_val, visit_data.get("trimester")) else "NORMAL")),
                 })
         else:
             p_w = prev.get("child_weight_kg") or (round(float(prev["birth_weight_gram"]) / 1000.0, 2) if prev.get("birth_weight_gram") else None)

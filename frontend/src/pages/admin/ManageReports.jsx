@@ -723,9 +723,9 @@ const ManageReports = () => {
                 </button>
                 <button
                   onClick={() => {
-                    const vId = previewReport.visit_id || previewReport.id;
+                    const reportId = previewReport.id;
                     setPreviewReport(null);
-                    navigate(`/kader/validasi-laporan/${vId}`);
+                    navigate(`/kader/validasi-laporan/${reportId}`);
                   }}
                   className="btn-interactive inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-accent-sky hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-xl text-xs font-semibold border border-sky-200 dark:border-sky-800/50 cursor-pointer"
                 >

@@ -29,7 +29,7 @@ class RecentValidationItem(BaseModel):
 class RagMetrics(BaseModel):
     total_recommendations: int
     verified_recommendations: int
-    grounding_rate: float
+    grounding_rate: Optional[float] = None  # null bila belum ada rekomendasi terverifikasi
     active_sources: List[str]
 
 
@@ -45,7 +45,9 @@ class PipelineNode(BaseModel):
 
 class PipelineStatus(BaseModel):
     nodes: List[PipelineNode]
-    chroma_chunks_count: int
+    chroma_chunks_count: Optional[int] = None   # null bila ChromaDB tidak terhubung
+    chroma_status: str = "TIDAK_TERHUBUNG"      # TERHUBUNG | KOSONG | TIDAK_TERHUBUNG
+    llm_status: str = "TIDAK_TERSEDIA"          # TERSEDIA | TIDAK_TERSEDIA
 
 
 class MonthlyTrendPoint(BaseModel):
@@ -75,6 +77,7 @@ class PatientTrendResponse(BaseModel):
     patient_name: str
     patient_type: str
     village_name: Optional[str] = None
+    hpk_status: Optional[Dict[str, Any]] = None
     points: List[PatientTrendPoint]
 
 

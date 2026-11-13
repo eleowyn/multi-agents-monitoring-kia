@@ -1,16 +1,15 @@
 import os
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
-from app.models.patient import Patient, PatientType
+from app.models.patient import Patient
 from app.models.visit import Visit
-from app.models.report import Report, ReportStatus
+from app.models.report import Report
 from app.models.revision import RevisionRequest, RevisionStatus
 from app.api.v1.endpoints.auth import get_current_user
 from app.multiagent.rag.ingest import get_all_knowledge_chunks
@@ -42,106 +41,78 @@ def get_doctor_monitoring_summary(
     Menampilkan ringkasan monitoring klinis Dokter Puskesmas Airmadidi:
     - Agregat prevalensi kasus stunting, wasting, KEK, anemia, KSPR tinggi.
     - Jumlah permohonan revisi laporan kader yang menunggu persetujuan dokter.
-    - Rata-rata skor kepuasan kader (CSAT).
     - Daftar rekam pasien risiko tinggi untuk tindak lanjut rujukan.
     """
-    p_query = db.query(Patient)
-    v_query = db.query(Visit).join(Patient, Visit.patient_id == Patient.id)
-    r_query = db.query(Report).join(Patient, Report.patient_id == Patient.id)
+    from app.services import aggregates as agg
 
+    all_patients = db.query(Patient).all()
     target_pos = posyandu or posyandu_name
     if target_pos and target_pos not in ("Semua Posyandu", "Semua", "", "None"):
-        # Ekstrak kata kunci inti nama posyandu / desa
+        # Opsi berbentuk "Posyandu Mawar (Airmadidi Atas)": cocokkan desa persis atau nama posyandu persis
         clean_key = target_pos.split("(")[0].strip()
         sub_key = target_pos.split("(")[1].replace(")", "").strip() if "(" in target_pos else clean_key
-        pos_filter = or_(
-            Patient.posyandu_name == target_pos,
-            Patient.posyandu_name.ilike(f"%{clean_key}%"),
-            Patient.village_name.ilike(f"%{clean_key}%"),
-            Patient.village_name.ilike(f"%{sub_key}%")
-        )
-        p_query = p_query.filter(pos_filter)
-        v_query = v_query.filter(pos_filter)
-        r_query = r_query.filter(pos_filter)
+        patients = [
+            p for p in all_patients
+            if agg.same_village(p.village_name, sub_key)
+            or ((p.posyandu_name or "").strip().lower() in (clean_key.lower(), target_pos.strip().lower()))
+        ]
+    else:
+        patients = all_patients
     if village_name and village_name not in ("Semua Desa", "Semua", "", "None"):
-        p_query = p_query.filter(Patient.village_name == village_name)
-        v_query = v_query.filter(Patient.village_name == village_name)
-        r_query = r_query.filter(Patient.village_name == village_name)
+        patients = [p for p in patients if agg.same_village(p.village_name, village_name)]
+    pids = {p.id for p in patients}
 
-    total_patients = p_query.count()
-    total_visits = v_query.count()
+    total_patients = len(patients)
+    total_visits = db.query(Visit).filter(Visit.patient_id.in_(pids)).count() if pids else 0
+    reports = [r for r in db.query(Report).all() if r.patient_id in pids]
+    reports_by_pid = agg.index_by_patient(reports)
+    children_by_mother = agg.children_index(all_patients)
 
-    reports = r_query.order_by(Report.id.desc()).all()
-    risky_reports = [r for r in reports if r.overall_status != "KONDISI_BAIK"]
-
-    severe_stunting = 0
-    stunting = 0
-    wasting = 0
-    kek = 0
-    anemia = 0
-    high_kspr = 0
-
-    ratings = []
+    # Hitungan per pasien dari laporan terakhir (bukan per laporan), sama dengan dashboard admin
+    severe_stunting = stunting = wasting = underweight = kek = anemia = kek_or_anemia = high_kspr = 0
     risky_patient_cases = []
+    for p in patients:
+        r = agg.latest_report(reports_by_pid.get(p.id, []), approved_only=False)
+        if not r:
+            continue
+        flags = [f.get("flag", "") for f in (r.risk_flags or []) if isinstance(f, dict)]
+        flag_set = set(flags)
+        cls = agg.classify_patient(p, r, children_by_mother)
+        severe_stunting += int("RISIKO_STUNTING_BERAT" in flag_set)
+        stunting += int("RISIKO_STUNTING" in flag_set)
+        wasting += int(bool(flag_set & {"RISIKO_GIZI_KURANG", "RISIKO_GIZI_BURUK"}))
+        underweight += int(bool(flag_set & {"RISIKO_UNDERWEIGHT", "RISIKO_UNDERWEIGHT_BERAT"}))
+        kek += int(cls["kek"])
+        anemia += int(cls["anemia"])
+        kek_or_anemia += int(cls["kek"] or cls["anemia"])
+        high_kspr += int(bool(flag_set & {"RISIKO_KEHAMILAN_TINGGI_KRT", "RISIKO_KEHAMILAN_SANGAT_TINGGI_KRST"}))
 
-    for r in reports:
-        final_json = r.final_report_json or {}
-        # hitung rating jika ada
-        rating_val = final_json.get("kader_rating")
-        if rating_val:
-            ratings.append(float(rating_val))
-
-        raw_flags = r.risk_flags or []
-        flags = []
-        for f in raw_flags:
-            if isinstance(f, dict):
-                flags.append(f.get("flag", "") or f.get("indicator", ""))
-            elif isinstance(f, str):
-                flags.append(f)
-
-        if any("STUNTING_BERAT" in fl or "SEVERELY_STUNTED" in fl for fl in flags):
-            severe_stunting += 1
-        elif any("STUNTING" in fl for fl in flags):
-            stunting += 1
-
-        if any("GIZI_BURUK" in fl or "WASTING" in fl or "UNDERWEIGHT" in fl for fl in flags):
-            wasting += 1
-        if any("KEK" in fl for fl in flags):
-            kek += 1
-        if any("ANEMIA" in fl for fl in flags):
-            anemia += 1
-        if any("KSPR" in fl or "KRST" in fl or "KRT" in fl for fl in flags):
-            high_kspr += 1
-
-        if r.overall_status != "KONDISI_BAIK" or len(flags) > 0:
+        if r.overall_status != "KONDISI_BAIK" or flags:
             v = r.visit
-            p = r.patient
-            conf = final_json.get("confidence", {})
+            conf = (r.final_report_json or {}).get("confidence", {})
             risky_patient_cases.append({
                 "report_id": r.id,
                 "visit_id": r.visit_id,
                 "patient_id": r.patient_id,
-                "patient_name": p.name if p else "-",
-                "nik": p.nik if p else "-",
-                "gender": (p.gender.value if hasattr(p.gender, "value") else str(p.gender)) if p and p.gender else "-",
+                "patient_name": p.name,
+                "nik": p.nik,
+                "gender": (p.gender.value if hasattr(p.gender, "value") else str(p.gender)) if p.gender else "-",
                 "phase": v.phase.value if (v and hasattr(v.phase, "value")) else str(v.phase if v else "-"),
                 "visit_date": str(v.visit_date) if v else "-",
-                "village_name": p.village_name if p else "-",
-                "posyandu_name": p.posyandu_name if (p and p.posyandu_name) else (p.village_name if p else "-"),
+                "village_name": p.village_name or "-",
+                "posyandu_name": p.posyandu_name or p.village_name or "-",
                 "overall_status": r.overall_status,
                 "risk_flags": flags,
-                "confidence_score": conf.get("confidence_score", 92.0),
-                "confidence_label": conf.get("confidence_label", "TINGGI"),
+                "confidence_score": conf.get("confidence_score"),
                 "status": r.status.value if hasattr(r.status, "value") else str(r.status),
             })
+    risky_patient_cases.sort(key=lambda x: x["report_id"], reverse=True)
 
     pending_revs_count = (
         db.query(RevisionRequest)
         .filter(RevisionRequest.status == RevisionStatus.PENDING)
         .count()
     )
-
-    avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
 
     posyandu_db = [r[0] for r in db.query(Patient.posyandu_name).filter(Patient.posyandu_name.isnot(None)).distinct().all() if r[0]]
     all_9_posyandus = [
@@ -167,13 +138,13 @@ def get_doctor_monitoring_summary(
         "severe_stunting_count": severe_stunting,
         "stunting_count": stunting,
         "wasting_count": wasting,
+        "underweight_count": underweight,
         "kek_count": kek,
         "anemia_count": anemia,
+        "kek_or_anemia_count": kek_or_anemia,
         "kspr_high_risk_count": high_kspr,
         "high_kspr_count": high_kspr,
         "pending_revisions_count": pending_revs_count,
-        "average_kader_rating": avg_rating,
-        "total_ratings_count": len(ratings),
     }
 
     return {
@@ -341,6 +312,8 @@ def get_report_rag_citations(
         query = query.filter(Report.id == report_id)
     reports = query.limit(limit).all()
 
+    from app.api.v1.endpoints.reports import _mark_legacy_quotes
+
     citations_list = []
     for r in reports:
         p = r.patient
@@ -348,21 +321,24 @@ def get_report_rag_citations(
         recs = r.recommendations or []
         if isinstance(recs, dict):
             recs = recs.get("recommendations", [])
+        recs = _mark_legacy_quotes(recs)
 
         for rec in recs:
             if not isinstance(rec, dict):
                 continue
             cit = rec.get("citation") or {}
-            if isinstance(cit, str):
-                cit = {"source": cit, "section": rec.get("category", "Pedoman Klinis"), "page": 1}
+            if not isinstance(cit, dict):
+                cit = {}
 
-            src = cit.get("source") or "Buku KIA 2024"
-            sec = cit.get("section") or cit.get("chapter") or rec.get("category") or "Pedoman Standar"
-            quote = rec.get("evidence_quote") or rec.get("recommendation_text") or cit.get("snippet") or "-"
+            # Hanya kutipan chunk asli yang ditampilkan sebagai kutipan; teks saran AI tidak dijadikan kutipan
+            src = cit.get("source")
+            sec = cit.get("section")
+            quote = rec.get("evidence_quote")
+            evidence_status = rec.get("evidence_status") or "TANPA_KUTIPAN"
 
             if search:
                 s_lower = search.lower()
-                blob = f"{r.id} {p.name if p else ''} {p.nik if p else ''} {src} {sec} {quote} {rec.get('title', '')}".lower()
+                blob = f"{r.id} {p.name if p else ''} {p.nik if p else ''} {src or ''} {sec or ''} {quote or ''} {rec.get('title', '')}".lower()
                 if s_lower not in blob:
                     continue
 
@@ -382,8 +358,10 @@ def get_report_rag_citations(
                 "evidence_quote": quote,
                 "citation_source": src,
                 "citation_section": sec,
-                "citation_page": cit.get("page", 1),
+                "citation_page": cit.get("page"),
                 "chunk_id": cit.get("chunk_id"),
+                "evidence_status": evidence_status,
+                "recommendation_text": rec.get("recommendation_text"),
                 "overall_status": r.overall_status,
                 "status": r.status.value if hasattr(r.status, "value") else str(r.status),
             })

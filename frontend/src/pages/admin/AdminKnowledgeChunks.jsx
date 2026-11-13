@@ -27,6 +27,7 @@ const AdminKnowledgeChunks = () => {
   // Tab 2: Raw Chunks Library state
   const [chunks, setChunks] = useState([]);
   const [chunksTotal, setChunksTotal] = useState(0);
+  const [storeStatus, setStoreStatus] = useState(null);
   const [chunksLoading, setChunksLoading] = useState(false);
   const [chunkSearch, setChunkSearch] = useState("");
   const [chunkSource, setChunkSource] = useState("");
@@ -69,7 +70,8 @@ const AdminKnowledgeChunks = () => {
       if (chunkSource) params.source = chunkSource;
       const res = await api.get("/doctor/knowledge-chunks", { params });
       setChunks(res.data?.chunks || []);
-      setChunksTotal(res.data?.total || 0);
+      setChunksTotal(res.data?.total_chunks || 0);
+      setStoreStatus(res.data?.store_status || null);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -217,17 +219,30 @@ const AdminKnowledgeChunks = () => {
                         </td>
                         <td className="py-2.5 px-3 space-y-0.5">
                           <p className="font-semibold text-heading truncate">
-                            {item.citation_source ? item.citation_source.replace(/\.md$/, "") : "Buku KIA 2024"}
+                            {item.citation_source ? item.citation_source.replace(/\.md$/, "") : "Tanpa sumber dokumen"}
                           </p>
                           <p className="text-[11px] text-caption truncate">{item.citation_section}</p>
-                          {item.citation_page && (
-                            <p className="text-[10px] text-dim">Halaman/Bab {item.citation_page}</p>
+                          {item.citation_page && item.citation_page !== "-" && (
+                            <p className="text-[10px] text-dim">Halaman PDF {item.citation_page}</p>
                           )}
                         </td>
                         <td className="py-2.5 px-3">
-                          <p className="text-[11px] text-body leading-relaxed bg-subtle p-2 rounded border border-line line-clamp-3">
-                            "{item.evidence_quote}"
-                          </p>
+                          {item.evidence_quote && item.evidence_status !== "TANPA_KUTIPAN" ? (
+                            <>
+                              <p className="text-[10px] font-semibold text-caption mb-1">
+                                {{
+                                  CHUNK_DOKUMEN: "Kutipan asli dokumen",
+                                  RINGKASAN_TERKURASI: "Ringkasan terkurasi peneliti",
+                                  KUTIPAN_VERSI_LAMA: "Kutipan versi lama (belum cocok dengan chunk)",
+                                }[item.evidence_status] || "Kutipan"}
+                              </p>
+                              <p className="text-[11px] text-body leading-relaxed bg-subtle p-2 rounded border border-line line-clamp-3">
+                                "{item.evidence_quote}"
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[11px] text-caption">Tanpa kutipan dokumen</p>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right">
                           <Link
@@ -290,6 +305,13 @@ const AdminKnowledgeChunks = () => {
           <div className="flex items-center justify-between text-xs text-caption">
             <span>Menampilkan {chunks.length} potongan pengetahuan {chunksTotal > 0 && `dari total ${chunksTotal}`}</span>
           </div>
+          {storeStatus && storeStatus !== "CHROMADB" && (
+            <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              {storeStatus === "CHROMADB_KOSONG"
+                ? "ChromaDB belum berisi chunk. Jalankan: python -m app.multiagent.rag.ingest --rebuild"
+                : "ChromaDB tidak dapat dibaca. Daftar chunk tidak ditampilkan."}
+            </p>
+          )}
 
           {/* Chunks Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -313,7 +335,7 @@ const AdminKnowledgeChunks = () => {
                       {chunk.source ? chunk.source.replace(/\.md$/, "") : "Dokumen"}
                     </span>
                     <span className="text-[11px] text-dim font-mono">
-                      Hal. {chunk.page || "-"}
+                      {chunk.origin === "CURATED_SUMMARY" ? "Ringkasan terkurasi" : chunk.page && chunk.page !== "-" ? `Halaman PDF ${chunk.page}` : "Halaman tidak tercatat"}
                     </span>
                   </div>
 
@@ -342,7 +364,10 @@ const AdminKnowledgeChunks = () => {
             <div className="flex items-center justify-between p-4 border-b border-line">
               <div>
                 <p className="text-xs text-caption font-semibold">
-                  {selectedChunk.source} • Halaman/Bab {selectedChunk.page || "-"}
+                  {selectedChunk.source} •{" "}
+                  {selectedChunk.origin === "CURATED_SUMMARY"
+                    ? `Ringkasan terkurasi peneliti, disusun dari ${selectedChunk.derived_from || "-"} (bukan kutipan langsung)`
+                    : selectedChunk.page && selectedChunk.page !== "-" ? `Halaman PDF ${selectedChunk.page}` : "Halaman tidak tercatat"}
                 </p>
                 <h3 className="text-sm sm:text-base font-bold text-heading">
                   {selectedChunk.chapter || "Rincian Potongan Dokumen"}

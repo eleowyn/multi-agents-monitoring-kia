@@ -7,7 +7,6 @@ import {
   Printer,
   RefreshCw,
   ChevronRight,
-  Star,
 } from "lucide-react";
 
 /* ─── Helper Penerjemah Label Indikator Medis ─── */
@@ -146,9 +145,9 @@ const DoctorMonitoring = () => {
     stunting_severe_count: summaryData?.metrics?.severe_stunting_count || 0,
     kek_count: summaryData?.metrics?.kek_count || 0,
     anemia_count: summaryData?.metrics?.anemia_count || 0,
+    kek_or_anemia_count: summaryData?.metrics?.kek_or_anemia_count || 0,
     kspr_high_risk_count: summaryData?.metrics?.high_kspr_count || 0,
     pending_revisions_count: summaryData?.metrics?.pending_revisions || 0,
-    average_kader_rating: null,
   };
 
   const riskyPatients = summaryData?.risky_patients || [];
@@ -217,7 +216,7 @@ const DoctorMonitoring = () => {
       </div>
 
       {/* ─── 6 Stat Metric Cards ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="p-4 bg-card border border-line rounded-2xl flex flex-col justify-between space-y-1 shadow-2xs">
           <p className="text-xs text-caption font-medium min-h-[1.5rem] flex items-center">Total Pasien Terdata</p>
           <p className="text-2xl font-bold text-heading">{stats.total_patients}</p>
@@ -238,7 +237,7 @@ const DoctorMonitoring = () => {
 
         <div className="p-4 bg-card border border-line rounded-2xl flex flex-col justify-between space-y-1 shadow-2xs">
           <p className="text-xs text-caption font-medium min-h-[1.5rem] flex items-center">Bumil KEK / Anemia</p>
-          <p className="text-2xl font-bold text-heading">{stats.kek_count + stats.anemia_count}</p>
+          <p className="text-2xl font-bold text-heading">{stats.kek_or_anemia_count ?? 0}</p>
           <p className="text-xs text-dim">LiLA &lt; 23.5 / Hb &lt; 11</p>
         </div>
 
@@ -252,20 +251,6 @@ const DoctorMonitoring = () => {
           </p>
         </div>
 
-        <div className="p-4 bg-card border border-line rounded-2xl flex flex-col justify-between space-y-1 shadow-2xs">
-          <p className="text-xs text-caption font-medium min-h-[1.5rem] flex items-center">Kepuasan Kader AI</p>
-          <div className="flex items-center gap-1.5">
-            <p className="text-2xl font-bold text-heading">
-              {stats.average_kader_rating ? Number(stats.average_kader_rating).toFixed(1) : "-"}
-            </p>
-            {stats.average_kader_rating ? (
-              <Star className="w-4 h-4 text-amber-500 fill-current" />
-            ) : null}
-          </div>
-          <p className="text-xs text-dim">
-            {stats.average_kader_rating ? "Skala 1.0 - 5.0 (CSAT)" : "Belum ada penilaian"}
-          </p>
-        </div>
       </div>
 
       {/* ─── Daftar Kasus Berisiko Aktif ─── */}

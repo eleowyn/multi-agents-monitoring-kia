@@ -112,37 +112,50 @@ def check_bblr_and_gestation(
     }
 
 
-def check_head_circumference(head_circ_cm: float, age_in_months: int = 0) -> Dict[str, Any]:
+# Batas -2 SD dan +2 SD lingkar kepala saat lahir, tabel Buku KIA 2024 (Permenkes No. 2 Tahun 2020)
+HC_BIRTH_LIMITS = {"L": (32.0, 37.9), "P": (31.4, 36.3)}
+
+
+def check_head_circumference(head_circ_cm: float, age_in_months: int = 0, gender: Optional[str] = None) -> Dict[str, Any]:
     """
-    Evaluasi Lingkar Kepala (Neonatus & Baduta) berbasis Buku KIA 2024 / Standar WHO.
-    - Ambang batas lahir (Neonatus): 33 - 37 cm.
-    - < 33 cm: Mikrosefali (Risiko gangguan perkembangan otak / Z-Score < -2 SD).
-    - > 37 cm: Makrosefali (Risiko hidrosefalus / penumpukan cairan / Z-Score > +2 SD).
+    Evaluasi lingkar kepala saat lahir menurut tabel Buku KIA 2024 (Permenkes No. 2/2020):
+    mikrosefali < -2 SD, normal -2 SD s.d. +2 SD, makrosefali > +2 SD (batas berbeda untuk laki-laki dan perempuan).
+    Tanpa jenis kelamin, lingkar kepala tidak diklasifikasikan.
     """
     if head_circ_cm <= 15.0 or head_circ_cm >= 65.0:
         raise ValueError(f"Nilai lingkar kepala {head_circ_cm} cm di luar rentang fisiologis masuk akal.")
 
     risk_flags = []
+    g = str(gender or "").upper()[:1]
+    g = {"M": "L", "F": "P"}.get(g, g)
+    if g not in HC_BIRTH_LIMITS:
+        return {
+            "head_circumference_cm": head_circ_cm,
+            "status": "TIDAK_DINILAI",
+            "status_label": "Tidak dinilai: jenis kelamin belum tercatat",
+            "risk_flags": [],
+        }
+    low, high = HC_BIRTH_LIMITS[g]
     status = "NORMAL"
-    label = "Normal (33 - 37 cm)"
+    label = f"Normal ({low} - {high} cm)"
 
-    if head_circ_cm < 33.0:
+    if head_circ_cm < low:
         status = "MIKROSEFALI"
-        label = "Mikrosefali (< 33 cm)"
+        label = f"Mikrosefali (< {low} cm, < -2 SD)"
         risk_flags.append({
             "indicator": "LINGKAR_KEPALA",
             "flag": "MIKROSEFALI",
             "head_circumference_cm": head_circ_cm,
-            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (< 33 cm) mengindikasikan mikrosefali dan memerlukan pemantauan stimulasi serta rujukan dokter puskesmas."
+            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (< {low} cm, di bawah -2 SD Buku KIA) mengindikasikan mikrosefali; rujuk ke tenaga kesehatan Puskesmas."
         })
-    elif head_circ_cm > 37.0:
+    elif head_circ_cm > high:
         status = "MAKROSEFALI"
-        label = "Makrosefali (> 37 cm)"
+        label = f"Makrosefali (> {high} cm, > +2 SD)"
         risk_flags.append({
             "indicator": "LINGKAR_KEPALA",
             "flag": "MAKROSEFALI",
             "head_circumference_cm": head_circ_cm,
-            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (> 37 cm) mengindikasikan makrosefali (risiko hidrosefalus) dan memerlukan pemeriksaan medis lanjutan."
+            "detail": f"Lingkar kepala saat lahir {head_circ_cm} cm (> {high} cm, di atas +2 SD Buku KIA) mengindikasikan makrosefali; rujuk ke tenaga kesehatan Puskesmas."
         })
 
     return {

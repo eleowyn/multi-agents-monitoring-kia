@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -14,9 +15,23 @@ def test_1000_hpk_calculator():
     assert hpk_mother["progress_percent"] == 14.0
     assert hpk_mother["remaining_days"] == 860
 
-    hpk_nb = calculate_1000_hpk_status(patient_type="CHILD", phase="BAYI_BARU_LAHIR")
+    # Trimester saja -> estimasi titik tengah, ditandai sebagai estimasi
+    assert hpk_mother["is_estimated"] is True
+
+    # Tanpa tanggal lahir/umur -> tidak ada angka karangan
+    hpk_unknown = calculate_1000_hpk_status(patient_type="CHILD", phase="BAYI_BARU_LAHIR")
+    assert hpk_unknown["hpk_day"] is None
+    assert hpk_unknown["data_available"] is False
+
+    hpk_nb = calculate_1000_hpk_status(
+        patient_type="CHILD", phase="BAYI_BARU_LAHIR",
+        birth_date=date(2026, 1, 1), visit_date=date(2026, 1, 8),
+    )
     assert hpk_nb["hpk_day"] == 277
     assert hpk_nb["remaining_days"] == 723
+
+    # Mother: minggu kehamilan x 7
+    assert calculate_1000_hpk_status(patient_type="MOTHER", phase="IBU_HAMIL", gestational_age_weeks=30)["hpk_day"] == 210
 
     hpk_baduta = calculate_1000_hpk_status(patient_type="CHILD", phase="BADUTA", age_in_months=12)
     assert hpk_baduta["hpk_day"] == 635
@@ -123,7 +138,7 @@ def test_1000_hpk_graduation_milestone_and_compliance():
     cp_stunting = build_comprehensive_care_plan(
         phase="BADUTA",
         visit_data={"age_in_months": 24, "child_weight_kg": 9.2, "child_length_cm": 78.5},
-        risk_flags=[{"flag": "STUNTING_BERAT", "detail": "PB/U < -3 SD"}],
+        risk_flags=[{"flag": "RISIKO_STUNTING_BERAT", "detail": "PB/U < -3 SD"}],
     )
     grad_stunting = cp_stunting["graduation_package"]
     assert grad_stunting["graduation_status"] == "PERHATIAN_KHUSUS_STUNTING"
@@ -134,7 +149,7 @@ def test_1000_hpk_graduation_milestone_and_compliance():
     state_grad = {
         "phase": "BADUTA",
         "visit_data": {"age_in_months": 24, "child_weight_kg": 9.5, "child_length_cm": 80.0},
-        "risk_flags": [{"flag": "STUNTING_RINGAN", "detail": "PB/U -2.2 SD"}],
+        "risk_flags": [{"flag": "RISIKO_STUNTING", "detail": "PB/U -2.2 SD"}],
         "deterministic_results": {"hpk_status": {"is_graduation_milestone": True, "hpk_day": 1000}},
         "kader_feedback": None,
     }

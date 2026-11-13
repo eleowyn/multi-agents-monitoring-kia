@@ -142,12 +142,12 @@ def build_maternal_history(db: Session, patient: Patient) -> Optional[Dict[str, 
             history["mother_name"] = mother.name
             history["mother_nik"] = mother.nik
 
-        m_visits = (
-            db.query(Visit)
-            .filter(Visit.patient_id == patient.mother_id)
-            .order_by(Visit.visit_date.asc())
-            .all()
-        )
+        # Hanya kunjungan kehamilan anak ini (sampai tanggal lahirnya). Kunjungan ibu
+        # setelah anak lahir, termasuk kehamilan berikutnya, tidak diturunkan ke anak ini.
+        m_query = db.query(Visit).filter(Visit.patient_id == patient.mother_id)
+        if patient.birth_date:
+            m_query = m_query.filter(Visit.visit_date <= patient.birth_date)
+        m_visits = m_query.order_by(Visit.visit_date.asc()).all()
         history["maternal_visits_count"] = len(m_visits)
 
         lilas = [v.lila_cm for v in m_visits if v.lila_cm is not None]

@@ -742,9 +742,10 @@ const DataPasien = () => {
                           <button
                             onClick={() => {
                               setSelectedLongitudinal(null);
-                              navigate(`/kader/validasi-laporan/${cv.id}`);
+                              navigate(`/kader/validasi-laporan/${cv.report_id}`);
                             }}
-                            className="btn-interactive inline-flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-sky-700 dark:text-sky-300 rounded-lg text-xs font-semibold border border-line transition-colors cursor-pointer"
+                            disabled={!cv.report_id}
+                            className="btn-interactive inline-flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-sky-700 dark:text-sky-300 rounded-lg text-xs font-semibold border border-line transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Buka lembar laporan KIA kunjungan ini"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />

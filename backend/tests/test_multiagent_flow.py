@@ -8,6 +8,10 @@ from app.multiagent.graph import build_kia_multiagent_graph
 from app.multiagent.rag.ingest import ingest_knowledge_base
 from app.multiagent.rag.retriever import retrieve_clinical_guidelines
 from app.services.pdf_service import generate_visit_report_pdf
+from app.core.config import settings
+
+# Ingest memakai embedding Gemini; tanpa API key pengujian ini tidak bisa dijalankan.
+pytestmark = pytest.mark.skipif(not settings.GEMINI_API_KEY, reason="Butuh GEMINI_API_KEY untuk embedding ChromaDB")
 
 
 @pytest.fixture(scope="module")

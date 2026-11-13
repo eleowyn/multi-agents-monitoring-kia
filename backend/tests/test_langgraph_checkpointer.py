@@ -10,7 +10,7 @@ def test_langgraph_stateful_checkpoint_persistence():
     initial_state = {
         "patient_id": 99,
         "visit_id": 99,
-        "patient_data": {"name": "Balita Checkpointer", "nik": "7106000000000099", "village_name": "Airmadidi Atas"},
+        "patient_data": {"name": "Balita Checkpointer", "nik": "7106000000000099", "village_name": "Airmadidi Atas", "gender": "L"},
         "visit_data": {"phase": "BADUTA", "age_in_months": 14, "child_weight_kg": 7.0, "child_length_cm": 68.0},
         "phase": "BADUTA",
         "longitudinal_history": [],

@@ -1,31 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
-from datetime import datetime, date
-from typing import List, Optional, Dict, Any
+from datetime import date
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.patient import Patient
+from app.models.patient import Patient, PatientType
 from app.models.visit import Visit
 from app.models.report import Report, ReportStatus
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.api.v1.endpoints.auth import get_current_user
+from app.services import aggregates as agg
 
 router = APIRouter()
-
-
-def _build_kader_scope_filter(current_user: User):
-    kader_filters = []
-    if current_user.village_name:
-        v_clean = current_user.village_name.strip()
-        kader_filters.append(Patient.village_name == v_clean)
-        kader_filters.append(Patient.village_name.ilike(f"%{v_clean}%"))
-    if current_user.posyandu_name:
-        p_clean = current_user.posyandu_name.strip()
-        kader_filters.append(Patient.posyandu_name == p_clean)
-        kader_filters.append(Patient.posyandu_name.ilike(f"%{p_clean}%"))
-    return or_(*kader_filters) if kader_filters else None
 
 
 class PriorityPatientItem(BaseModel):
@@ -82,192 +69,100 @@ def get_kader_dashboard_summary(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Menghasilkan ringkasan operasional dan radar deteksi risiko tinggi
-    khusus untuk wilayah kerja Posyandu Kader yang sedang login.
+    Ringkasan operasional dan radar pasien berisiko untuk wilayah kerja kader yang login.
+    Hitungan memakai app.services.aggregates (sama dengan dashboard admin).
     """
-    posyandu = current_user.posyandu_name or "Posyandu Mawar"
-    village = current_user.village_name or "Airmadidi Atas"
+    posyandu = current_user.posyandu_name or "-"
+    village = current_user.village_name or "-"
 
-    # Base query pasien wilayah kader
-    scope_cond = _build_kader_scope_filter(current_user) if current_user.role == UserRole.KADER else None
+    scope_ids = agg.scoped_patient_ids(db, current_user)
+    all_patients = db.query(Patient).all()
+    patients = [p for p in all_patients if scope_ids is None or p.id in scope_ids]
+    pids = {p.id for p in patients}
+    reports = [r for r in db.query(Report).all() if r.patient_id in pids]
+    visits = [v for v in db.query(Visit).all() if v.patient_id in pids]
 
-    patient_q = db.query(Patient)
-    if scope_cond is not None:
-        patient_q = patient_q.filter(scope_cond)
+    mothers = [p for p in patients if p.patient_type == PatientType.MOTHER]
+    children = [p for p in patients if p.patient_type == PatientType.CHILD]
 
-    total_patients = patient_q.count()
-    total_mothers = patient_q.filter(Patient.patient_type == "MOTHER").count()
-    total_children = patient_q.filter(Patient.patient_type == "CHILD").count()
-
-    # Hitung distribusi 3 fase
+    # Distribusi fase: anak tanpa tanggal lahir tidak dimasukkan ke fase mana pun
     today = date.today()
-    newborns_count = 0
-    toddlers_count = 0
-    for child in patient_q.filter(Patient.patient_type == "CHILD").all():
-        if child.birth_date:
-            age_days = (today - child.birth_date).days
-            if age_days <= 28:
-                newborns_count += 1
-            else:
-                toddlers_count += 1
-        else:
-            toddlers_count += 1
+    newborns_count = sum(1 for c in children if c.birth_date and (today - c.birth_date).days <= 28)
+    toddlers_count = sum(1 for c in children if c.birth_date and (today - c.birth_date).days > 28)
+    phase_data = PhaseBreakdown(mothers=len(mothers), newborns=newborns_count, toddlers=toddlers_count)
 
-    phase_data = PhaseBreakdown(
-        mothers=total_mothers,
-        newborns=newborns_count,
-        toddlers=toddlers_count
-    )
+    first_of_month = today.replace(day=1)
+    monthly_visits = sum(1 for v in visits if v.visit_date and v.visit_date >= first_of_month)
+    pending_validation = sum(1 for r in reports if r.status == ReportStatus.DRAFT)
 
-    # Kunjungan bulan berjalan
-    now = datetime.now()
-    first_of_month = f"{now.year}-{now.month:02d}-01"
-    
-    visit_q = (
-        db.query(Visit)
-        .join(Patient, Visit.patient_id == Patient.id)
-    )
-    if scope_cond is not None:
-        visit_q = visit_q.filter(scope_cond)
+    children_by_mother = agg.children_index(all_patients)
+    totals = agg.summarize(patients, reports, children_by_mother)
 
-    monthly_visits = visit_q.filter(Visit.visit_date >= first_of_month).count()
-
-    # Laporan wilayah kader
-    report_q = (
-        db.query(Report)
-        .join(Patient, Report.patient_id == Patient.id)
-        .join(Visit, Report.visit_id == Visit.id)
-    )
-    if scope_cond is not None:
-        report_q = report_q.filter(scope_cond)
-
-    pending_validation = report_q.filter(Report.status == ReportStatus.DRAFT).count()
-    high_risk_count = report_q.filter(Report.overall_status == "RISIKO_TINGGI").count()
-
-    # Hitung total kasus stunting, KEK, dan anemia unik per pasien untuk posyandu / desa kader (berdasarkan rekam terkini)
-    kader_reports = report_q.all()
-    reports_by_pid = {}
-    for r in kader_reports:
-        reports_by_pid.setdefault(r.patient_id, []).append(r)
-
-    total_stunting = 0
-    total_kek = 0
-    total_anemia = 0
-    for pid, p_reps in reports_by_pid.items():
-        latest = max(p_reps, key=lambda r: r.id)
-        flags = latest.risk_flags or []
-        if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_stunting += 1
-        if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_kek += 1
-        if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_anemia += 1
-
-    # Tren bulanan (6 bulan terakhir) untuk posyandu kader
-    BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-    months = []
-    y, m = today.year, today.month
-    for _ in range(6):
-        months.insert(0, (y, m))
-        m -= 1
-        if m == 0:
-            m, y = 12, y - 1
-
-    buckets = {ym: {"stunting": set(), "kek": set(), "anemia": set(), "visits": 0} for ym in months}
-
-    for v in visit_q.all():
-        if v.visit_date:
-            v_key = (v.visit_date.year, v.visit_date.month)
-            if v_key in buckets:
-                buckets[v_key]["visits"] += 1
-
-    for r in report_q.all():
-        if not r.visit or not r.visit.visit_date:
-            continue
-        key = (r.visit.visit_date.year, r.visit.visit_date.month)
-        if key not in buckets:
-            continue
-        for f in (r.risk_flags or []):
-            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
-            if "STUNTING" in f_name:
-                buckets[key]["stunting"].add(r.patient_id)
-            if "KEK" in f_name:
-                buckets[key]["kek"].add(r.patient_id)
-            if "ANEMIA" in f_name:
-                buckets[key]["anemia"].add(r.patient_id)
-
+    months = agg.last_n_months(6, today)
+    visit_counts = {ym: 0 for ym in months}
+    for v in visits:
+        if v.visit_date and (v.visit_date.year, v.visit_date.month) in visit_counts:
+            visit_counts[(v.visit_date.year, v.visit_date.month)] += 1
     monthly_trend = [
-        MonthlyTrendItem(
-            month=f"{yy}-{mm:02d}",
-            label=f"{BULAN_ID[mm - 1]} {str(yy)[2:]}",
-            visits=buckets[(yy, mm)]["visits"],
-            stunting=len(buckets[(yy, mm)]["stunting"]),
-            kek=len(buckets[(yy, mm)]["kek"]),
-            anemia=len(buckets[(yy, mm)]["anemia"]),
-        )
-        for (yy, mm) in months
+        MonthlyTrendItem(visits=visit_counts[ym], **m)
+        for ym, m in zip(months, agg.monthly_trend(patients, reports, months))
     ]
 
-    # Daftar radar pasien prioritas berisiko tinggi / perlu perhatian (maksimal 8 terbaru)
-    priority_reports = (
-        report_q.filter(Report.overall_status.in_(["RISIKO_TINGGI", "PERLU_PERHATIAN"]))
-        .order_by(Visit.visit_date.desc(), Report.id.desc())
-        .limit(8)
-        .all()
-    )
+    # Radar "Pantauan Berisiko": laporan terakhir (belum ditolak) tiap pasien berstatus RISIKO_TINGGI / PERLU_PERHATIAN
+    by_pid = agg.index_by_patient(reports)
+    latest_reports = []
+    for pid, p_reps in by_pid.items():
+        latest = agg.latest_report(p_reps, approved_only=False)
+        if latest and latest.overall_status in agg.ATTENTION_STATUSES:
+            latest_reports.append(latest)
+    high_risk_count = sum(1 for r in latest_reports if r.overall_status == "RISIKO_TINGGI")
+    latest_reports.sort(key=lambda r: ((r.visit.visit_date if r.visit else date.min), r.id), reverse=True)
 
     priority_items = []
-    for r in priority_reports:
+    for r in latest_reports[:8]:
         p = r.patient
         v = r.visit
         findings = []
-        if r.risk_flags and isinstance(r.risk_flags, list):
-            for flag_item in r.risk_flags:
-                if isinstance(flag_item, dict):
-                    detail = flag_item.get("detail") or flag_item.get("flag") or flag_item.get("indicator")
-                    if detail:
-                        findings.append(str(detail))
-                elif isinstance(flag_item, str):
-                    findings.append(flag_item)
-        elif r.risk_narrative:
+        for flag_item in (r.risk_flags or []):
+            if isinstance(flag_item, dict):
+                detail = flag_item.get("detail") or flag_item.get("flag") or flag_item.get("indicator")
+                if detail:
+                    findings.append(str(detail))
+            elif isinstance(flag_item, str):
+                findings.append(flag_item)
+        if not findings and r.risk_narrative:
             first_sentence = r.risk_narrative.split("\n")[0].strip()
             if first_sentence:
                 findings.append(first_sentence[:110])
 
-        p_type = p.patient_type.value if (p and hasattr(p.patient_type, "value")) else (str(p.patient_type) if p and p.patient_type else "CHILD")
-        v_phase = v.phase.value if (v and hasattr(v.phase, "value")) else (str(v.phase) if v and v.phase else "-")
-        v_date = str(v.visit_date) if (v and v.visit_date) else "-"
-
-        priority_items.append(
-            PriorityPatientItem(
-                report_id=r.id,
-                visit_id=r.visit_id,
-                patient_id=p.id if p else 0,
-                patient_name=p.name if p else "Pasien",
-                patient_nik=p.nik if p else "-",
-                patient_type=p_type,
-                phase=v_phase,
-                visit_date=v_date,
-                overall_status=r.overall_status or "PERLU_PERHATIAN",
-                status=r.status.value if hasattr(r.status, "value") else str(r.status),
-                risk_summary=findings[:3],
-                village_name=p.village_name if p else village,
-                posyandu_name=p.posyandu_name if p else posyandu,
-            )
-        )
+        priority_items.append(PriorityPatientItem(
+            report_id=r.id,
+            visit_id=r.visit_id,
+            patient_id=p.id,
+            patient_name=p.name,
+            patient_nik=p.nik,
+            patient_type=p.patient_type.value if hasattr(p.patient_type, "value") else str(p.patient_type),
+            phase=(v.phase.value if hasattr(v.phase, "value") else str(v.phase)) if (v and v.phase) else "-",
+            visit_date=str(v.visit_date) if (v and v.visit_date) else "-",
+            overall_status=r.overall_status,
+            status=r.status.value if hasattr(r.status, "value") else str(r.status),
+            risk_summary=findings[:3],
+            village_name=p.village_name,
+            posyandu_name=p.posyandu_name,
+        ))
 
     return KaderDashboardSummary(
         posyandu_name=posyandu,
         village_name=village,
-        total_patients=total_patients,
-        total_mothers=total_mothers,
-        total_children=total_children,
+        total_patients=len(patients),
+        total_mothers=len(mothers),
+        total_children=len(children),
         monthly_visits=monthly_visits,
         pending_validation=pending_validation,
         high_risk_count=high_risk_count,
-        total_stunting=total_stunting,
-        total_kek=total_kek,
-        total_anemia=total_anemia,
+        total_stunting=totals["stunting"],
+        total_kek=totals["kek"],
+        total_anemia=totals["anemia"],
         phase_breakdown=phase_data,
         monthly_trend=monthly_trend,
         priority_patients=priority_items,

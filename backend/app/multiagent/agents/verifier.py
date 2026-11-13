@@ -11,6 +11,7 @@ from app.multiagent.llm_utils import (
     get_chat_llm,
     extract_text,
     extract_token_usage,
+    merge_token_usage,
     MODE_FALLBACK,
 )
 
@@ -282,177 +283,108 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
         return res_single
 
     # ------------------------------------------------------------------------
-    # 2. Penentuan Tingkat Keparahan Risiko
+    # 2. Penentuan Tingkat Keparahan Risiko (daftar flag eksplisit)
     # ------------------------------------------------------------------------
-    has_severe_risk = any(
-        "BERAT" in f.get("flag", "")
-        or "KRST" in f.get("flag", "")
-        or "GIZI_BURUK" in f.get("flag", "")
-        or "BURUK" in f.get("flag", "")
-        for f in risk_flags
-    )
+    has_severe_risk = any(f.get("flag") in SEVERE_RISK_FLAGS for f in risk_flags)
     overall_status = "RISIKO_TINGGI" if has_severe_risk else "PERLU_PERHATIAN"
 
     executive_summary = (
         f"Terdeteksi {len(risk_flags)} indikator risiko klinis pada pemeriksaan {phase}. "
-        f"Status keseluruhan: {overall_status}. Laporan telah diverifikasi tingkat keterhubungan (grounding) "
-        f"terhadap Buku KIA dan PNPK Tata Laksana Stunting beserta panduan makanan, ASI/susu, dan aktivitas stimulasi."
+        f"Status keseluruhan: {overall_status}. Setiap rekomendasi diperiksa keterhubungannya (grounding) "
+        f"terhadap chunk Buku KIA 2024 dan PNPK Tata Laksana Stunting yang dirujuk."
     )
 
-    # ------------------------------------------------------------------------
-    # 3. LLM-Judge Grounding Evaluation (Batch Evaluation)
-    # ------------------------------------------------------------------------
     verification_details = []
     verifier_mode = MODE_FALLBACK
     tools_invoked = ["_build_final_report_json"]
-    token_usage = extract_token_usage(None, is_llm_call=False)
-
-    llm = get_chat_llm(temperature=0.0, max_tokens=1000)
-    judge_results_map: Dict[int, Dict[str, Any]] = {}
-
-    if llm is not None and recommendations:
-        try:
-            from langchain_core.messages import SystemMessage, HumanMessage
-
-            evaluation_pairs = []
-            for idx, rec in enumerate(recommendations):
-                rec_idx = idx + 1
-                rec_citation = rec.get("citation", {})
-
-                matched_chunk = None
-                target_chunk_id = rec_citation.get("chunk_id")
-                if target_chunk_id:
-                    matched_chunk = next((c for c in retrieved_chunks if c.get("id") == target_chunk_id), None)
-                if not matched_chunk and retrieved_chunks:
-                    matched_chunk = retrieved_chunks[min(idx, len(retrieved_chunks) - 1)]
-
-                chunk_text = (
-                    f"Sumber: {matched_chunk.get('source', '')}\n"
-                    f"Bagian: {matched_chunk.get('section', '')}\n"
-                    f"Isi: {matched_chunk.get('content', '')}"
-                ) if matched_chunk else "Tidak ada dokumen rujukan yang dipasangkan."
-
-                evaluation_pairs.append({
-                    "recommendation_index": rec_idx,
-                    "title": rec.get("title", ""),
-                    "category": rec.get("category", ""),
-                    "recommendation_text": rec.get("recommendation_text", ""),
-                    "action_steps": rec.get("action_steps", []),
-                    "cited_source": rec_citation.get("source", ""),
-                    "reference_chunk": chunk_text,
-                })
-
-            user_eval_prompt = (
-                "Berikut pasangan rekomendasi klinis dan potongan teks rujukan resmi:\n"
-                f"{json.dumps(evaluation_pairs, ensure_ascii=False, indent=2)}\n\n"
-                "Evaluasi tingkat grounding setiap rekomendasi terhadap teks rujukannya dan "
-                "keluarkan array JSON valid sesuai instruksi sistem."
-            )
-
-            res = llm.invoke([
-                SystemMessage(content=VERIFIER_JUDGE_SYSTEM_PROMPT),
-                HumanMessage(content=user_eval_prompt),
-            ])
-            tools_invoked.insert(0, "llm_judge_grounding_evaluator")
-            token_usage = extract_token_usage(
-                res,
-                prompt_text=f"{VERIFIER_JUDGE_SYSTEM_PROMPT}\n{user_eval_prompt}",
-                output_text=extract_text(res.content),
-                is_llm_call=True,
-            )
-            parsed_eval = parse_llm_json(res.content)
-            if isinstance(parsed_eval, list):
-                for ev in parsed_eval:
-                    r_idx = ev.get("recommendation_index")
-                    if r_idx:
-                        judge_results_map[int(r_idx)] = ev
-                verifier_mode = MODE_LLM_JUDGE
-
-        except Exception as e:
-            logger.warning(f"[VERIFIER LLM-JUDGE WARNING] Evaluasi grounding LLM gagal, fallback leksikal: {e}")
-            verifier_mode = MODE_FALLBACK
-
-    if verifier_mode == MODE_FALLBACK:
-        tools_invoked.insert(0, "_lexical_grounding_check (Fallback Overlap Scorer)")
-        token_usage = extract_token_usage(
-            None,
-            prompt_text=json.dumps(recommendations, ensure_ascii=False),
-            output_text=executive_summary,
-            is_llm_call=False,
-        )
+    token_usages: List[Dict[str, Any]] = []
+    chunks_by_id = {c.get("id"): c for c in retrieved_chunks if c.get("id")}
+    llm = get_chat_llm(temperature=0.0, max_tokens=1000) if recommendations else None
 
     # ------------------------------------------------------------------------
-    # 4. Finalisasi Hasil Verifikasi (Termasuk Secondary Retrieval jika Ungrounded)
+    # 3. Langkah 1: LLM-Judge terhadap chunk yang dirujuk masing-masing rekomendasi
     # ------------------------------------------------------------------------
+    primary_pairs = []
     for idx, rec in enumerate(recommendations):
-        rec_idx = idx + 1
-        rec_title = rec.get("title", f"Rekomendasi {rec_idx}")
-        rec_text = rec.get("recommendation_text", "")
-        citation = rec.get("citation", {})
+        chunk_id = (rec.get("citation") or {}).get("chunk_id")
+        primary_pairs.append((idx + 1, rec, chunks_by_id.get(chunk_id) if chunk_id else None))
 
-        judge_info = judge_results_map.get(rec_idx)
+    primary_results, used_llm = _judge_pairs(llm, primary_pairs, token_usages)
+    if used_llm:
+        verifier_mode = MODE_LLM_JUDGE
+        tools_invoked.insert(0, "llm_judge_grounding_evaluator")
+    else:
+        tools_invoked.insert(0, "_lexical_grounding_check (Fallback Overlap Scorer)")
 
-        if judge_info:
-            is_grounded = bool(judge_info.get("is_grounded", True))
-            grounding_score = float(judge_info.get("grounding_score", 1.0))
-            reasoning = judge_info.get("reasoning", "Diverifikasi oleh AI Judge.")
-            evidence_snippet = judge_info.get("evidence_quote", "")
-        else:
-            is_grounded, grounding_score, evidence_snippet = _lexical_grounding_check(
-                rec_title=rec_title,
-                rec_text=rec_text,
-                citation=citation,
-                chunks=retrieved_chunks,
-            )
-            reasoning = f"Evaluasi leksikal fallback (skor overlap: {grounding_score:.2f})."
+    # ------------------------------------------------------------------------
+    # 4. Langkah 2: pencarian cadangan ChromaDB untuk poin yang belum grounded,
+    #    lalu dinilai ulang dengan penilai yang sama (maks. 2 langkah per poin).
+    # ------------------------------------------------------------------------
+    secondary_pairs = []
+    for rec_idx, rec, chunk in primary_pairs:
+        if primary_results.get(rec_idx, {}).get("is_grounded"):
+            continue
+        sec_query = f"{rec.get('title', '')} {rec.get('recommendation_text', '')[:120]}"
+        sec_results = retrieve_clinical_guidelines(query=sec_query, n_results=1)
+        sec_chunk = sec_results[0] if sec_results else None
+        if sec_chunk and (not chunk or sec_chunk.get("id") != chunk.get("id")):
+            secondary_pairs.append((rec_idx, rec, sec_chunk))
+    if secondary_pairs:
+        tools_invoked.append("secondary_retrieval_check (ChromaDB)")
+        secondary_results, _ = _judge_pairs(llm if used_llm else None, secondary_pairs, token_usages)
+    else:
+        secondary_results = {}
+    secondary_chunk_by_idx = {rec_idx: c for rec_idx, _, c in secondary_pairs}
 
-        if not is_grounded:
-            tools_invoked.append("secondary_retrieval_check (ChromaDB)")
-            sec_query = f"{rec_title} {rec_text[:80]}"
-            sec_results = retrieve_clinical_guidelines(query=sec_query, n_results=1)
-            if sec_results:
-                top_c = sec_results[0]
-                _, sec_score, _ = _lexical_grounding_check(
-                    rec_title=rec_title,
-                    rec_text=rec_text,
-                    citation={"source": top_c.get("source", ""), "section": top_c.get("section", "")},
-                    chunks=[top_c],
-                )
-                dist = top_c.get("distance")
-                is_relevant = (dist is not None and dist < 0.45) or (sec_score >= 0.15)
-                if is_relevant:
-                    is_grounded = True
-                    grounding_score = round(max(0.70, sec_score), 2)
-                    status_verif = "AUTO_GROUNDED_SECONDARY"
-                    notes = (
-                        f"Rujukan sekunder otomatis ditemukan di ChromaDB: {top_c.get('source')} "
-                        f"({top_c.get('section', '')})."
-                    )
-                    evidence_snippet = top_c.get("content", "")[:200] + "..."
-                    citation["source"] = top_c.get("source", citation.get("source"))
-                    citation["section"] = top_c.get("section", citation.get("section"))
-                    citation["page"] = top_c.get("page", citation.get("page", 1))
-                else:
-                    status_verif = "UNVERIFIED"
-                    notes = f"Rujukan sekunder ChromaDB tidak cukup relevan (skor overlap: {sec_score:.2f}). {reasoning}"
-            else:
-                status_verif = "UNVERIFIED"
-                notes = f"Klaim rekomendasi tidak ditemukan bukti pendukung langsung. {reasoning}"
-        else:
+    # ------------------------------------------------------------------------
+    # 5. Finalisasi status per poin. Bukti = isi chunk asli (verbatim), bukan teks LLM.
+    # ------------------------------------------------------------------------
+    from app.multiagent.agents.recommender import attach_chunk_evidence
+
+    for rec_idx, rec, chunk in primary_pairs:
+        primary = primary_results.get(rec_idx, {})
+        secondary = secondary_results.get(rec_idx, {})
+        if primary.get("is_grounded"):
             status_verif = "VERIFIED"
-            notes = f"Klaim terverifikasi grounded terhadap dokumen rujukan ({citation.get('source', '')}). {reasoning}"
+            used_chunk = chunk
+            result = primary
+            notes = f"Didukung chunk rujukan utama. {primary.get('reasoning', '')}".strip()
+        elif secondary.get("is_grounded"):
+            status_verif = "AUTO_GROUNDED_SECONDARY"
+            used_chunk = secondary_chunk_by_idx[rec_idx]
+            result = secondary
+            notes = f"Didukung chunk hasil pencarian cadangan. {secondary.get('reasoning', '')}".strip()
+            # Sitasi rekomendasi diganti ke chunk cadangan yang terbukti mendukung
+            rec["citation"] = {"chunk_id": used_chunk["id"]}
+            attach_chunk_evidence(rec, {used_chunk["id"]: used_chunk})
+        else:
+            status_verif = "UNVERIFIED"
+            used_chunk = None
+            result = secondary or primary
+            reason = secondary.get("reasoning") or primary.get("reasoning") or ""
+            notes = f"Tidak ditemukan dukungan pada chunk rujukan maupun pencarian cadangan. {reason}".strip()
 
+        citation = rec.get("citation") or {}
         verification_details.append({
             "recommendation_index": rec_idx,
-            "title": rec_title,
-            "citation_source": citation.get("source", "-"),
-            "citation_section": citation.get("section", "-"),
-            "citation_page": citation.get("page", "-"),
+            "title": rec.get("title", f"Rekomendasi {rec_idx}"),
+            "citation_source": citation.get("source"),
+            "citation_section": citation.get("section"),
+            "citation_page": citation.get("page"),
+            "chunk_id": used_chunk.get("id") if used_chunk else citation.get("chunk_id"),
+            "evidence_origin": used_chunk.get("origin") if used_chunk else None,
             "verification_status": status_verif,
-            "grounding_score": round(grounding_score, 2),
-            "evidence": evidence_snippet or "Sitasi terverifikasi pada dokumen rujukan resmi.",
+            "grounding_score": round(float(result.get("grounding_score", 0.0)), 2),
+            "evidence": used_chunk.get("content") if used_chunk else None,
+            "judge_mode": result.get("mode"),
             "notes": notes,
         })
+
+    token_usage = (
+        merge_token_usage(token_usages)
+        if token_usages
+        else extract_token_usage(None, prompt_text=json.dumps(recommendations, ensure_ascii=False), output_text=executive_summary, is_llm_call=False)
+    )
 
     t1 = time.perf_counter()
     terminated_at = datetime.now().isoformat(timespec="milliseconds")
@@ -519,6 +451,7 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     from app.multiagent.terminal_logger import print_pipeline_terminal_banner
     res_final = {
         "overall_status": overall_status,
+        "recommendations": recommendations,
         "verification_details": verification_details,
         "verifier_mode": verifier_mode,
         "final_report_json": final_report_json,
@@ -528,43 +461,97 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     return res_final
 
 
-def _lexical_grounding_check(
-    rec_title: str,
-    rec_text: str,
-    citation: Dict[str, Any],
-    chunks: List[Dict[str, Any]],
-) -> tuple[bool, float, str]:
-    """Cek fallback leksikal bila LLM judge tidak dapat dipanggil."""
-    rec_source = str(citation.get("source", "")).lower()
-    rec_section = str(citation.get("section", "")).lower()
-    rec_words = set(f"{rec_title} {rec_text}".lower().split())
+SEVERE_RISK_FLAGS = {
+    "RISIKO_STUNTING_BERAT",
+    "RISIKO_UNDERWEIGHT_BERAT",
+    "RISIKO_GIZI_BURUK",
+    "RISIKO_ANEMIA_BERAT",
+    "RISIKO_KEHAMILAN_SANGAT_TINGGI_KRST",
+    "RISIKO_BBLSR",
+    "RISIKO_BBLER",
+}
 
-    best_overlap = 0.0
-    evidence = ""
+LEXICAL_GROUNDING_THRESHOLD = 0.35
 
-    for c in chunks:
-        c_content = c.get("content", "").lower()
-        c_source = c.get("source", "").lower()
-        c_section = c.get("section", "").lower()
 
-        source_matched = (rec_source in c_source or c_source in rec_source) if rec_source else False
-        section_matched = (rec_section in c_section or c_section in rec_section) if rec_section else False
+def _judge_pairs(llm, pairs, token_usages: List[Dict[str, Any]]):
+    """
+    Menilai pasangan (index, rekomendasi, chunk) dengan LLM-judge dalam satu panggilan.
+    Pasangan tanpa chunk otomatis tidak grounded. Bila LLM tidak tersedia/gagal atau
+    tidak mengembalikan penilaian untuk sebuah poin, poin itu dinilai dengan cek leksikal.
+    Mengembalikan ({index: {is_grounded, grounding_score, reasoning, mode}}, llm_dipakai).
+    """
+    results: Dict[int, Dict[str, Any]] = {}
+    judgeable = [(i, r, c) for i, r, c in pairs if c and c.get("content")]
+    for i, _, c in pairs:
+        if not (c and c.get("content")):
+            results[i] = {"is_grounded": False, "grounding_score": 0.0,
+                          "reasoning": "Rekomendasi tidak merujuk chunk yang valid.", "mode": "NO_CHUNK"}
 
-        chunk_words = set(c_content.split())
-        if chunk_words:
-            overlap = len(rec_words.intersection(chunk_words)) / max(len(rec_words), 1)
-        else:
-            overlap = 0.0
+    used_llm = False
+    if llm is not None and judgeable:
+        try:
+            from langchain_core.messages import SystemMessage, HumanMessage
+            payload = [{
+                "recommendation_index": i,
+                "title": r.get("title", ""),
+                "recommendation_text": r.get("recommendation_text", ""),
+                "action_steps": r.get("action_steps", []),
+                "reference_chunk": f"Sumber: {c.get('source', '')}\nBagian: {c.get('section', '')}\nIsi: {c.get('content', '')}",
+            } for i, r, c in judgeable]
+            user_prompt = (
+                "Berikut pasangan rekomendasi klinis dan potongan teks rujukan resmi:\n"
+                f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+                "Evaluasi tingkat grounding setiap rekomendasi terhadap teks rujukannya dan "
+                "keluarkan array JSON valid sesuai instruksi sistem."
+            )
+            res = llm.invoke([SystemMessage(content=VERIFIER_JUDGE_SYSTEM_PROMPT), HumanMessage(content=user_prompt)])
+            token_usages.append(extract_token_usage(
+                res, prompt_text=f"{VERIFIER_JUDGE_SYSTEM_PROMPT}\n{user_prompt}",
+                output_text=extract_text(res.content), is_llm_call=True,
+            ))
+            parsed = parse_llm_json(res.content)
+            if isinstance(parsed, list):
+                for ev in parsed:
+                    if not isinstance(ev, dict) or ev.get("recommendation_index") is None:
+                        continue
+                    idx = int(ev["recommendation_index"])
+                    if idx in {i for i, _, _ in judgeable} and isinstance(ev.get("is_grounded"), bool):
+                        results[idx] = {
+                            "is_grounded": ev["is_grounded"],
+                            "grounding_score": float(ev.get("grounding_score") or 0.0),
+                            "reasoning": ev.get("reasoning", ""),
+                            "mode": MODE_LLM_JUDGE,
+                        }
+                used_llm = True
+        except Exception as e:
+            logger.warning(f"[VERIFIER LLM-JUDGE WARNING] Evaluasi grounding LLM gagal, fallback leksikal: {e}")
 
-        score = overlap + (0.5 if source_matched else 0.0) + (0.3 if section_matched else 0.0)
-        score = min(score, 1.0)
+    for i, r, c in judgeable:
+        if i not in results:
+            ok, score = _lexical_grounding_check(r, c)
+            results[i] = {
+                "is_grounded": ok,
+                "grounding_score": score,
+                "reasoning": f"Evaluasi leksikal fallback (proporsi kata rekomendasi yang ada di chunk: {score:.2f}).",
+                "mode": "LEXICAL_FALLBACK",
+            }
+    return results, used_llm
 
-        if score > best_overlap:
-            best_overlap = score
-            evidence = c.get("content", "")[:200] + "..."
 
-    is_grounded = best_overlap >= 0.35
-    return is_grounded, best_overlap, evidence
+def _lexical_grounding_check(rec: Dict[str, Any], chunk: Dict[str, Any]) -> tuple:
+    """
+    Cek fallback leksikal bila LLM-judge tidak tersedia: proporsi kata bermakna
+    (>= 4 huruf) pada rekomendasi yang juga muncul di isi chunk. Tidak ada bonus
+    untuk kecocokan nama sumber/bagian, sehingga hanya isi teks yang dinilai.
+    """
+    import re as _re
+    words = lambda t: {w for w in _re.findall(r"[a-zA-Z]{4,}", (t or "").lower())}
+    rec_words = words(f"{rec.get('title', '')} {rec.get('recommendation_text', '')}")
+    if not rec_words:
+        return False, 0.0
+    overlap = len(rec_words & words(chunk.get("content", ""))) / len(rec_words)
+    return overlap >= LEXICAL_GROUNDING_THRESHOLD, round(overlap, 2)
 
 
 def _build_final_report_json(
@@ -618,13 +605,15 @@ def _build_final_report_json(
     conf_score = round(min(100.0, max(0.0, c_input + c_rag + c_long)), 1)
     if conf_score >= 85.0:
         conf_label = "TINGGI"
-        conf_desc = "Rekomendasi sangat solid, didukung data lengkap dan pedoman baku Kemenkes."
     elif conf_score >= 70.0:
         conf_label = "SEDANG"
-        conf_desc = "Rekomendasi valid, pemantauan riwayat berkala dianjurkan."
     else:
         conf_label = "BUTUH_KONFIRMASI_DOKTER"
-        conf_desc = "Terdapat anomali data atau nilai rujukan yang membutuhkan konfirmasi dokter."
+    # Penjelasan berupa rincian komponen skor, tanpa klaim tambahan
+    conf_desc = (
+        f"Kewajaran data input {c_input:g}/30, keterhubungan rekomendasi dengan chunk rujukan "
+        f"{c_rag:g}/40, kelengkapan riwayat kunjungan {c_long:g}/30."
+    )
 
     confidence_dict = {
         "confidence_score": conf_score,

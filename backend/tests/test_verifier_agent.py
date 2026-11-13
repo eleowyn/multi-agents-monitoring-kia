@@ -46,7 +46,7 @@ def test_verifier_severe_risk_status():
                 "category": "GIZI",
                 "recommendation_text": "Rujuk ke Puskesmas untuk konfirmasi stunting dan berikan PMT.",
                 "action_steps": ["Rujuk ke Puskesmas Airmadidi"],
-                "citation": {"source": "KMK No. 1928/2022", "section": "Tata Laksana Stunting", "page": 18}
+                "citation": {"chunk_id": "c_stunting_1"}
             }
         ],
         "retrieved_chunks": [
@@ -66,7 +66,9 @@ def test_verifier_severe_risk_status():
     detail = result["verification_details"][0]
     assert detail["title"] == "Rujukan Segera Stunting"
     assert detail["verification_status"] in ["VERIFIED", "AUTO_GROUNDED_SECONDARY"]
-    assert detail["grounding_score"] >= 0.5
+    assert detail["grounding_score"] >= 0.35
+    # Bukti = isi chunk apa adanya
+    assert detail["evidence"] == "Balita dengan stunting berat wajib segera dirujuk ke Puskesmas untuk tata laksana."
 
 
 def test_verifier_moderate_risk_status():
@@ -106,30 +108,25 @@ def test_verifier_moderate_risk_status():
 
 
 def test_lexical_grounding_check():
-    """Menguji fungsi scoring leksikal mandiri."""
-    rec_title = "Pemberian Makanan Tambahan PMT Pemulihan"
-    rec_text = "Berikan telur ayam dan makanan padat gizi untuk mengejar ketertinggalan berat badan balita."
-    citation = {"source": "Buku KIA RI (2020)", "section": "Gizi Balita"}
-
-    chunks_matching = [{
+    """Skor leksikal hanya dari isi teks; nama sumber/bagian tidak memberi bonus."""
+    rec = {
+        "title": "Pemberian Makanan Tambahan PMT Pemulihan",
+        "recommendation_text": "Berikan telur ayam dan makanan padat gizi untuk mengejar ketertinggalan berat badan balita.",
+    }
+    chunk_matching = {
         "id": "chk_1",
-        "source": "Buku KIA RI (2020)",
-        "section": "Gizi Balita",
-        "content": "Pemberian makanan tambahan PMT pemulihan dengan telur ayam dan makanan padat gizi untuk berat badan balita."
-    }]
-
-    is_grounded, score, evidence = _lexical_grounding_check(rec_title, rec_text, citation, chunks_matching)
+        "content": "Pemberian makanan tambahan PMT pemulihan dengan telur ayam dan makanan padat gizi untuk berat badan balita.",
+    }
+    is_grounded, score = _lexical_grounding_check(rec, chunk_matching)
     assert is_grounded is True
     assert score >= 0.5
-    assert len(evidence) > 0
 
-    chunks_unrelated = [{
+    chunk_unrelated = {
         "id": "chk_2",
-        "source": "Modul Imunisasi",
-        "section": "Jadwal Vaksin",
-        "content": "Imunisasi hepatitis B diberikan 24 jam setelah lahir."
-    }]
-
-    citation_unrelated = {"source": "Pedoman Lain"}
-    is_grounded_bad, score_bad, _ = _lexical_grounding_check(rec_title, rec_text, citation_unrelated, chunks_unrelated)
+        "source": "Buku KIA",
+        "section": "Pemberian Makanan Tambahan PMT Pemulihan",
+        "content": "Imunisasi hepatitis B diberikan 24 jam setelah lahir.",
+    }
+    is_grounded_bad, score_bad = _lexical_grounding_check(rec, chunk_unrelated)
+    assert is_grounded_bad is False
     assert score_bad < score

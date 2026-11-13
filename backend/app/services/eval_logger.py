@@ -5,14 +5,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
-from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.audit_log import AuditLog
 from app.multiagent.prompts.evaluator_prompt import EVALUATOR_SYSTEM_PROMPT
 from app.multiagent.rag.retriever import retrieve_kia_guidelines
 from app.multiagent.llm_utils import (
     parse_llm_json,
-    llm_available,
     get_chat_llm,
     extract_text,
     extract_token_usage,
@@ -36,8 +34,10 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
     agent_tel = task_spec.get("telemetry") or {}
 
     output_str = json.dumps(output_obj, ensure_ascii=False, default=str)
-    is_compliant = True
-    notes = task_spec.get("default_note", "Evaluasi kepatuhan peran & skema berhasil.")
+    # NULL = "Tidak dievaluasi" (Bab 5.1.21/5.1.22): dipakai bila evaluator LLM tidak
+    # tersedia, gagal, atau tidak mengembalikan penilaian biner yang valid.
+    is_compliant: Optional[bool] = None
+    notes = "Tidak dievaluasi: evaluator LLM tidak tersedia."
     eval_token_usage = extract_token_usage(None, prompt_text=instruction, output_text=output_str, is_llm_call=False)
 
     llm = get_chat_llm(temperature=0.0, max_tokens=250)
@@ -63,11 +63,14 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
                 is_llm_call=True,
             )
             parsed = parse_llm_json(res.content)
-            if isinstance(parsed, dict) and "is_compliant" in parsed:
-                is_compliant = bool(parsed.get("is_compliant", True))
-                notes = str(parsed.get("notes") or notes)
-        except Exception:
-            is_compliant = True
+            if isinstance(parsed, dict) and isinstance(parsed.get("is_compliant"), bool):
+                is_compliant = parsed["is_compliant"]
+                notes = str(parsed.get("notes") or "")
+            else:
+                notes = "Tidak dievaluasi: respons evaluator tidak memuat penilaian biner yang valid."
+        except Exception as e:
+            is_compliant = None
+            notes = f"Tidak dievaluasi: pemanggilan evaluator gagal ({type(e).__name__})."
 
     t1 = time.perf_counter()
     eval_finished_at = datetime.now().isoformat(timespec="milliseconds")
@@ -160,7 +163,6 @@ def log_multiagent_parallel_evaluations(
                 "instruction": f"Kalkulasi parameter klinis ({phase}) untuk {patient_name} & deteksi flag risiko.",
                 "output": {"risk_flags": risk_flags, "narrative": risk_narrative},
                 "reference": "Standar Antropometri Permenkes No. 2/2020 & KSPR Poedji Rochjati",
-                "default_note": "Evaluasi kepatuhan deterministik & guard angka narasi klinis berhasil.",
                 "telemetry": agents_tel.get("agent_1") or {},
             },
             {
@@ -173,11 +175,6 @@ def log_multiagent_parallel_evaluations(
                 ),
                 "output": recommendations if recommendations else {"care_plan_status": "PREVENTIVE_1000_HPK_READY"},
                 "reference": ref_text or "Buku KIA 2024 & PNPK Tata Laksana Stunting",
-                "default_note": (
-                    "Evaluasi sintesis rekomendasi klinis RAG & Care Plan 1.000 HPK berhasil."
-                    if (requires_rag and recommendations)
-                    else "Pasien sehat (0 flag risiko): Conditional Router melewati RAG LLM dan menyiapkan Care Plan preventif."
-                ),
                 "telemetry": agents_tel.get("agent_2") or {},
             },
             {
@@ -186,7 +183,6 @@ def log_multiagent_parallel_evaluations(
                 "instruction": f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status}).",
                 "output": {"overall_status": overall_status, "verification": verif_details},
                 "reference": "Validasi Keterhubungan Sitasi & Template Baku Laporan KIA",
-                "default_note": "Evaluasi verifikasi grounding sitasi & integrasi laporan akhir berhasil.",
                 "telemetry": agents_tel.get("agent_3") or {},
             },
         ]

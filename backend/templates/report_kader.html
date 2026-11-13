@@ -778,10 +778,17 @@
             {% endfor %}
           </ul>
           {% endif %}
-          {% if rec.citation %}
+          {% if rec.citation and rec.citation.source %}
           <div class="citation-tag">
-            &bull; Rujukan Resmi: <strong>{{ rec.citation.source | clean_citation }}</strong> &bull; {{ rec.citation.section }} (Hal. {{ rec.citation.page }})
+            &bull; Rujukan: <strong>{{ rec.citation.source | clean_citation }}</strong>{% if rec.citation.section %} &bull; {{ rec.citation.section }}{% endif %}{% if rec.citation.page and rec.citation.page != '-' %} (Halaman PDF {{ rec.citation.page }}){% endif %}
           </div>
+          {% if rec.evidence_quote and rec.evidence_status == 'CHUNK_DOKUMEN' %}
+          <div style="font-size: 8pt; color: #475569; margin-top: 2px;"><strong>Kutipan asli dokumen:</strong> <em>"{{ rec.evidence_quote }}"</em></div>
+          {% elif rec.evidence_status == 'RINGKASAN_TERKURASI' %}
+          <div style="font-size: 8pt; color: #475569; margin-top: 2px;">Rujukan berupa ringkasan terkurasi peneliti, bukan kutipan langsung buku.</div>
+          {% endif %}
+          {% else %}
+          <div class="citation-tag">&bull; Tanpa kutipan dokumen (saran AI / aturan sistem).</div>
           {% endif %}
         </div>
         {% endfor %}
@@ -959,14 +966,14 @@
           <tr>
             <td class="text-center font-bold">{{ v.recommendation_index or loop.index }}</td>
             <td class="font-bold">{{ v.title }}</td>
-            <td>{{ v.citation_source | clean_citation }} (Hal. {{ v.citation_page }})</td>
+            <td>{% if v.citation_source %}{{ v.citation_source | clean_citation }}{% if v.citation_page and v.citation_page != '-' %} (Halaman PDF {{ v.citation_page }}){% endif %}{% else %}-{% endif %}</td>
             <td class="text-center">
-              <span class="badge badge-green" style="font-size: 8pt; padding: 2px 6px;">
+              <span class="badge {% if v.verification_status == 'UNVERIFIED' %}badge-yellow{% else %}badge-green{% endif %}" style="font-size: 8pt; padding: 2px 6px;">
                 {{ v.verification_status }}
               </span>
             </td>
             <td style="font-size: 8pt; color: #475569;" class="text-justified">
-              {% if v.evidence %}<em>"{{ v.evidence }}"</em><br/>{% endif %}
+              {% if v.evidence %}<strong>Kutipan asli dokumen:</strong> <em>"{{ v.evidence }}"</em><br/>{% endif %}
               {{ v.notes or '-' }}
             </td>
           </tr>

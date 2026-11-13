@@ -21,10 +21,12 @@ def _to_chunks(results: Dict[str, Any], mode: str) -> List[Dict[str, Any]]:
         chunks.append({
             "id": ids[i],
             "content": doc,
-            "source": meta.get("source", "Buku KIA / PNPK"),
-            "section": meta.get("section", "Umum"),
-            "page": meta.get("page", "-"),
-            "category": meta.get("category", "KIA"),
+            "source": meta.get("source"),
+            "section": meta.get("section"),
+            "page": meta.get("page"),
+            "category": meta.get("category"),
+            "origin": meta.get("origin"),
+            "derived_from": meta.get("derived_from"),
             "distance": distances[i] if i < len(distances) else None,
             "retrieval_mode": mode,
         })

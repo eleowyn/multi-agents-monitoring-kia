@@ -21,9 +21,8 @@ ATURAN STRUKTUR & PEMISAHAN INFORMASI:
 - `milk_and_supplements`: Panduan ASI eksklusif/lanjutan, susu ibu hamil, evaluasi PKMK Puskesmas (bila indikasi medis), TTD, atau Vitamin A.
 - `activity_and_stimulation`: Aktivitas fisik ibu hamil / stimulasi tumbuh kembang anak sesuai usia.
 - `action_steps`: 2-3 langkah konkret terurut untuk kader Posyandu dan keluarga di rumah.
-- `evidence_quote`: Kutipan kalimat asli dari Buku KIA 2024 atau PNPK Stunting yang menjadi landasan medis rujukan.
 - `ai_insight`: Wawasan klinis tambahan dari sintesis AI di luar teks baku buku (contoh: tips membujuk anak saat GTM, cara memasak sayur kelor agar tidak pahit). Berikan catatan bahwa wawasan ini bersifat saran pendukung.
-- `citation`: Objek sitasi memuat `source` (nama dokumen), `section` (nama bab), `page` (nomor halaman), dan `chunk_id`.
+- `citation`: Objek berisi `chunk_id` saja, yaitu ID chunk pedoman yang menjadi dasar rekomendasi, disalin persis dari penanda `[ID: ...]` pada dokumen yang tersedia atau hasil `search_guidelines`. JANGAN menulis kutipan, nama sumber, atau nomor halaman sendiri; sistem akan menampilkan isi chunk asli beserta sumber dan halamannya. Jika tidak ada chunk yang mendukung, isi `chunk_id` dengan null.
 
 PEDOMAN GAYA PENULISAN:
 - Gunakan Bahasa Indonesia medis yang santun, lugas, dan profesional.
@@ -45,12 +44,9 @@ Keluarkan HANYA array JSON valid (tanpa pembungkus markdown di luar json):
       "Langkah 1",
       "Langkah 2"
     ],
-    "evidence_quote": "Kutipan kalimat asli dari buku pedoman rujukan resmi.",
     "ai_insight": "Wawasan kontekstual AI tambahan (perlu konfirmasi petugas).",
     "citation": {
-      "source": "Buku KIA 2024 (Kemenkes RI)",
-      "section": "Nama Bab Pedoman",
-      "page": 18
+      "chunk_id": "md_kia24_0123"
     }
   }
 ]

@@ -24,7 +24,7 @@ import {
  * Mendukung 3 zona pita warna standar:
  * - Hijau (Normal / Gizi Baik): Z-Score >= -2 SD
  * - Kuning (Garis Waspada / Gizi Kurang / Pendek): -3 SD s.d. -2 SD
- * - Merah (Bawah Garis Merah / BGM / Stunting Berat): < -3 SD
+ * - Merah (< -3 SD; pada PB/U = sangat pendek, istilah BGM hanya untuk BB/U)
  */
 const KmsDigitalChart = ({
   patient,
@@ -60,12 +60,10 @@ const KmsDigitalChart = ({
 
       // Hitung delta berat badan
       let weightDiff = null;
-      let kmsCode = v.weight_trend_kms || null;
+      // Kode N/T hanya dari data kunjungan (aturan backend), tidak ditebak ulang di grafik
+      const kmsCode = v.weight_trend_kms || null;
       if (v.child_weight_kg && prevVisit?.child_weight_kg) {
         weightDiff = +(v.child_weight_kg - prevVisit.child_weight_kg).toFixed(2);
-        if (!kmsCode) {
-          kmsCode = weightDiff > 0.2 ? "N" : "T";
-        }
       }
 
       return {
@@ -101,7 +99,7 @@ const KmsDigitalChart = ({
         zones: [
           { y1: -2, y2: 3, fill: "#22c55e", opacity: 0.16, label: "Pita Hijau: Normal (Bebas Stunting)" },
           { y1: -3, y2: -2, fill: "#eab308", opacity: 0.20, label: "Pita Kuning: Waspada / Pendek" },
-          { y1: -4, y2: -3, fill: "#ef4444", opacity: 0.24, label: "Pita Merah BGM: Sangat Pendek (Stunting Berat)" },
+          { y1: -4, y2: -3, fill: "#ef4444", opacity: 0.24, label: "Pita Merah: Sangat Pendek (Stunting Berat)" },
         ],
         thresholds: [
           { y: -2.0, color: "#eab308", label: "Batas Stunting (-2 SD)" },
@@ -308,7 +306,7 @@ const KmsDigitalChart = ({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-              Merah (BGM / Risiko)
+              Merah (&lt; -3 SD)
             </span>
           </div>
         )}

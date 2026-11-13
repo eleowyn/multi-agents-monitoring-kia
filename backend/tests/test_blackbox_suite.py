@@ -2,7 +2,7 @@ import io
 import pytest
 import sys
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -270,7 +270,7 @@ class TestModule3And4MultiAgentOrchestration:
             name="Balita Sehat Standar WHO",
             patient_type=PatientType.CHILD,
             gender=Gender.MALE,
-            birth_date=date(2025, 1, 1),
+            birth_date=date.today() - timedelta(days=372),
             village_name="Airmadidi Atas",
         )
         patient = create_patient(patient_in=p_in, db=db_session, current_user=kader)

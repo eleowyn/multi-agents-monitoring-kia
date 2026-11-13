@@ -25,6 +25,36 @@ def _parse_date(val: Any) -> Optional[date]:
         return None
 
 
+def _months_between(birth: date, on: date) -> int:
+    """Umur dalam bulan penuh (kalender) dari tanggal lahir sampai tanggal tertentu."""
+    months = (on.year - birth.year) * 12 + (on.month - birth.month)
+    if on.day < birth.day:
+        months -= 1
+    return max(0, months)
+
+
+def _no_data_status(phase_code: str, message: str) -> Dict[str, Any]:
+    """Status bila data belum cukup: tidak ada angka hari HPK yang dikarang."""
+    return {
+        "hpk_day": None,
+        "raw_hpk_day": None,
+        "total_hpk_days": 1000,
+        "data_available": False,
+        "progress_percent": 0,
+        "phase_progress_percent": 0,
+        "remaining_days": None,
+        "is_within_1000_hpk": None,
+        "is_graduation_milestone": False,
+        "phase_code": phase_code,
+        "phase_segment": None,
+        "phase_label": message,
+        "golden_period_status": "BELUM_ADA_DATA",
+        "target_milestone": None,
+        "summary_label": message,
+        "warnings": [],
+    }
+
+
 def calculate_1000_hpk_status(
     phase: Optional[str] = None,
     patient_type: Optional[str] = None,
@@ -35,8 +65,10 @@ def calculate_1000_hpk_status(
     age_in_months: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Menghitung posisi pasien pada garis waktu 1.000 Hari Pertama Kehidupan (HPK)
-    secara deterministik.
+    Menghitung posisi pasien pada garis waktu 1.000 HPK secara deterministik.
+    - Ibu hamil: hari ke = minggu kehamilan x 7 (maks. 270).
+    - Anak: hari ke = 270 + umur dalam hari sejak lahir (maks. 1.000).
+    Bila data tidak cukup, hpk_day = None (tidak diasumsikan).
     """
     b_date = _parse_date(birth_date)
     v_date = _parse_date(visit_date) or date.today()
@@ -46,83 +78,84 @@ def calculate_1000_hpk_status(
     is_mother = norm_phase == "IBU_HAMIL" or (not norm_phase and norm_type == "MOTHER")
 
     if is_mother:
+        warnings: List[str] = []
+        estimated = False
         if gestational_age_weeks is not None and int(gestational_age_weeks) > 0:
             weeks = min(42, max(1, int(gestational_age_weeks)))
-            pregnancy_days = min(270, weeks * 7)
-            inferred_trimester = trimester or (1 if weeks <= 12 else (2 if weeks <= 27 else 3))
+            inferred_trimester = int(trimester) if trimester in (1, 2, 3) else (1 if weeks <= 12 else (2 if weeks <= 27 else 3))
         elif trimester is not None and int(trimester) in (1, 2, 3):
+            # Hanya trimester yang diisi: titik tengah trimester, ditandai sebagai perkiraan
             inferred_trimester = int(trimester)
-            weeks = {1: 10, 2: 20, 3: 34}[inferred_trimester]
-            pregnancy_days = {1: 70, 2: 140, 3: 238}[inferred_trimester]
+            weeks = {1: 7, 2: 20, 3: 34}[inferred_trimester]
+            estimated = True
+            warnings.append("Usia kehamilan (minggu) tidak diisi; posisi HPK diperkirakan dari titik tengah trimester.")
         else:
-            inferred_trimester = 2
-            weeks = 20
-            pregnancy_days = 140
+            return _no_data_status("IBU_HAMIL", "Usia kehamilan belum diisi")
 
-        hpk_day = pregnancy_days
-        hpk_day_clamped = min(1000, max(1, hpk_day))
-        progress_percent = round((hpk_day_clamped / 1000.0) * 100, 1)
-        pregnancy_percent = round((pregnancy_days / 270.0) * 100, 1)
-        remaining_days = max(0, 1000 - hpk_day_clamped)
+        pregnancy_days = min(270, weeks * 7)
+        hpk_day = max(1, pregnancy_days)
+        progress_percent = round((hpk_day / 1000.0) * 100, 1)
+        remaining_days = 1000 - hpk_day
+        est_note = " (perkiraan dari trimester)" if estimated else ""
 
         return {
-            "hpk_day": hpk_day_clamped,
+            "hpk_day": hpk_day,
             "raw_hpk_day": hpk_day,
             "total_hpk_days": 1000,
+            "data_available": True,
+            "is_estimated": estimated,
             "pregnancy_days_elapsed": pregnancy_days,
             "child_age_days": 0,
             "child_age_months": 0,
             "gestational_age_weeks": weeks,
             "trimester": inferred_trimester,
             "progress_percent": progress_percent,
-            "phase_progress_percent": pregnancy_percent,
+            "phase_progress_percent": round((pregnancy_days / 270.0) * 100, 1),
             "remaining_days": remaining_days,
             "is_within_1000_hpk": True,
+            "is_graduation_milestone": False,
             "phase_code": "IBU_HAMIL",
             "phase_segment": "FASE_1_KEHAMILAN",
-            "phase_label": f"Fase 1: Ibu Hamil (Trimester {inferred_trimester} • {weeks} Minggu)",
+            "phase_label": f"Fase 1: Ibu Hamil (Trimester {inferred_trimester} • {weeks} Minggu){est_note}",
             "golden_period_status": "DALAM_PERIODE_EMAS_1000_HPK",
             "target_milestone": (
                 "Kunjungan ANC berkala (min. 6x), LiLA >= 23,5 cm (bebas KEK), "
                 "Hb >= 11 g/dL, konsumsi Tablet Tambah Darah (TTD) min. 90 tablet."
             ),
             "summary_label": (
-                f"Hari ke-{hpk_day_clamped} dari 1.000 HPK ({progress_percent}%) • "
+                f"Hari ke-{hpk_day} dari 1.000 HPK ({progress_percent}%){est_note} • "
                 f"Masa Kehamilan (Sisa {remaining_days} hari periode emas)"
             ),
+            "warnings": warnings,
         }
 
-    # Pasien Anak (BAYI_BARU_LAHIR atau BADUTA)
-    exact_days: Optional[int] = None
-    if b_date and v_date and v_date >= b_date:
-        exact_days = (v_date - b_date).days
-
-    if norm_phase == "BAYI_BARU_LAHIR":
-        if exact_days is not None and exact_days >= 0:
-            child_age_days = exact_days
-        else:
-            child_age_days = 7
-        child_age_months = child_age_days // 30
+    # Pasien Anak (BAYI_BARU_LAHIR atau BADUTA): umur dihitung dari tanggal lahir
+    warnings = []
+    if b_date and v_date >= b_date:
+        child_age_days = (v_date - b_date).days
+        child_age_months = _months_between(b_date, v_date)
+        if age_in_months is not None and abs(int(age_in_months) - child_age_months) >= 1:
+            warnings.append(
+                f"Isian usia {age_in_months} bulan berbeda dengan usia menurut tanggal lahir "
+                f"({child_age_months} bulan); dipakai usia menurut tanggal lahir."
+            )
+    elif b_date and v_date < b_date:
+        return _no_data_status("ANAK", "Tanggal kunjungan sebelum tanggal lahir")
     elif age_in_months is not None:
         child_age_months = max(0, int(age_in_months))
-        if exact_days is not None and abs(exact_days - (child_age_months * 30)) <= 35:
-            child_age_days = max(1, exact_days)
-        else:
-            child_age_days = max(1, int(round(child_age_months * 30.4375)))
-    elif exact_days is not None:
-        child_age_days = exact_days
-        child_age_months = child_age_days // 30
+        child_age_days = int(round(child_age_months * 30.4375))
+        warnings.append("Tanggal lahir tidak tersedia; posisi HPK dihitung dari isian usia (bulan).")
     else:
-        child_age_months = 12
-        child_age_days = 365
+        return _no_data_status("ANAK", "Tanggal lahir dan usia anak belum tersedia")
 
     hpk_day = 270 + child_age_days
     hpk_day_clamped = min(1000, max(271, hpk_day))
     progress_percent = round((hpk_day_clamped / 1000.0) * 100, 1)
     remaining_days = max(0, 1000 - hpk_day)
     is_within = hpk_day <= 1000
+    is_graduation = child_age_months >= 24 or hpk_day >= 1000
 
-    if norm_phase == "BAYI_BARU_LAHIR" or child_age_days <= 28:
+    if child_age_days <= 28:
         phase_code = "BAYI_BARU_LAHIR"
         phase_segment = "FASE_2_BAYI_BARU_LAHIR"
         phase_label = f"Fase 2: Bayi Baru Lahir ({child_age_days} Hari)"
@@ -134,45 +167,44 @@ def calculate_1000_hpk_status(
     else:
         phase_code = "BADUTA"
         phase_segment = "FASE_3_BADUTA"
-        phase_progress = round(((min(730, max(29, child_age_days)) - 28) / 702.0) * 100, 1)
-        if child_age_months < 6:
+        phase_progress = round(((min(730, child_age_days) - 28) / 702.0) * 100, 1)
+        if is_graduation:
+            phase_label = f"Fase 3: Baduta 1-24 Bulan ({child_age_months} Bulan • Kelulusan 1.000 HPK)"
+            milestone = (
+                "Milestone Hari ke-1.000 (Kelulusan 1.000 HPK): Evaluasi akhir status stunting/gizi, "
+                "transisi menyapih bertahap penuh kasih (weaning with love), makanan keluarga balita 2–5 tahun, dan KPSP 24 bulan."
+            )
+        elif child_age_months < 6:
             phase_label = f"Fase 3: Baduta 1-24 Bulan ({child_age_months} Bulan • Masa ASI Eksklusif)"
             milestone = (
                 "ASI Eksklusif penuh (0-6 bulan), penimbangan BB & pengukuran PB bulanan "
                 "di Posyandu (KMS), serta imunisasi dasar lengkap."
             )
         else:
-            if child_age_months >= 24 or child_age_days >= 730 or hpk_day >= 1000:
-                phase_label = f"Fase 3: Baduta 1–24 Bulan ({child_age_months} Bulan • Kelulusan 1.000 HPK)"
-                milestone = (
-                    "Milestone Hari ke-1.000 (Kelulusan 1.000 HPK): Evaluasi akhir status stunting/gizi, "
-                    "transisi menyapih bertahap penuh kasih (weaning with love), makanan keluarga balita 2–5 tahun, dan KPSP 24 bulan."
-                )
-            else:
-                phase_label = f"Fase 3: Baduta 1-24 Bulan ({child_age_months} Bulan • Masa MP-ASI)"
-                milestone = (
-                    "Pemberian MP-ASI adekuat kaya protein hewani + ASI lanjutan hingga 2 tahun, "
-                    "kapsul Vitamin A, dan pemantauan kurva Z-Score WHO."
-                )
+            phase_label = f"Fase 3: Baduta 1-24 Bulan ({child_age_months} Bulan • Masa MP-ASI)"
+            milestone = (
+                "Pemberian MP-ASI adekuat kaya protein hewani + ASI lanjutan hingga 2 tahun, "
+                "kapsul Vitamin A, dan pemantauan kurva Z-Score WHO."
+            )
 
-    is_graduation = (child_age_months is not None and child_age_months >= 24) or (child_age_days is not None and child_age_days >= 730) or (hpk_day >= 1000)
-    status_str = "LULUS_1000_HPK" if is_graduation else ("DALAM_PERIODE_EMAS_1000_HPK" if is_within else "LULUS_1000_HPK")
+    if norm_phase == "BAYI_BARU_LAHIR" and child_age_days > 28:
+        warnings.append(f"Kunjungan dicatat sebagai Bayi Baru Lahir, padahal usia anak {child_age_days} hari (> 28 hari).")
+
     if is_graduation:
+        status_str = "LULUS_1000_HPK"
         summary_label = f"Hari ke-{hpk_day_clamped} dari 1.000 HPK (100% Selesai) • Milestone Kelulusan Periode Emas"
-    elif is_within:
+    else:
+        status_str = "DALAM_PERIODE_EMAS_1000_HPK"
         summary_label = (
             f"Hari ke-{hpk_day_clamped} dari 1.000 HPK ({progress_percent}%) • "
             f"Sisa {remaining_days} hari periode emas"
-        )
-    else:
-        summary_label = (
-            f"Hari ke-{hpk_day} (100% Periode Emas 1.000 HPK Selesai • Pemantauan Lanjutan Balita)"
         )
 
     return {
         "hpk_day": hpk_day_clamped,
         "raw_hpk_day": hpk_day,
         "total_hpk_days": 1000,
+        "data_available": True,
         "pregnancy_days_elapsed": 270,
         "child_age_days": child_age_days,
         "child_age_months": child_age_months,
@@ -183,13 +215,40 @@ def calculate_1000_hpk_status(
         "remaining_days": remaining_days,
         "is_within_1000_hpk": is_within,
         "is_graduation_milestone": is_graduation,
-        "graduation_badge": "🎓 Kelulusan Periode Emas 1.000 HPK (Usia 24 Bulan)" if is_graduation else None,
+        "graduation_badge": "Kelulusan Periode Emas 1.000 HPK (Usia 24 Bulan)" if is_graduation else None,
         "phase_code": phase_code,
         "phase_segment": phase_segment,
         "phase_label": phase_label,
         "golden_period_status": status_str,
         "target_milestone": milestone,
         "summary_label": summary_label,
+        "warnings": warnings,
+    }
+
+
+def pregnancy_completed_status(child_name: str, child_birth_date: Any) -> Dict[str, Any]:
+    """Status 1.000 HPK ibu yang sudah melahirkan: fase kehamilan selesai, dilanjutkan pada anak."""
+    return {
+        "hpk_day": 270,
+        "raw_hpk_day": 270,
+        "total_hpk_days": 1000,
+        "data_available": True,
+        "pregnancy_days_elapsed": 270,
+        "progress_percent": 27.0,
+        "phase_progress_percent": 100.0,
+        "remaining_days": None,
+        "is_within_1000_hpk": True,
+        "is_graduation_milestone": False,
+        "phase_code": "KEHAMILAN_SELESAI",
+        "phase_segment": "FASE_1_SELESAI",
+        "phase_label": f"Kehamilan selesai • Pemantauan dilanjutkan pada anak {child_name}",
+        "golden_period_status": "KEHAMILAN_SELESAI",
+        "target_milestone": None,
+        "summary_label": (
+            f"Fase kehamilan selesai (lahir {child_birth_date}) • "
+            f"Pemantauan 1.000 HPK dilanjutkan pada anak {child_name}"
+        ),
+        "warnings": [],
     }
 
 

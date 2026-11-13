@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -7,13 +7,12 @@ from typing import List, Optional, Dict, Any
 from app.core.database import get_db
 from app.models.revision import RevisionRequest, RevisionStatus
 from app.models.visit import Visit
-from app.models.patient import Patient, PatientType
+from app.models.patient import Patient
 from app.models.report import Report, ReportStatus
 from app.models.user import User, UserRole
 from app.schemas.revision import RevisionCreate, RevisionValidationRequest, RevisionResponse
 from app.api.v1.endpoints.auth import get_current_user
 from app.multiagent.graph import kia_multiagent_app
-from app.services.pdf_service import generate_visit_report_pdf
 
 router = APIRouter()
 
@@ -113,11 +112,9 @@ def submit_revision_request(
         raise HTTPException(status_code=404, detail="Pasien terkait kunjungan tidak ditemukan.")
 
     # Data Scoping: Pastikan kader melayani di desa yang sama
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        u_vill = current_user.village_name.strip().lower()
-        p_vill = (patient.village_name or "").strip().lower()
-        if p_vill and u_vill not in p_vill and p_vill not in u_vill:
-            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+    from app.services.aggregates import in_kader_scope
+    if not in_kader_scope(patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     # Cek jika sudah ada pengajuan pending untuk kunjungan ini
     existing_pending = db.query(RevisionRequest).filter(
@@ -238,9 +235,38 @@ def validate_revision_by_admin(
             rev.status = RevisionStatus.APPROVED
         else:
             # 2. Penanganan Koreksi / Modifikasi Data Kunjungan
-            for field, value in proposed.items():
-                if hasattr(visit, field) and field not in ["id", "patient_id", "kader_id", "created_at", "_action"]:
-                    setattr(visit, field, value)
+            # Validasi tipe nilai usulan dengan skema kunjungan, lalu cek fase & kewajaran biologis
+            from app.schemas.visit import VisitCreate
+            from app.api.v1.endpoints.visits import validate_visit_phase
+            from app.multiagent.tools.hpk_tracker import check_visit_plausibility
+
+            allowed = set(VisitCreate.model_fields) - {"patient_id"}
+            merged = {f: getattr(visit, f) for f in allowed}
+            merged.update({k: v for k, v in proposed.items() if k in allowed})
+            try:
+                validated = VisitCreate(patient_id=visit.patient_id, **merged)
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=f"Data usulan revisi tidak valid: {e}")
+
+            child_births = [c.birth_date for c in db.query(Patient).filter(Patient.mother_id == patient.id).all()]
+            phase_error = validate_visit_phase(
+                patient, validated.phase, validated.visit_date,
+                validated.gestational_age_weeks, validated.trimester, child_births,
+            )
+            if phase_error:
+                raise HTTPException(status_code=422, detail=f"Revisi tidak dapat disetujui: {phase_error}")
+            phase_val = validated.phase.value if hasattr(validated.phase, "value") else str(validated.phase)
+            plaus = check_visit_plausibility(phase_val, validated.model_dump())
+            if not plaus["is_plausible"]:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Revisi tidak dapat disetujui karena data di luar batas biologis wajar:\n"
+                    + "\n".join(f"{i + 1}. {w}" for i, w in enumerate(plaus["warnings"])),
+                )
+
+            for field in proposed:
+                if field in allowed:
+                    setattr(visit, field, getattr(validated, field))
 
             visit.updated_at = datetime.utcnow()
 
@@ -259,9 +285,17 @@ def validate_revision_by_admin(
                         iteration_count=0
                     )
 
-                    # Jalankan kembali multi-agent workflow dengan data yang sudah disetujui (Stateful Checkpointer)
-                    thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
+                    # Jalankan ulang graf dari awal pada thread baru (state lama tidak terbawa)
+                    thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}_admrev{rev.id}"}}
                     revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
+                    if revised_state.get("is_data_plausible") is False:
+                        db.rollback()
+                        warnings = revised_state.get("plausibility_warnings") or []
+                        raise HTTPException(
+                            status_code=422,
+                            detail="Revisi dibatalkan: analisis ulang menolak data karena di luar batas biologis wajar:\n"
+                            + "\n".join(f"{i + 1}. {w}" for i, w in enumerate(warnings)),
+                        )
 
                     report.risk_flags = revised_state.get("risk_flags", [])
                     report.risk_narrative = revised_state.get("risk_narrative", "")

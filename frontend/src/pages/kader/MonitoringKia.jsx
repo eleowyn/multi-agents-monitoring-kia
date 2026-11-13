@@ -345,7 +345,7 @@ const MonitoringKia = () => {
                 Rasio Pertumbuhan KMS (N)
               </p>
               <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">
-                {loadingAggregates ? "..." : `${summary?.kms_naik_percent || 0}%`}
+                {loadingAggregates ? "..." : summary?.kms_naik_percent != null ? `${summary.kms_naik_percent}%` : "Belum ada data"}
               </p>
               <div className="w-full bg-subtle rounded-full h-1.5 overflow-hidden my-1">
                 <div
@@ -364,7 +364,7 @@ const MonitoringKia = () => {
                 Kelulusan 1.000 HPK
               </p>
               <p className="text-2xl sm:text-3xl font-bold text-heading tabular-nums">
-                {loadingAggregates ? "..." : `${summary?.graduation_rate || 100}%`}
+                {loadingAggregates ? "..." : summary?.graduation_rate != null ? `${summary.graduation_rate}%` : "Belum ada data"}
               </p>
               <p className="text-xs text-caption">
                 {summary?.total_graduated_optimal || 0} Lulus Optimal • {summary?.total_graduated_evaluasi || 0} Perhatian Khusus

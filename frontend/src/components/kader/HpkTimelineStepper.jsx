@@ -28,7 +28,10 @@ const HpkTimelineStepper = ({
   const [activeVisitModal, setActiveVisitModal] = useState(null);
 
   const isChild = patient?.patient_type === "CHILD";
-  const currentHpkDay = hpkStatus?.hpk_day || (isChild ? 365 : 140);
+  // Tanpa data umur/usia kehamilan tidak ada posisi yang ditampilkan (NaN membuat semua perbandingan false)
+  const hasHpkDay = hpkStatus?.hpk_day != null;
+  const currentHpkDay = hasHpkDay ? hpkStatus.hpk_day : NaN;
+  const pregnancyDone = hpkStatus?.phase_code === "KEHAMILAN_SELESAI";
   const progressPercent = Math.min(100, Math.max(0, hpkStatus?.progress_percent || 0));
   const isGraduated = hpkStatus?.is_graduation_milestone || currentHpkDay >= 1000;
 
@@ -71,7 +74,11 @@ const HpkTimelineStepper = ({
           <p className="text-xs text-caption mt-0.5">
             {isGraduated
               ? "Periode emas 1.000 HPK tuntas (Usia 24 Bulan)"
-              : `Posisi saat ini: Hari ke-${currentHpkDay} dari 1.000 Hari (${progressPercent}%)`}
+              : pregnancyDone
+              ? hpkStatus.summary_label
+              : hasHpkDay
+              ? `Posisi saat ini: Hari ke-${currentHpkDay} dari 1.000 Hari (${progressPercent}%)${hpkStatus?.is_estimated ? " (perkiraan dari trimester)" : ""}`
+              : "Posisi 1.000 HPK belum dapat dihitung: tanggal lahir atau usia kehamilan belum tercatat."}
           </p>
         </div>
 
@@ -214,7 +221,7 @@ const HpkTimelineStepper = ({
           />
 
           {/* Pin Posisi Saat Ini (ditampilkan jika belum mendekati akhir 990 hari untuk cegah tabrakan) */}
-          {!isGraduated && currentHpkDay < 990 && (
+          {!isGraduated && !pregnancyDone && currentHpkDay < 990 && (
             <div
               className="absolute -top-2.5 transform -translate-x-1/2 flex flex-col items-center pointer-events-none"
               style={{ left: `${Math.min(94, Math.max(6, progressPercent))}%` }}

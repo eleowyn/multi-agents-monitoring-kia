@@ -14,7 +14,6 @@ import { RefreshCw, ExternalLink, ShieldAlert, ArrowRight, Calendar, Clock, MapP
 import {
   formatScheduleDateIndo,
   parseScheduleDateParts,
-  DEFAULT_NOVEMBER_2026_SCHEDULES,
 } from "../../constants/posyanduData";
 
 const SkeletonCard = () => (
@@ -28,6 +27,7 @@ const SkeletonCard = () => (
 const KaderDashboard = () => {
   const [summary, setSummary] = useState(null);
   const [villageSchedules, setVillageSchedules] = useState([]);
+  const [scheduleError, setScheduleError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -51,18 +51,21 @@ const KaderDashboard = () => {
       setError("");
       const [res, schedRes] = await Promise.all([
         api.get("/kader/dashboard-summary"),
-        api.get("/schedules/").catch(() => ({ data: DEFAULT_NOVEMBER_2026_SCHEDULES })),
+        api.get("/schedules/").catch(() => null),
       ]);
       previousPendingCount.current = res.data?.pending_validation ?? null;
       setSummary(res.data);
-      const targetVillage = res.data?.village_name || "Airmadidi Atas";
-      const allScheds = schedRes.data || [];
-      const filteredScheds = allScheds.filter(
-        (s) =>
-          s.status !== "DIBATALKAN" &&
-          (!targetVillage || s.village_name?.toLowerCase() === targetVillage.toLowerCase())
+      // Gagal memuat jadwal ditampilkan sebagai pesan, bukan diganti jadwal contoh
+      setScheduleError(!schedRes);
+      const targetVillage = res.data?.village_name;
+      const allScheds = schedRes?.data || [];
+      setVillageSchedules(
+        allScheds.filter(
+          (s) =>
+            s.status !== "DIBATALKAN" &&
+            (!targetVillage || s.village_name?.toLowerCase() === targetVillage.toLowerCase())
+        )
       );
-      setVillageSchedules(filteredScheds.length > 0 ? filteredScheds : allScheds.slice(0, 3));
       const now = new Date();
       setLastUpdated(
         now.toLocaleTimeString("id-ID", {
@@ -500,7 +503,11 @@ const KaderDashboard = () => {
           </span>
         </div>
 
-        {villageSchedules.length === 0 ? (
+        {scheduleError ? (
+          <p className="text-xs text-rose-700 dark:text-rose-300 py-3">
+            Gagal memuat jadwal Posyandu. Coba muat ulang halaman.
+          </p>
+        ) : villageSchedules.length === 0 ? (
           <p className="text-xs text-caption py-3">
             Belum ada jadwal kegiatan Posyandu aktif untuk wilayah kerja ini.
           </p>
@@ -606,7 +613,7 @@ const KaderDashboard = () => {
                 {summary.priority_patients.map((p) => (
                   <tr
                     key={p.report_id}
-                    onClick={() => navigate(`/kader/validasi-laporan/${p.visit_id}`)}
+                    onClick={() => navigate(`/kader/validasi-laporan/${p.report_id}`)}
                     className="group cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-4 py-3">
@@ -657,7 +664,7 @@ const KaderDashboard = () => {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/kader/validasi-laporan/${p.visit_id}`);
+                          navigate(`/kader/validasi-laporan/${p.report_id}`);
                         }}
                         className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
                       >

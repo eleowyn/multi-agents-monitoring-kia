@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Dict, List
 
 from app.core.database import get_db
 from app.models.patient import Patient
@@ -22,7 +22,6 @@ from app.schemas.admin import (
     BulkDeleteRequest,
     BulkStatusRequest,
 )
-from datetime import date, datetime, timedelta
 from app.multiagent.rag.vectorstore import get_or_create_collection
 from app.schemas.auth import UserResponse, UserCreate
 from app.core.security import get_password_hash
@@ -30,10 +29,6 @@ from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
 
-AIRMADIDI_VILLAGES = [
-    "Airmadidi Atas", "Airmadidi Bawah", "Sarongsong Satu", "Sarongsong Dua",
-    "Sukur", "Rap-Rap", "Sawangan", "Sampiri", "Tanggari"
-]
 
 
 def _require_admin(user: User = Depends(get_current_user)):
@@ -47,170 +42,108 @@ def get_dashboard_summary(
     db: Session = Depends(get_db),
     admin: User = Depends(_require_admin)
 ):
-    total_patients = db.query(Patient).count()
-    total_visits = db.query(Visit).count()
-    total_reports_approved = db.query(Report).filter(Report.status == ReportStatus.APPROVED).count()
-    total_reports_pending = db.query(Report).filter(Report.status == ReportStatus.DRAFT).count()
+    from app.services import aggregates as agg
+    from app.multiagent.llm_utils import llm_available
 
+    all_patients = db.query(Patient).all()
     all_reports = db.query(Report).all()
-    reports_by_pid = {}
-    for r in all_reports:
-        reports_by_pid.setdefault(r.patient_id, []).append(r)
-    
-    total_stunting = 0
-    total_kek = 0
-    total_anemia = 0
-    for pid, p_reps in reports_by_pid.items():
-        latest = max(p_reps, key=lambda r: r.id)
-        flags = latest.risk_flags or []
-        if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_stunting += 1
-        if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_kek += 1
-        if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-            total_anemia += 1
+    total_visits = db.query(Visit).count()
+    total_reports_approved = sum(1 for r in all_reports if r.status == ReportStatus.APPROVED)
+    total_reports_pending = sum(1 for r in all_reports if r.status == ReportStatus.DRAFT)
 
-    # Rekapitulasi per desa
+    children_by_mother = agg.children_index(all_patients)
+    totals = agg.summarize(all_patients, all_reports, children_by_mother)
+
+    # Rekapitulasi per desa (pencocokan desa persis; desa tidak dikenali -> "Lainnya")
+    by_village: Dict[str, List[Patient]] = {}
+    for p in all_patients:
+        by_village.setdefault(agg.village_bucket(p), []).append(p)
+    village_names = list(agg.AIRMADIDI_VILLAGES) + ([agg.OTHER_VILLAGE] if agg.OTHER_VILLAGE in by_village else [])
     village_breakdown = []
-    for v_name in AIRMADIDI_VILLAGES:
-        v_patients = db.query(Patient).filter(Patient.village_name.ilike(f"%{v_name}%")).all()
-        p_ids = [p.id for p in v_patients]
-        
-        v_reports = db.query(Report).filter(Report.patient_id.in_(p_ids)).all() if p_ids else []
-        v_reports_by_pid = {}
-        for r in v_reports:
-            v_reports_by_pid.setdefault(r.patient_id, []).append(r)
-        
-        stunt_v = 0
-        kek_v = 0
-        anemia_v = 0
-        high_risk_v = 0
-        for pid, p_reps in v_reports_by_pid.items():
-            latest = max(p_reps, key=lambda r: r.id)
-            flags = latest.risk_flags or []
-            if any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-                stunt_v += 1
-            if any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-                kek_v += 1
-            if any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags):
-                anemia_v += 1
-            if latest.overall_status == "RISIKO_TINGGI":
-                high_risk_v += 1
-        
+    for v_name in village_names:
+        v_patients = by_village.get(v_name, [])
+        v_ids = {p.id for p in v_patients}
+        v_tot = agg.summarize(v_patients, [r for r in all_reports if r.patient_id in v_ids], children_by_mother)
         village_breakdown.append(VillageStats(
             village_name=v_name,
             total_patients=len(v_patients),
-            stunting_count=stunt_v,
-            kek_count=kek_v,
-            anemia_count=anemia_v,
-            high_risk_count=high_risk_v
+            stunting_count=v_tot["stunting"],
+            kek_count=v_tot["kek"],
+            anemia_count=v_tot["anemia"],
+            high_risk_count=v_tot["high_risk"],
         ))
 
     # 1. Feed Validasi Terkini
     recent_reports = db.query(Report).order_by(Report.id.desc()).limit(6).all()
     recent_validations = []
     for r in recent_reports:
-        p_name = r.patient.name if (r.patient and hasattr(r.patient, "name")) else "Pasien KIA"
-        p_nik = r.patient.nik if (r.patient and hasattr(r.patient, "nik")) else "-"
-        v_name = r.patient.village_name if (r.patient and hasattr(r.patient, "village_name")) else "Airmadidi"
-        
-        phase_val = "BADUTA"
-        if r.visit and r.visit.phase:
-            phase_val = r.visit.phase.value if hasattr(r.visit.phase, "value") else str(r.visit.phase)
-
-        k_name = "Kader Posyandu"
-        if r.kader:
-            k_name = getattr(r.kader, "full_name", getattr(r.kader, "username", "Kader Posyandu"))
-
-        status_val = r.status.value if hasattr(r.status, "value") else str(r.status)
-        r_count = len(r.risk_flags) if r.risk_flags else 0
-        v_date = r.validated_at.strftime("%d %b %Y, %H:%M") if r.validated_at else None
-        c_date = r.created_at.strftime("%d %b %Y, %H:%M") if r.created_at else None
-
+        phase_val = (r.visit.phase.value if hasattr(r.visit.phase, "value") else str(r.visit.phase)) if (r.visit and r.visit.phase) else "-"
         recent_validations.append(RecentValidationItem(
             id=r.id,
             report_id=r.id,
-            patient_name=p_name,
-            patient_nik=p_nik,
-            village_name=v_name,
+            patient_name=r.patient.name if r.patient else "-",
+            patient_nik=r.patient.nik if r.patient else "-",
+            village_name=(r.patient.village_name if r.patient else None) or "-",
             phase=phase_val,
-            kader_name=k_name,
-            status=status_val,
-            overall_status=r.overall_status or "KONDISI_BAIK",
-            risk_count=r_count,
-            validated_at=v_date,
-            created_at=c_date
+            kader_name=(r.kader.full_name or r.kader.username) if r.kader else "-",
+            status=r.status.value if hasattr(r.status, "value") else str(r.status),
+            overall_status=r.overall_status or "-",
+            risk_count=len(r.risk_flags) if r.risk_flags else 0,
+            validated_at=r.validated_at.strftime("%d %b %Y, %H:%M") if r.validated_at else None,
+            created_at=r.created_at.strftime("%d %b %Y, %H:%M") if r.created_at else None,
         ))
 
-    # 2. Metrik Transparansi RAG
-    total_recommendations = 0
-    verified_recommendations = 0
-    raw_sources = set()
-
-    for r in all_reports:
-        for rec in (r.recommendations or []):
-            total_recommendations += 1
-            src = rec.get("citation", {}).get("source")
-            if src:
-                raw_sources.add(src)
-        for ver in (r.verification_summary or []):
-            if ver.get("verification_status") == "VERIFIED":
-                verified_recommendations += 1
-
-    if total_recommendations > 0:
-        grounding_rate = round((verified_recommendations / total_recommendations) * 100, 1)
-    else:
-        grounding_rate = 100.0
-
-    active_sources_list = sorted(list(raw_sources)) if raw_sources else [
-        "Pedoman Nasional Pelayanan Kedokteran Stunting (KMK 1928/2022)",
-        "Buku KIA Kesehatan Ibu & Anak (Kemenkes RI 2024)",
-        "Standar Baku Antropometri Anak WHO (Permenkes No. 2/2020)"
-    ]
-
+    # 2. Metrik Transparansi RAG (laporan terakhir per kunjungan)
+    g = agg.grounding_rate(all_reports)
     rag_metrics = RagMetrics(
-        total_recommendations=total_recommendations,
-        verified_recommendations=verified_recommendations,
-        grounding_rate=grounding_rate,
-        active_sources=active_sources_list
+        total_recommendations=g["total"],
+        verified_recommendations=g["verified"],
+        grounding_rate=g["rate"],
+        active_sources=g["sources"],
     )
 
-    # 3. Status Pipeline Multi-Agent
+    # 3. Status Pipeline Multi-Agent (kondisi nyata, bukan nilai tetap)
     try:
-        coll = get_or_create_collection()
-        chroma_count = coll.count()
+        chroma_count = get_or_create_collection().count()
+        chroma_status = "TERHUBUNG" if chroma_count > 0 else "KOSONG"
     except Exception:
-        chroma_count = 394
+        chroma_count = None
+        chroma_status = "TIDAK_TERHUBUNG"
+    llm_ok = llm_available()
+    llm_node_status = "ONLINE" if llm_ok else "MODE_FALLBACK"
+    rag_node_status = "ONLINE" if (llm_ok and chroma_status == "TERHUBUNG") else ("MODE_FALLBACK" if chroma_status == "TERHUBUNG" else "OFFLINE")
 
     pipeline_status = PipelineStatus(
         chroma_chunks_count=chroma_count,
+        chroma_status=chroma_status,
+        llm_status="TERSEDIA" if llm_ok else "TIDAK_TERSEDIA",
         nodes=[
             PipelineNode(
                 id="agent_1",
                 name="Agent 1: Deteksi Risiko",
-                role="Kalkulasi Deterministik & Memory Longitudinal (Paling Penting - Keselamatan Jiwa)",
-                status="ONLINE",
+                role="Kalkulasi Deterministik & Memory Longitudinal",
+                status=llm_node_status,
                 throughput=total_visits,
-                description="Menghitung WHO Anthro Z-Score, Skoring KSPR Poedji Rochjati, serta klasifikasi LiLA dan Anemia Hb secara baku deterministik.",
-                active_guidelines=["Permenkes No. 2/2020", "WHO Anthro Growth Standards", "Skoring Poedji Rochjati"]
+                description="Menghitung Z-score WHO, skor KSPR Poedji Rochjati, serta klasifikasi LiLA dan anemia Hb secara deterministik.",
+                active_guidelines=["Permenkes No. 2/2020", "WHO Child Growth Standards", "Skoring Poedji Rochjati"]
             ),
             PipelineNode(
                 id="agent_2",
                 name="Agent 2: Rekomendasi Klinis RAG",
-                role="ChromaDB Knowledge Retrieval & ReAct Synthesis (Paling Sulit - Multi-Hop)",
-                status="ONLINE",
-                throughput=total_stunting + total_kek + total_anemia,
-                description="Menarik potongan dokumen rujukan relevan via Cosine Similarity dan menyusun rekomendasi klinis terstruktur.",
-                active_guidelines=["PNPK Stunting KMK 1928/2022", "Buku KIA Kemenkes RI 2024", "Pedoman KEK Maternal"]
+                role="ChromaDB Knowledge Retrieval & ReAct Synthesis",
+                status=rag_node_status,
+                throughput=sum(1 for r in all_reports if r.recommendations),
+                description="Menarik chunk Buku KIA/PNPK via cosine similarity dan menyusun rekomendasi yang merujuk chunk tersebut.",
+                active_guidelines=["PNPK Stunting KMK 1928/2022", "Buku KIA Kemenkes RI 2024"]
             ),
             PipelineNode(
                 id="agent_3",
                 name="Agent 3: Verifikasi Groundedness",
-                role="Closed-Context Citation Verification (Paling Terfokus / Mudah)",
-                status="ONLINE",
+                role="Verifikasi keterhubungan rekomendasi terhadap chunk rujukan",
+                status=rag_node_status,
                 throughput=total_reports_approved + total_reports_pending,
-                description="Memvalidasi sitasi rekomendasi terhadap bukti dokumen rujukan dan menghasilkan Single-pass Final JSON.",
-                active_guidelines=["Groundedness Score Filter", "Cross-Chunk Citation Matcher"]
+                description="Memeriksa setiap rekomendasi terhadap chunk rujukan (2 langkah per poin) dan menyusun laporan JSON.",
+                active_guidelines=["LLM-Judge Grounding", "Pencarian cadangan ChromaDB"]
             ),
             PipelineNode(
                 id="human_loop",
@@ -218,56 +151,21 @@ def get_dashboard_summary(
                 role="Validasi Kader Posyandu",
                 status="ACTIVE",
                 throughput=total_reports_approved,
-                description="Validasi klinis langsung oleh Kader Posyandu di lapangan (Setujui / 1x Siklus Revisi / Tolak) sebelum cetak lembar PDF.",
-                active_guidelines=["SOP Posyandu Kec. Airmadidi", "WeasyPrint PDF Generator"]
+                description="Validasi oleh Kader Posyandu (Setujui / 1x Siklus Revisi) sebelum PDF diterbitkan.",
+                active_guidelines=["WeasyPrint PDF Generator"]
             )
         ]
     )
 
-    # 4. Tren Bulanan Kasus Risiko (6 bulan terakhir, pasien unik per bulan)
-    BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-    today = date.today()
-    months = []
-    y, m = today.year, today.month
-    for _ in range(6):
-        months.insert(0, (y, m))
-        m -= 1
-        if m == 0:
-            m, y = 12, y - 1
-
-    buckets = {ym: {"stunting": set(), "kek": set(), "anemia": set()} for ym in months}
-    for r in all_reports:
-        if not r.visit or not r.visit.visit_date:
-            continue
-        key = (r.visit.visit_date.year, r.visit.visit_date.month)
-        if key not in buckets:
-            continue
-        for f in (r.risk_flags or []):
-            f_name = f.get("flag", "") if isinstance(f, dict) else str(f)
-            if "STUNTING" in f_name:
-                buckets[key]["stunting"].add(r.patient_id)
-            if "KEK" in f_name:
-                buckets[key]["kek"].add(r.patient_id)
-            if "ANEMIA" in f_name:
-                buckets[key]["anemia"].add(r.patient_id)
-
-    monthly_trend = [
-        MonthlyTrendPoint(
-            month=f"{yy}-{mm:02d}",
-            label=f"{BULAN_ID[mm - 1]} {str(yy)[2:]}",
-            stunting=len(buckets[(yy, mm)]["stunting"]),
-            kek=len(buckets[(yy, mm)]["kek"]),
-            anemia=len(buckets[(yy, mm)]["anemia"]),
-        )
-        for (yy, mm) in months
-    ]
+    # 4. Tren Bulanan Kasus Risiko (6 bulan terakhir, laporan APPROVED, pasien unik per bulan)
+    monthly_trend = [MonthlyTrendPoint(**m) for m in agg.monthly_trend(all_patients, all_reports, agg.last_n_months(6))]
 
     return DashboardSummary(
-        total_patients=total_patients,
+        total_patients=len(all_patients),
         total_visits=total_visits,
-        total_stunting=total_stunting,
-        total_kek=total_kek,
-        total_anemia=total_anemia,
+        total_stunting=totals["stunting"],
+        total_kek=totals["kek"],
+        total_anemia=totals["anemia"],
         total_reports_approved=total_reports_approved,
         total_reports_pending=total_reports_pending,
         village_breakdown=village_breakdown,
@@ -285,22 +183,28 @@ def get_patient_trend(
     current_user: User = Depends(get_current_user)
 ):
     """Riwayat pengukuran per kunjungan untuk grafik tren individu pasien (Admin & Kader)."""
+    from app.api.v1.endpoints.patients import _is_patient_in_kader_scope, _enrich_patient
+    from app.api.v1.endpoints.visits import _months_between
+    from app.models.patient import PatientType
+
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan.")
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and patient.village_name.strip().lower() != current_user.village_name.strip().lower():
-            raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
+    if not _is_patient_in_kader_scope(patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Pasien di luar wilayah kerja Posyandu Anda.")
 
     visits = db.query(Visit).filter(Visit.patient_id == patient_id).order_by(Visit.visit_date.asc(), Visit.id.asc()).all()
     points = []
     for v in visits:
-        latest_report = max(v.reports, key=lambda r: r.id) if v.reports else None
+        latest = max(v.reports, key=lambda r: r.id) if v.reports else None
         points.append(PatientTrendPoint(
             visit_date=str(v.visit_date),
             phase=v.phase.value if hasattr(v.phase, "value") else str(v.phase),
-            age_in_months=v.age_in_months,
+            # Umur anak dihitung dari tanggal lahir (nilai tersimpan pada data lama bisa keliru)
+            age_in_months=_months_between(patient.birth_date, v.visit_date)
+            if (patient.patient_type == PatientType.CHILD and patient.birth_date and v.visit_date)
+            else v.age_in_months,
             child_weight_kg=v.child_weight_kg,
             child_length_cm=v.child_length_cm,
             birth_weight_gram=v.birth_weight_gram,
@@ -308,7 +212,7 @@ def get_patient_trend(
             lila_cm=v.lila_cm,
             hb_level=v.hb_level,
             maternal_weight_kg=v.maternal_weight_kg,
-            overall_status=latest_report.overall_status if latest_report else None,
+            overall_status=latest.overall_status if latest else None,
         ))
 
     p_type = patient.patient_type.value if hasattr(patient.patient_type, "value") else str(patient.patient_type)
@@ -317,6 +221,7 @@ def get_patient_trend(
         patient_name=patient.name,
         patient_type=p_type,
         village_name=patient.village_name,
+        hpk_status=_enrich_patient(db, patient).hpk_status,
         points=points,
     )
 
@@ -328,8 +233,11 @@ def get_audit_logs(
     db: Session = Depends(get_db),
     admin: User = Depends(_require_admin)
 ):
-    from app.api.v1.endpoints.reports import _enrich_report_telemetry
-
+    """
+    Log audit evaluator per agent. Telemetri (waktu, durasi, token, tools) hanya diambil
+    dari yang benar-benar tercatat pada laporan; bila tidak ada, dikirim null
+    (tidak diestimasi). is_compliant NULL berarti "Tidak dievaluasi".
+    """
     rows = db.query(AuditLog).order_by(AuditLog.id.desc()).offset(skip).limit(limit).all()
     report_cache = {}
     enriched_list = []
@@ -337,58 +245,23 @@ def get_audit_logs(
     for r in rows:
         a_name_upper = (r.agent_name or "").upper()
         if "AGENT 1" in a_name_upper or "DETEKSI" in a_name_upper or "RISK" in a_name_upper:
-            a_key = "agent_1"
-            default_order = 1
-            default_worker = "ParallelEval_0"
-            default_rank = "Paling Penting (Keselamatan Jiwa / Clinical Safety Gatekeeper)"
-            default_reason = "Gerbang skrining keselamatan awal ibu & anak (Stunting Berat, Gizi Buruk, BBLR, KEK, Anemia, KSPR Risiko Tinggi)."
-            default_tools = ["calculate_1000_hpk_status", "check_visit_plausibility", "run_clinical_calculators"]
+            a_key, default_order = "agent_1", 1
         elif "AGENT 2" in a_name_upper or "REKOMENDASI" in a_name_upper or "RECOMMENDER" in a_name_upper:
-            a_key = "agent_2"
-            default_order = 2
-            default_worker = "ParallelEval_1"
-            default_rank = "Paling Sulit (Multi-Hop ReAct, RAG ChromaDB & Sintesis Klinis Kontekstual)"
-            default_reason = "Menjalankan siklus ReAct otonom, menarik vektor Buku KIA/PNPK dari ChromaDB, serta merumuskan menu lokal & Care Plan."
-            default_tools = ["build_comprehensive_care_plan", "retrieve_clinical_guidelines (ChromaDB)", "ReAct Tool: search_guidelines"]
+            a_key, default_order = "agent_2", 2
         else:
-            a_key = "agent_3"
-            default_order = 3
-            default_worker = "ParallelEval_2"
-            default_rank = "Paling Mudah / Terfokus (Closed-Context Faithfulness Judge & Integrator)"
-            default_reason = "Verifikasi keterhubungan tertutup (faithfulness scoring 0.0-1.0) antara draf Agent 2 dan kutipan ChromaDB."
-            default_tools = ["llm_judge_grounding_evaluator", "_build_final_report_json"]
+            a_key, default_order = "agent_3", 3
 
         agent_tel = {}
         if r.report_id:
             if r.report_id not in report_cache:
-                rep_obj = db.query(Report).filter(Report.id == r.report_id).first()
-                if rep_obj:
-                    _enrich_report_telemetry(rep_obj, db)
-                report_cache[r.report_id] = rep_obj
+                report_cache[r.report_id] = db.query(Report).filter(Report.id == r.report_id).first()
             rep_obj = report_cache.get(r.report_id)
             if rep_obj and rep_obj.final_report_json:
                 agent_tel = (
                     (rep_obj.final_report_json.get("agent_telemetry") or {})
                     .get("agents", {})
                     .get(a_key, {})
-                )
-
-        base_dt = r.created_at if isinstance(r.created_at, datetime) else datetime.now()
-        if hasattr(base_dt, "replace"):
-            base_dt = base_dt.replace(tzinfo=None)
-        spawned_at = agent_tel.get("spawned_at") or (base_dt - timedelta(milliseconds=350 - default_order * 80)).isoformat(timespec="milliseconds")
-        terminated_at = agent_tel.get("terminated_at") or (base_dt - timedelta(milliseconds=280 - default_order * 80)).isoformat(timespec="milliseconds")
-        lifetime_ms = agent_tel.get("lifetime_ms") or float(120 + default_order * 45)
-
-        in_tok = max(80, len(r.input_instruction or "") // 3)
-        out_tok = max(40, len(r.agent_output or "") // 4)
-        tok_usage = agent_tel.get("token_usage") or {
-            "input_tokens": in_tok,
-            "output_tokens": out_tok,
-            "total_tokens": in_tok + out_tok,
-            "llm_calls": 1,
-            "source": "TOKENIZER_ESTIMATE",
-        }
+                ) or {}
 
         enriched_list.append(
             AuditLogResponse(
@@ -398,20 +271,20 @@ def get_audit_logs(
                 input_instruction=r.input_instruction,
                 agent_output=r.agent_output,
                 reference_context=r.reference_context,
-                is_compliant=r.is_compliant if r.is_compliant is not None else True,
+                is_compliant=r.is_compliant,
                 evaluation_notes=r.evaluation_notes,
                 created_at=r.created_at,
                 execution_order=agent_tel.get("execution_order", default_order),
-                execution_pattern=agent_tel.get("execution_pattern", f"SEQUENTIAL_STEP_{default_order} -> PARALLEL_EVAL"),
-                parallel_worker=default_worker,
-                spawned_at=spawned_at,
-                terminated_at=terminated_at,
-                lifetime_ms=lifetime_ms,
-                lifecycle_state=agent_tel.get("lifecycle_state", "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)"),
-                complexity_rank=agent_tel.get("complexity_rank", default_rank),
-                complexity_reason=agent_tel.get("complexity_reason", default_reason),
-                token_usage=tok_usage,
-                tools_invoked=agent_tel.get("tools_invoked", default_tools),
+                execution_pattern=agent_tel.get("execution_pattern"),
+                parallel_worker=f"ParallelEval_{default_order - 1}",
+                spawned_at=agent_tel.get("spawned_at"),
+                terminated_at=agent_tel.get("terminated_at"),
+                lifetime_ms=agent_tel.get("lifetime_ms"),
+                lifecycle_state=agent_tel.get("lifecycle_state"),
+                complexity_rank=agent_tel.get("complexity_rank"),
+                complexity_reason=agent_tel.get("complexity_reason"),
+                token_usage=agent_tel.get("token_usage"),
+                tools_invoked=agent_tel.get("tools_invoked"),
             )
         )
 

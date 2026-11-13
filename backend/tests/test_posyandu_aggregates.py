@@ -30,8 +30,8 @@ def test_posyandu_aggregates_computation():
     """Memastikan agregasi menghitung data ibu hamil dan anak baduta secara akurat."""
     fake_user = User(
         id=1,
-        username="kader_test",
-        role=UserRole.KADER,
+        username="admin_test",
+        role=UserRole.ADMIN,
         village_name="Airmadidi Atas",
         full_name="Kader Test"
     )
@@ -42,6 +42,7 @@ def test_posyandu_aggregates_computation():
         patient_type = PatientType.MOTHER
         village_name = "Airmadidi Atas"
         birth_date = None
+        mother_id = None
 
     class DummyChild:
         id = 2
@@ -49,6 +50,7 @@ def test_posyandu_aggregates_computation():
         patient_type = PatientType.CHILD
         village_name = "Airmadidi Atas"
         birth_date = None
+        mother_id = None
 
     mock_db = MagicMock()
     def query_mock(model):
@@ -79,3 +81,12 @@ def test_posyandu_aggregates_computation():
     assert airmadidi_atas["total_mothers"] == 1
     assert airmadidi_atas["total_children"] == 1
 
+
+
+def test_posyandu_aggregates_forbidden_for_kader():
+    """Rekap seluruh posyandu khusus Admin & Dokter (Tabel 11)."""
+    from fastapi import HTTPException
+    kader = User(id=2, username="k", role=UserRole.KADER, village_name="Sukur")
+    with pytest.raises(HTTPException) as exc:
+        get_posyandu_aggregates(db=MagicMock(), current_user=kader)
+    assert exc.value.status_code == 403

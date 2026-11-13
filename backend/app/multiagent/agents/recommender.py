@@ -3,10 +3,9 @@ import logging
 import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 
-from app.core.config import settings
 from app.multiagent.state import AgentState
 from app.multiagent.rag.retriever import retrieve_clinical_guidelines
 from app.multiagent.prompts.recommender_prompt import RECOMMENDER_REACT_SYSTEM_PROMPT
@@ -18,12 +17,68 @@ from app.multiagent.llm_utils import (
     merge_token_usage,
     MODE_FALLBACK,
 )
-from app.schemas.recommendation import RecommendationItem, CitationModel
+from app.schemas.recommendation import RecommendationItem
 
 logger = logging.getLogger(__name__)
 
 MODE_LLM_REACT = "LLM_REACT"
 MAX_REACT_STEPS = 3
+
+
+GROWTH_DEFICIT_FLAGS = {
+    "RISIKO_STUNTING", "RISIKO_STUNTING_BERAT", "RISIKO_UNDERWEIGHT", "RISIKO_UNDERWEIGHT_BERAT",
+    "RISIKO_GIZI_KURANG", "RISIKO_GIZI_BURUK", "BB_TIDAK_NAIK_2T",
+}
+OVERWEIGHT_FLAGS = {"RISIKO_GIZI_LEBIH", "RISIKO_OBESITAS", "RISIKO_OVERWEIGHT", "RISIKO_BB_LEBIH"}
+
+
+# Istilah pencarian chunk per flag, memakai bahasa yang dipakai Buku KIA / PNPK (bukan nama kode flag)
+FLAG_QUERY_TERMS = {
+    "RISIKO_KEK_MATERNAL": "ibu hamil kurang energi kronis KEK lingkar lengan atas LiLA kurang dari 23,5 cm porsi makan ibu hamil",
+    "KEK_PERSISTEN_ANTAR_KUNJUNGAN": "ibu hamil kurang energi kronis KEK lingkar lengan atas LiLA kurang dari 23,5 cm porsi makan ibu hamil",
+    "RISIKO_ANEMIA_RINGAN": "ibu hamil anemia kurang darah minum tablet tambah darah TTD zat besi setiap hari",
+    "RISIKO_ANEMIA_SEDANG": "ibu hamil anemia kurang darah minum tablet tambah darah TTD zat besi setiap hari",
+    "RISIKO_ANEMIA_BERAT": "ibu hamil anemia berat kurang darah tablet tambah darah rujuk",
+    "ANEMIA_PERSISTEN_ANTAR_KUNJUNGAN": "ibu hamil anemia kurang darah minum tablet tambah darah TTD zat besi setiap hari",
+    "RISIKO_KEHAMILAN_TINGGI_KRT": "kehamilan risiko tinggi tanda bahaya kehamilan periksa ke dokter",
+    "RISIKO_KEHAMILAN_SANGAT_TINGGI_KRST": "kehamilan risiko sangat tinggi tanda bahaya kehamilan rujuk rumah sakit",
+    "BB_IBU_HAMIL_TURUN": "kenaikan berat badan ibu hamil porsi makan ibu hamil",
+    "RISIKO_BBLR": "bayi berat lahir rendah BBLR perawatan metode kanguru menjaga kehangatan menyusui",
+    "RISIKO_BBLSR": "bayi berat lahir rendah BBLR perawatan metode kanguru rujuk",
+    "RISIKO_BBLER": "bayi berat lahir rendah BBLR perawatan metode kanguru rujuk",
+    "RISIKO_PREMATUR": "bayi prematur kurang bulan perawatan metode kanguru BBLR",
+    "IMD_TIDAK_DILAKUKAN": "inisiasi menyusu dini IMD ASI eksklusif bayi baru lahir",
+    "RISIKO_STUNTING": "anak pendek stunting panjang badan menurut umur kurang dari -2 SD rujuk puskesmas protein hewani",
+    "RISIKO_STUNTING_BERAT": "anak sangat pendek stunting panjang badan menurut umur kurang dari -3 SD rujuk puskesmas",
+    "RISIKO_UNDERWEIGHT": "berat badan kurang menurut umur weight faltering rujuk puskesmas makanan protein hewani",
+    "RISIKO_UNDERWEIGHT_BERAT": "berat badan sangat kurang menurut umur weight faltering rujuk puskesmas",
+    "RISIKO_GIZI_KURANG": "gizi kurang berat badan menurut panjang badan rujuk puskesmas makanan tambahan",
+    "RISIKO_GIZI_BURUK": "gizi buruk rujuk puskesmas F75 F100 tata laksana",
+    "BB_TIDAK_NAIK_2T": "berat badan tidak naik weight faltering penimbangan setiap bulan rujuk puskesmas",
+    "MPASI_KURANG_ADEKUAT": "makanan pendamping ASI MPASI tekstur porsi frekuensi sesuai usia protein hewani",
+    "RISIKO_GIZI_LEBIH": "berisiko gizi lebih berat badan menurut panjang badan anak",
+    "RISIKO_OBESITAS": "obesitas berat badan menurut panjang badan anak",
+    "RISIKO_OVERWEIGHT": "berisiko gizi lebih berat badan menurut panjang badan anak",
+    "MIKROSEFALI": "lingkar kepala anak pemeriksaan perkembangan",
+    "MAKROSEFALI": "lingkar kepala anak pemeriksaan perkembangan",
+}
+
+
+def flag_search_query(f_name: str, detail: str = "") -> str:
+    terms = FLAG_QUERY_TERMS.get(f_name) or f_name.replace("_", " ").lower()
+    return f"{terms} {detail}".strip()
+
+
+def _pnpk_referral_lines(flag_set: set) -> List[str]:
+    """Alur rujukan dari posyandu sesuai bagan pencegahan sekunder PNPK Stunting 2022."""
+    lines = []
+    if flag_set & {"RISIKO_GIZI_BURUK"}:
+        lines.append("Gizi buruk terdeteksi: rujuk segera ke Puskesmas untuk tata laksana gizi buruk (PNPK).")
+    if flag_set & {"RISIKO_STUNTING", "RISIKO_STUNTING_BERAT"}:
+        lines.append("Panjang badan menurut umur < -2 SD: rujuk ke Puskesmas untuk konfirmasi stunting (PNPK).")
+    if flag_set & {"RISIKO_UNDERWEIGHT", "RISIKO_UNDERWEIGHT_BERAT", "RISIKO_GIZI_KURANG", "BB_TIDAK_NAIK_2T"}:
+        lines.append("Berat badan kurang atau tidak naik (weight faltering): rujuk ke Puskesmas untuk evaluasi (PNPK).")
+    return lines
 
 
 def build_comprehensive_care_plan(
@@ -52,12 +107,15 @@ def build_comprehensive_care_plan(
     # FASE 1: IBU HAMIL (HARI KE-1 S.D. 270 / TRIMESTER 1 - 3)
     # ═════════════════════════════════════════════════════════════════════════
     if norm_phase == "IBU_HAMIL":
-        trimester = int(v_data.get("trimester") or 2)
+        # Trimester dari data kunjungan; tidak ditebak bila kosong
         gest_weeks = v_data.get("gestational_age_weeks")
+        trimester = v_data.get("trimester")
+        if not trimester and gest_weeks:
+            trimester = 1 if int(gest_weeks) <= 12 else (2 if int(gest_weeks) <= 27 else 3)
+        trimester = int(trimester) if trimester else None
+        tri_label = f"Trimester {trimester}" if trimester else "(trimester belum tercatat)"
         age_or_trimester_label = (
-            f"Ibu Hamil Trimester {trimester} ({gest_weeks} Minggu)"
-            if gest_weeks
-            else f"Ibu Hamil Trimester {trimester}"
+            f"Ibu Hamil {tri_label} ({gest_weeks} Minggu)" if gest_weeks else f"Ibu Hamil {tri_label}"
         )
         lila = v_data.get("lila_cm")
         hb = v_data.get("hb_level")
@@ -71,19 +129,28 @@ def build_comprehensive_care_plan(
             else "ikan tude/cakalang segar, telur ayam rebus/dadar (1-2 butir/hari), hati ayam, daging sapi/ayam, serta tahu dan tempe"
         )
 
+        focus = [label for cond, label in ((is_kek, "Risiko KEK"), (is_anemia, "Anemia")) if cond]
         fn_title = (
-            f"Panduan Makanan & Menu Pemulihan KEK/Anemia Ibu Hamil (Trimester {trimester})"
-            if (is_kek or is_anemia)
-            else f"Panduan Gizi Seimbang Ibu Hamil Trimester {trimester}"
+            f"Panduan Makanan Ibu Hamil {tri_label}: Fokus {' & '.join(focus)}"
+            if focus
+            else f"Panduan Gizi Seimbang Ibu Hamil {tri_label}"
         )
-        fn_texture = (
-            f"Makanan keluarga padat gizi Trimester {trimester}: tambahan energi +300 s.d. +500 kkal/hari "
-            "dan tambahan protein +20–30 gram/hari dibanding sebelum hamil."
-        )
-        fn_freq = (
-            "3x Makan Utama porsi lengkap (Isi Piringku Ibu Hamil: 1/3 nasi/umbi, 1/3 lauk hewani+nabati, 1/3 sayur+buah) "
-            "+ 2x Makanan Selingan padat energi & PMT Ibu Hamil."
-        )
+        # Porsi sehari sesuai tabel "Porsi Makan dan Minum Ibu Hamil" Buku KIA 2024
+        portion_t1 = "12 minggu pertama: makanan pokok 5 porsi, protein hewani 4, protein nabati 4, sayur 4, buah 4, minyak 5, gula 2 porsi per hari."
+        portion_t23 = "Trimester 2 dan 3: makanan pokok 6 porsi, protein hewani 4, protein nabati 4, sayur 4, buah 4, minyak 5, gula 2 porsi per hari."
+        freq_t1 = "Makan porsi lebih kecil tapi sering: 3 kali makanan utama dan 2 kali makanan selingan."
+        freq_t23 = "Makan porsi lebih kecil tapi sering: 3 kali makanan utama ditambah 1-2 kali kudapan."
+        if trimester == 1:
+            fn_texture, fn_freq = portion_t1, freq_t1
+        elif trimester in (2, 3):
+            fn_texture, fn_freq = portion_t23, freq_t23
+        else:
+            fn_texture, fn_freq = f"{portion_t1} {portion_t23}", f"{freq_t1} Setelah 12 minggu: {freq_t23[len('Makan porsi lebih kecil tapi sering: '):]}"
+        if is_kek:
+            fn_freq += (
+                f" LiLA {lila} cm (< 23,5 cm, risiko KEK): makan lebih banyak dan lebih sering, "
+                "dan konsultasikan pemberian makanan tambahan (PMT) ibu hamil ke bidan/Puskesmas."
+            )
         local_ingredients = [
             "Ikan Tude / Cakalang / Malalugis Segar",
             "Hati Ayam & Daging Tanpa Lemak",
@@ -100,7 +167,7 @@ def build_comprehensive_care_plan(
         ]
         daily_menu = [
             {"time": "Pagi (07.00)", "waktu": "Pagi (07.00)", "menu": "Nasi hangat + ikan bakar/telur rebus + tumis sayur daun kelor + 1 gelas Susu Ibu Hamil."},
-            {"time": "Selingan Pagi (10.00)", "waktu": "Selingan Pagi (10.00)", "menu": "Bubur kacang hijau santan encer + biskuit PMT Ibu Hamil + 1 buah pisang."},
+            {"time": "Selingan Pagi (10.00)", "waktu": "Selingan Pagi (10.00)", "menu": "Bubur kacang hijau santan encer + 1 buah pisang" + (" + biskuit PMT Ibu Hamil (bila diberikan bidan/Puskesmas)." if is_kek else ".")},
             {"time": "Siang (12.30)", "waktu": "Siang (12.30)", "menu": "Nasi + ikan tude/cakalang kuah kuning + tempe/tahu + sayur bening bayam + buah jeruk/pepaya."},
             {"time": "Selingan Sore (16.00)", "waktu": "Selingan Sore (16.00)", "menu": "1 gelas Susu Ibu Hamil + ubi/kentang rebus atau puding kacang hijau."},
             {"time": "Malam (19.00 & 21.00)", "waktu": "Malam (19.00 & 21.00)", "menu": "Nasi + ayam/hati ayam bumbu + sayur. Pukul 21.00 sebelum tidur: 1 tablet TTD dengan air putih/jeruk."},
@@ -118,13 +185,17 @@ def build_comprehensive_care_plan(
         }
 
         ms_title = "Panduan Susu Ibu Hamil & Suplementasi Tablet Tambah Darah (TTD)"
-        ms_primary = (
-            "Susu Khusus Ibu Hamil tinggi protein, zat besi, asam folat (min. 400–600 mcg), kalsium (1.000 mg), dan DHA (2 gelas/hari untuk mengejar kenaikan BB & LiLA)."
-            if (is_kek or is_anemia)
-            else "Susu Ibu Hamil terfortifikasi Asam Folat, Kalsium & Zat Besi (1–2 gelas/hari) atau susu pasteurisasi/UHT rendah gula + 1 tablet TTD setiap malam."
-        )
+        if is_anemia:
+            ms_primary = (
+                f"Hb {hb} g/dL menunjukkan anemia: minum TTD/MMS setiap hari tanpa terlewat dan periksakan ulang Hb ke bidan/Puskesmas. "
+                "Dosis TTD saat anemia mengikuti anjuran bidan/dokter."
+            )
+        elif is_kek:
+            ms_primary = "Susu ibu hamil 2 gelas/hari sebagai tambahan energi dan protein untuk menaikkan berat badan dan LiLA, ditambah 1 tablet TTD setiap malam."
+        else:
+            ms_primary = "Susu ibu hamil atau susu pasteurisasi/UHT rendah gula 1-2 gelas/hari bila tersedia, ditambah 1 tablet TTD setiap malam."
         ms_guidelines = [
-            "Wajib minum 1 Tablet Tambah Darah (TTD) setiap malam sebelum tidur (minimal 90 tablet selama kehamilan; 2x1 tablet bila Hb < 11,0 g/dL sesuai anjuran Bidan/Dokter).",
+            "Minum 1 Tablet Tambah Darah (TTD)/MMS setiap hari selama kehamilan, sebaiknya malam hari sebelum tidur untuk mengurangi rasa mual (Buku KIA).",
             "ATURAN JEDA 2 JAM: Jangan minum TTD bersamaan dengan susu, teh, atau kopi karena kalsium & tanin menghambat penyerapan zat besi.",
             "Minumlah Susu Ibu Hamil pada pagi/sore hari, dan minum TTD pada malam hari bersama air putih atau air jeruk manis.",
         ]
@@ -140,22 +211,15 @@ def build_comprehensive_care_plan(
                 "PERINGATAN KEPATUHAN TTD: Ibu tercatat belum rutin meminum Tablet Tambah Darah (TTD). Sangat penting meminum minimal 90 tablet selama kehamilan (1 tablet tiap malam sebelum tidur bersama air jeruk/air putih) untuk mencegah anemia berat dan risiko bayi lahir BBLR/Stunting."
             )
 
-        feeding_val = str(v_data.get("feeding_status") or "").upper()
-        if "PKMK" in feeding_val or "FORMULA" in feeding_val:
-            ms_guidelines.insert(
-                0,
-                "TERAPI NUTRISI KHUSUS PKMK: Anak terdaftar menerima susu formula khusus/PKMK padat kalori atas anjuran dokter. Pastikan takaran dan higienitas penyiapan susu dipatuhi secara tepat sesuai instruksi tenaga medis untuk mengejar ketertinggalan berat badan (catch-up growth)."
-            )
-
         milk_and_supplements = {
             "title": ms_title,
             "headline": ms_title,
-            "compliance_badge": "Protokol Kemenkes RI & WHO Code: ASI Standar Emas Mutlak • PKMK Khusus Resep Dokter • Dilarang SKM",
             "recommended_type": ms_primary,
             "primary_source": ms_primary,
             "frequency_and_portion": (
-                "2x sehari (@200 mL pagi dan sore) bila LiLA < 23,5 cm atau berat badan turun; "
-                "1x sehari (@200 mL) untuk pemeliharaan kehamilan normal + wajib 1 tablet TTD setiap malam."
+                "Susu 2 gelas/hari (pagi dan sore) karena risiko KEK; TTD 1 tablet setiap malam."
+                if is_kek
+                else "Susu 1 gelas/hari bila tersedia; TTD 1 tablet setiap malam."
             ),
             "clinical_rationale": ms_warning,
             "medical_warning": ms_warning,
@@ -163,7 +227,7 @@ def build_comprehensive_care_plan(
             "guidelines": ms_guidelines,
         }
 
-        ac_title = f"Panduan Aktivitas Fisik, Istirahat & Stimulasi Janin (Trimester {trimester})"
+        ac_title = f"Panduan Aktivitas Fisik, Istirahat & Stimulasi Janin {tri_label}"
         ac_list = [
             "Jalan kaki santai pagi hari selama 20–30 menit (3–5 kali seminggu) untuk melancarkan sirkulasi darah dan oksigen ke plasenta.",
             (
@@ -335,23 +399,25 @@ def build_comprehensive_care_plan(
     # FASE 3: BADUTA (USIA 1 - 24 BULAN / HARI KE-299 S.D. 1.000)
     # ═════════════════════════════════════════════════════════════════════════
     raw_age = v_data.get("age_in_months") if v_data.get("age_in_months") is not None else det.get("age_in_months")
-    age_months = int(raw_age if raw_age is not None else 12)
+    if raw_age is None:
+        # Tanpa umur, tekstur/porsi/frekuensi MP-ASI tidak dapat ditentukan (tidak ditebak)
+        note = "Usia anak belum tercatat. Tekstur, porsi, dan frekuensi MP-ASI bergantung usia (Buku KIA); lengkapi tanggal lahir anak."
+        return {
+            "phase": "BADUTA",
+            "age_or_trimester_label": "Anak Baduta (usia belum tercatat)",
+            "food_and_nutrition": {"title": "Panduan MP-ASI belum dapat disusun", "headline": "Panduan MP-ASI belum dapat disusun", "stage_and_texture": note, "texture_and_consistency": note},
+            "milk_and_supplements": {},
+            "activity_and_stimulation": {},
+            "danger_signs": [],
+        }
+    age_months = int(raw_age)
     age_or_trimester_label = f"Anak Baduta Usia {age_months} Bulan"
-    has_growth_risk = any(
-        k in fl
-        for fl in flags
-        for k in (
-            "STUNTING",
-            "UNDERWEIGHT",
-            "WASTING",
-            "GIZI",
-            "2T",
-            "TIDAK_NAIK",
-            "PERLAMBATAN",
-            "BBLR",
-            "KEK",
-        )
-    )
+    flag_set = set(flags)
+    # Hanya masalah pertumbuhan anak saat ini; riwayat ibu KEK/BBLR tidak dihitung sebagai gagal tumbuh
+    growth_deficit = flag_set & GROWTH_DEFICIT_FLAGS
+    has_growth_risk = bool(growth_deficit)
+    has_overweight = bool(flag_set & OVERWEIGHT_FLAGS)
+    referral_lines = _pnpk_referral_lines(flag_set)
 
     if age_months < 6:
         fn_title = f"Panduan ASI Eksklusif (Usia {age_months} Bulan) & Gizi Ibu Menyusui"
@@ -387,6 +453,7 @@ def build_comprehensive_care_plan(
             "Susui minimal 8–12 kali dalam 24 jam dengan durasi 15–20 menit per payudara hingga payudara terasa lunak/kosong.",
             "Jangan memberikan MP-ASI dini sebelum usia genap 6 bulan karena enzim pencernaan belum matang dan memicu diare.",
             "Bila grafik BB pada KMS mendatar/tidak naik (T), perbaiki posisi & pelekatan menyusui serta rujuk ke Konselor ASI Puskesmas Airmadidi.",
+            *referral_lines,
         ]
         ms_warning = (
             "Enzim pencernaan amilase dan lipase bayi usia < 6 bulan belum matang sempurna untuk mencerna makanan padat. "
@@ -406,16 +473,16 @@ def build_comprehensive_care_plan(
     else:
         if age_months <= 8:
             stage_str = "Usia 6–8 Bulan: Bubur saring kental (puree/mashed) yang tidak mudah jatuh saat sendok dimiringkan."
-            freq_str = "2–3x makan utama MP-ASI + 1–2x selingan padat gizi + ASI dilanjutkan. Porsi: bertahap dari 2–3 sdm hingga 1/2 mangkuk ukuran 250 mL (125 mL) per kali makan."
+            freq_str = "2–3x makan utama MP-ASI + 1–2x selingan padat gizi + ASI dilanjutkan. Porsi: bertahap dari 2–3 sdm hingga 1/2 mangkuk ukuran 250 mL (125 mL) per kali makan. Energi dari MP-ASI 200 kkal/hari."
         elif age_months <= 11:
             stage_str = "Usia 9–11 Bulan: Makanan cincang halus/kasar (minced/chopped) dan finger food yang mudah digenggam anak."
-            freq_str = "3–4x makan utama MP-ASI + 1–2x selingan tinggi protein + ASI. Porsi: 1/2 sampai 3/4 mangkuk ukuran 250 mL (125–200 mL) per kali makan."
+            freq_str = "3–4x makan utama MP-ASI + 1–2x selingan tinggi protein + ASI. Porsi: 1/2 sampai 3/4 mangkuk ukuran 250 mL (125–200 mL) per kali makan. Energi dari MP-ASI 300 kkal/hari."
         elif age_months >= 24:
             stage_str = "Usia 24 Bulan (Milestone Hari ke-1.000): Makanan keluarga balita 2–5 tahun utuh padat gizi (Isi Piringku Balita)."
             freq_str = "3x makan utama keluarga + 2x selingan padat gizi + proses menyapih bertahap (weaning with love). Porsi: 1 mangkuk penuh ukuran 250 mL."
         else:
             stage_str = "Usia 12–23 Bulan: Makanan keluarga yang diiris/dihaluskan seperlunya (tekstur lunak-padat)."
-            freq_str = "3–4x makan utama keluarga + 1–2x selingan padat kalori-protein + ASI hingga 2 tahun. Porsi: 3/4 sampai 1 mangkuk penuh ukuran 250 mL."
+            freq_str = "3–4x makan utama keluarga + 1–2x selingan + ASI hingga 2 tahun. Porsi: 3/4 sampai 1 mangkuk penuh ukuran 250 mL. Energi dari MP-ASI 550 kkal/hari."
 
         protein_rec = (
             "Wajib Protein Hewani Non-Telur Setiap Makan: Ikan tude/cakalang segar (bebas duri), hati ayam, daging ayam/sapi cincang halus (minimal 2 jenis protein hewani sehari)."
@@ -423,11 +490,21 @@ def build_comprehensive_care_plan(
             else "Wajib Protein Hewani Ganda Setiap Hari: 1 butir telur ayam/puyuh + ikan tude/cakalang segar (bebas duri), hati ayam, atau daging ayam/sapi cincang."
         )
 
-        fn_title = (
-            f"Panduan MP-ASI Kejar Tumbuh Tinggi Protein Hewani (Usia {age_months} Bulan)"
-            if has_growth_risk
-            else f"Panduan MP-ASI Adekuat Kaya Protein Hewani (Usia {age_months} Bulan)"
-        )
+        if has_growth_risk:
+            fn_title = f"Panduan MP-ASI Kejar Tumbuh Tinggi Protein Hewani (Usia {age_months} Bulan)"
+        elif has_overweight:
+            fn_title = f"Panduan MP-ASI Gizi Seimbang, Gizi Lebih Terdeteksi (Usia {age_months} Bulan)"
+        else:
+            fn_title = f"Panduan MP-ASI Adekuat Kaya Protein Hewani (Usia {age_months} Bulan)"
+        if has_growth_risk:
+            fat_line = "Tambahan lemak di tiap porsi MP-ASI untuk mengejar berat badan: 1 sendok teh minyak kelapa, santan matang, atau mentega."
+        elif has_overweight:
+            fat_line = (
+                "Gizi lebih terdeteksi: jangan menambah porsi atau lemak tambahan. Dokumen rujukan tidak memuat anjuran gizi "
+                "khusus gizi lebih, konsultasikan ke tenaga kesehatan Puskesmas."
+            )
+        else:
+            fat_line = "Lemak secukupnya dari pengolahan makanan: 1 sendok teh minyak kelapa atau santan matang per porsi."
         local_ingredients = [
             "Ikan Tude / Cakalang / Mujair Segar (Bebas Duri)",
             "Hati Ayam & Daging Ayam/Sapi Cincang",
@@ -453,7 +530,7 @@ def build_comprehensive_care_plan(
             "local_ingredients": local_ingredients,
             "recommended_foods": [
                 protein_rec,
-                "Tambahan Lemak Esensial (Wajib di Tiap Porsi MP-ASI untuk Mengejar Berat Badan): 1 sendok teh minyak kelapa/minyak jagung, santan matang kental, atau mentega tawar (unsalted butter).",
+                fat_line,
                 "Sumber Karbohidrat Padat Energi: Beras putih/merah, kentang, atau ubi jalar.",
                 "Sayur & Buah (Porsi Kecil Sebagai Pengenalan, Jangan Sampai Menggantikan Porsi Protein): Wortel, bayam, daun kelor muda, labu kuning, alpukat, pisang, pepaya.",
             ],
@@ -475,11 +552,7 @@ def build_comprehensive_care_plan(
             ms_guidelines = [
                 "Terapkan prinsip Weaning with Love: Menyapih secara perlahan dan bertahap dengan kasih sayang, DILARANG menggunakan zat pahit, pedas, jamu, atau menempelkan plester pada payudara ibu.",
                 "Gantikan sesi menyusu dengan pelukan hangat, interaksi membacakan buku cerita, dan pemberian air putih/susu dengan cangkir atau gelas terbuka (hindari botol dot untuk mencegah maloklusi gigi).",
-                (
-                    "Karena terdeteksi risiko pertumbuhan (Stunting/Gizi Kurang), segera rujuk ke Dokter Spesialis Anak untuk peresepan terukur Susu PKMK padat kalori."
-                    if has_growth_risk
-                    else "Pastikan anak tetap mendapat Kapsul Vitamin A di Posyandu setiap Februari & Agustus hingga usia 5 tahun."
-                ),
+                *(referral_lines or ["Pastikan anak tetap mendapat Kapsul Vitamin A di Posyandu setiap Februari & Agustus hingga usia 5 tahun."]),
                 "Protokol Kemenkes RI & WHO Code: ASI Standar Emas Mutlak Awal Kehidupan. Susu Formula Khusus / PKMK HANYA diresepkan Dokter untuk indikasi medis gagal tumbuh.",
                 "DILARANG KERAS memberikan Susu Kental Manis (SKM) kepada baduta/balita karena tinggi gula (>=50%) dan miskin zat gizi pembangun tubuh.",
             ]
@@ -490,17 +563,14 @@ def build_comprehensive_care_plan(
                 else "Panduan ASI Lanjutan, Susu Pelengkap & Vitamin A Baduta"
             )
             ms_primary = (
-                "ASI Lanjutan hingga 24 bulan + Evaluasi Dokter Puskesmas Airmadidi untuk pemberian Susu PKMK (Pangan Olahan untuk Keperluan Medis Khusus ±0,9–1,0 kkal/mL) & PMT Pemulihan."
+                "ASI lanjutan hingga 24 bulan. Rujuk ke Puskesmas sesuai alur PNPK; PKMK atau PMT pemulihan hanya diberikan setelah evaluasi tenaga kesehatan."
                 if has_growth_risk
-                else "ASI Lanjutan hingga usia 24 bulan + Kapsul Vitamin A (Februari & Agustus) + Susu UHT Plain / Susu Pertumbuhan terfortifikasi bila usia >12 bulan (maks. 300–400 mL/hari)."
+                else "ASI lanjutan hingga usia 24 bulan + Kapsul Vitamin A (Februari & Agustus)"
+                + (" + susu UHT plain bila diinginkan (maks. 300–400 mL/hari)." if age_months > 12 else ".")
             )
             ms_guidelines = [
                 "Lanjutkan pemberian ASI sesuai keinginan anak hingga usia 24 bulan (berikan di sela waktu makan agar anak tetap lahap makan MP-ASI utama).",
-                (
-                    "Karena terdeteksi risiko pertumbuhan (Stunting/Underweight/Wasting/2T), rujuk ke Dokter Puskesmas Airmadidi untuk peresepan terukur Susu PKMK padat kalori."
-                    if has_growth_risk
-                    else "Pastikan anak mendapat Kapsul Vitamin A di Posyandu setiap Februari & Agustus (Biru 100.000 IU usia 6–11 bln; Merah 200.000 IU usia 12–24 bln)."
-                ),
+                *(referral_lines or ["Pastikan anak mendapat Kapsul Vitamin A di Posyandu setiap Februari & Agustus (Biru 100.000 IU usia 6–11 bln; Merah 200.000 IU usia 12–24 bln)."]),
                 "Protokol Kemenkes RI & WHO Code: ASI adalah standar emas mutlak nutrisi bayi. Susu PKMK hanya atas resep dokter bila ada indikasi gagal tumbuh.",
                 "DILARANG KERAS memberikan Susu Kental Manis (SKM) kepada bayi/balita karena tinggi gula dan miskin protein.",
                 "Jangan memberikan susu melebihi 500 mL/hari pada anak >1 tahun agar anak tidak kenyang cairan dan tetap lahap makan lauk protein hewani.",
@@ -516,7 +586,7 @@ def build_comprehensive_care_plan(
             "recommended_type": ms_primary,
             "primary_source": ms_primary,
             "frequency_and_portion": (
-                "ASI on-demand + Susu PKMK/Susu Pertumbuhan 2x sehari (@150–200 mL) diberikan di sela waktu makan."
+                "ASI sesuai keinginan anak; PKMK hanya bila diresepkan dokter setelah rujukan."
                 if has_growth_risk
                 else "ASI sesuai keinginan anak + Kapsul Vitamin A setiap Februari & Agustus di Posyandu."
             ),
@@ -664,6 +734,95 @@ def build_comprehensive_care_plan(
     return res
 
 
+EVIDENCE_CHUNK = "CHUNK_DOKUMEN"
+EVIDENCE_CURATED = "RINGKASAN_TERKURASI"
+EVIDENCE_NONE = "TANPA_KUTIPAN"
+EVIDENCE_RULE = "ATURAN_SISTEM"
+
+
+def citation_from_chunk(chunk: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Sitasi diambil apa adanya dari metadata chunk ChromaDB."""
+    if not chunk:
+        return {"source": None, "section": None, "page": None, "chunk_id": None, "origin": None, "derived_from": None}
+    return {
+        "source": chunk.get("source"),
+        "section": chunk.get("section"),
+        "page": chunk.get("page"),
+        "chunk_id": chunk.get("id"),
+        "origin": chunk.get("origin"),
+        "derived_from": chunk.get("derived_from"),
+    }
+
+
+def attach_chunk_evidence(item: Dict[str, Any], chunks_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Mengisi kutipan & sitasi rekomendasi dari chunk yang benar-benar di-retrieve.
+    LLM hanya menunjuk `chunk_id`; teks kutipan, sumber, bagian, dan halaman diambil
+    verbatim dari chunk. Kutipan/sumber yang ditulis LLM sendiri dibuang.
+    Bila chunk_id tidak valid, rekomendasi ditandai TANPA_KUTIPAN (tanpa sitasi pengganti).
+    """
+    cit = item.get("citation")
+    chunk_id = cit.get("chunk_id") if isinstance(cit, dict) else None
+    chunk_id = chunk_id or item.get("chunk_id")
+    chunk = chunks_by_id.get(chunk_id) if chunk_id else None
+
+    item.pop("source", None)
+    item.pop("section", None)
+    item.pop("page", None)
+    item["citation"] = citation_from_chunk(chunk)
+    if chunk:
+        item["evidence_quote"] = chunk.get("content")
+        item["evidence_status"] = EVIDENCE_CURATED if chunk.get("origin") == "CURATED_SUMMARY" else EVIDENCE_CHUNK
+    else:
+        item["evidence_quote"] = None
+        item["evidence_status"] = EVIDENCE_NONE
+    return item
+
+
+# Istilah kondisi pada saran gizi LLM -> potongan nama flag yang harus ada (termasuk RIWAYAT_*)
+_NUTRITION_CONDITION_TERMS = {
+    r"\bkek\b|kurang energi kronis": ("KEK",),
+    r"stunting|kejar tumbuh": ("STUNTING", "UNDERWEIGHT", "GIZI_KURANG", "GIZI_BURUK", "BB_TIDAK_NAIK"),
+    r"gizi buruk": ("GIZI_BURUK",),
+    r"\bbblr\b|kanguru|berat lahir rendah": ("BBLR", "BBLSR", "BBLER", "PREMATUR"),
+    r"obesitas|gizi lebih": ("OBESITAS", "GIZI_LEBIH", "OVERWEIGHT", "BB_LEBIH"),
+}
+_PREVENTION_RE = r"(cegah|mencegah|pencegahan)"
+
+
+def nutrition_text_mismatch(text: str, phase: str, age_months: Optional[int], flags: List[str]) -> Optional[str]:
+    """
+    Alasan bila saran gizi LLM tidak sesuai hasil analisis Agent 1, atau None bila sesuai.
+    Dipakai untuk membuang saran yang menyebut kondisi tidak terdeteksi atau tidak sesuai umur.
+    """
+    import re as _re
+    t = (text or "").lower()
+    if not t:
+        return None
+    joined = " ".join(flags)
+    for pattern, needed in _NUTRITION_CONDITION_TERMS.items():
+        if _re.search(pattern, t) and not any(n in joined for n in needed):
+            return f"menyebut kondisi yang tidak terdeteksi ({pattern.split('|')[0].replace(chr(92) + 'b', '')})"
+    for m in _re.finditer(r"anemia", t):
+        window = t[max(0, m.start() - 40): m.end() + 10]
+        if "ANEMIA" not in joined and not _re.search(_PREVENTION_RE, window):
+            return "menyebut anemia padahal Hb tidak menunjukkan anemia"
+    young = phase == "BAYI_BARU_LAHIR" or (phase == "BADUTA" and age_months is not None and age_months < 6)
+    if young and _re.search(r"mp-?asi|bubur|nasi tim|puree", t) and not _re.search(r"jangan|belum|tunda|dini|sebelum|setelah (usia )?6|usia 6", t):
+        return "memberi MP-ASI pada bayi di bawah 6 bulan"
+    return None
+
+
+def _guard_llm_nutrition(item: Dict[str, Any], phase: str, age_months: Optional[int], flags: List[str]) -> Dict[str, Any]:
+    """Saran gizi LLM yang tidak sesuai dikosongkan agar diisi panduan berbasis aturan (care plan)."""
+    for field in ("food_guide", "milk_and_supplements"):
+        reason = nutrition_text_mismatch(item.get(field) or "", phase, age_months, flags)
+        if reason:
+            item[field] = None
+            item.setdefault("nutrition_guard_notes", []).append(f"{field}: saran AI dibuang karena {reason}; diganti panduan aturan Buku KIA.")
+    return item
+
+
 def _enrich_recommendation_item_fields(item: Dict[str, Any], care_plan: Dict[str, Any]) -> Dict[str, Any]:
     """Memastikan setiap item rekomendasi Agent 2 memiliki rincian makanan, susu, dan aktivitas/stimulasi."""
     fn = care_plan.get("food_and_nutrition", {})
@@ -712,6 +871,9 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
     maternal_history = state.get("maternal_history") or {}
     kader_feedback = state.get("kader_feedback")
     tools_invoked: List[str] = ["build_comprehensive_care_plan"]
+    flag_names = [f.get("flag", "") for f in risk_flags if isinstance(f, dict)]
+    _age_raw = visit_data.get("age_in_months")
+    _age_for_guard = int(_age_raw) if _age_raw is not None else None
 
     care_plan = build_comprehensive_care_plan(
         phase=phase,
@@ -772,9 +934,10 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
     for flag_obj in risk_flags:
         f_name = flag_obj.get("flag", "")
         detail = flag_obj.get("detail", "")
-        q = f"Tata laksana intervensi gizi makanan ASI susu stimulasi {f_name} {detail} fase {phase}"
+        q = flag_search_query(f_name, detail)
         for c in retrieve_clinical_guidelines(q, n_results=2):
             if c["id"] not in seen_chunks:
+                c["retrieved_for_flag"] = f_name
                 seen_chunks[c["id"]] = c
 
     guidelines_preview = "\n\n".join([
@@ -928,44 +1091,13 @@ Tugas Anda:
             for item in raw_items:
                 if not isinstance(item, dict):
                     continue
-                cit = item.get("citation")
-                if not cit:
-                    default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
-                    item["citation"] = {
-                        "source": item.get("source") or default_chunk.get("source") or "Buku KIA 2024 (Kemenkes RI)",
-                        "section": item.get("section") or default_chunk.get("section") or "Pedoman Standar",
-                        "page": item.get("page") or default_chunk.get("page") or 1,
-                        "chunk_id": default_chunk.get("id"),
-                    }
-                elif isinstance(cit, str):
-                    item["citation"] = {
-                        "source": cit,
-                        "section": item.get("section") or "Pedoman Standar",
-                        "page": 1,
-                        "chunk_id": None,
-                    }
+                item = attach_chunk_evidence(item, seen_chunks)
+                item = _guard_llm_nutrition(item, phase, _age_for_guard, flag_names)
                 item = _enrich_recommendation_item_fields(item, care_plan)
                 item["reasoning_mode"] = MODE_LLM_REACT
                 item["thought_process"] = list(thought_process)
-                # Auto-populate evidence quote & longitudinal progress if empty
-                # Auto-populate evidence quote & longitudinal progress if empty
-                default_chunk = list(seen_chunks.values())[0] if seen_chunks else {}
-                target_chunk = seen_chunks.get(item.get("citation", {}).get("chunk_id")) or default_chunk
-                if not item.get("evidence_quote"):
-                    if target_chunk and target_chunk.get("content"):
-                        raw_c = target_chunk.get("content", "").strip()
-                        item["evidence_quote"] = raw_c[:350] + ("..." if len(raw_c) > 350 else "")
-                    else:
-                        from app.multiagent.rag.ingest import DEFAULT_CLINICAL_GUIDELINES
-                        item["evidence_quote"] = DEFAULT_CLINICAL_GUIDELINES[1]["content"] if phase != "IBU_HAMIL" else DEFAULT_CLINICAL_GUIDELINES[2]["content"]
                 if not item.get("longitudinal_progress"):
-                    item["longitudinal_progress"] = comp_str if comp_str != "Kunjungan pemantauan pertama / data awal." else "Kunjungan pertama / data awal pemantauan."
-                if not item.get("ai_insight"):
-                    item["ai_insight"] = (
-                        "Saran Tambahan AI: Libatkan keluarga dalam pendampingan makan harian dan terapkan variasi olahan bahan pangan lokal agar anak antusias makan."
-                        if phase != "IBU_HAMIL"
-                        else "Saran Tambahan AI: Minum TTD dengan air putih atau sari buah jeruk di malam hari untuk penyerapan optimal dan mengurangi keluhan mual."
-                    )
+                    item["longitudinal_progress"] = comp_str
                 try:
                     validated = RecommendationItem(**item)
                     validated_items.append(validated.model_dump())
@@ -991,9 +1123,10 @@ Tugas Anda:
             for flag_obj in risk_flags:
                 f_name = flag_obj.get("flag", "")
                 detail = flag_obj.get("detail", "")
-                q = f"Tata laksana dan rekomendasi kader untuk {f_name} {detail} fase {phase}"
+                q = flag_search_query(f_name, detail)
                 for c in retrieve_clinical_guidelines(q, n_results=2):
                     if c["id"] not in seen_chunks:
+                        c["retrieved_for_flag"] = f_name
                         seen_chunks[c["id"]] = c
 
         tools_invoked.append("_generate_rule_based_recommendations (Fallback PNPK/Buku KIA)")
@@ -1048,12 +1181,11 @@ Tugas Anda:
                 "Penuhi menu harian Isi Piringku Balita dengan protein hewani ganda lokal Minahasa Utara",
                 "Lanjutkan pemantauan berat dan panjang badan setiap bulan di Posyandu Balita hingga usia 5 tahun",
             ],
-            "citation": {
-                "source": "Buku KIA Kemenkes RI (2024) & PNPK Tata Laksana Stunting",
-                "section": "Kelulusan 1.000 HPK & Evaluasi Pertumbuhan 24 Bulan",
-                "page": 1,
-                "chunk_id": None,
-            },
+            # Rekomendasi aturan sistem: tidak berasal dari chunk, sehingga tanpa kutipan.
+            "citation": citation_from_chunk(None),
+            "evidence_quote": None,
+            "evidence_status": EVIDENCE_RULE,
+            "reasoning_mode": "ATURAN_SISTEM",
             "severity": "HIGH" if has_gr else "INFO",
         }
         recommendations.insert(0, grad_rec)
@@ -1116,26 +1248,12 @@ def _generate_rule_based_recommendations(
 
     for flag in risk_flags:
         f_name = flag.get("flag", "")
-        matching_chunk = next((c for c in chunks if f_name.split("_")[-1] in c.get("category", "")), None)
-        if not matching_chunk and chunks:
-            matching_chunk = chunks[0]
+        # Hanya chunk yang benar-benar di-retrieve untuk flag ini; tidak ada chunk pengganti.
+        matching_chunk = next((c for c in chunks if c.get("retrieved_for_flag") == f_name), None)
+        citation = {"chunk_id": matching_chunk["id"] if matching_chunk else None}
 
-        citation = {
-            "source": matching_chunk["source"] if matching_chunk else "Buku KIA RI (2024)",
-            "section": matching_chunk["section"] if matching_chunk else "Panduan Pelayanan Posyandu 1.000 HPK",
-            "page": matching_chunk["page"] if matching_chunk else 1,
-            "chunk_id": matching_chunk["id"] if matching_chunk else None,
-        }
-
-        if (
-            "STUNTING" in f_name
-            or "GIZI" in f_name
-            or "UNDERWEIGHT" in f_name
-            or "WASTING" in f_name
-            or "WEIGHT" in f_name
-            or "2T" in f_name
-            or "PERLAMBATAN" in f_name
-        ):
+        # Nama flag dicocokkan persis: OVERWEIGHT/GIZI_LEBIH tidak boleh masuk cabang gagal tumbuh
+        if f_name in GROWTH_DEFICIT_FLAGS:
             protein_step = (
                 "Berikan alternatif protein hewani non-telur setiap makan: ikan tude/cakalang segar (bebas duri), hati ayam, daging ayam/sapi cincang, serta tahu/tempe"
                 if has_egg_allergy
@@ -1145,8 +1263,8 @@ def _generate_rule_based_recommendations(
                 "title": "Intervensi Gizi Spesifik, MP-ASI Tinggi Protein Hewani & Rujukan Puskesmas",
                 "category": "GIZI",
                 "recommendation_text": (
-                    "Lakukan rujukan ke Puskesmas Airmadidi untuk konfirmasi tata laksana gangguan pertumbuhan/stunting, "
-                    "berikan PMT Pemulihan berbasis pangan lokal tinggi protein hewani, dan evaluasi kebutuhan PKMK medis."
+                    " ".join(_pnpk_referral_lines({f.get("flag", "") for f in risk_flags}))
+                    + " Berikan MP-ASI tinggi protein hewani sesuai usia; PMT pemulihan atau PKMK diberikan setelah evaluasi tenaga kesehatan."
                     + (f" (Catatan Kader: {kader_feedback})" if kader_feedback else "")
                 ),
                 "food_guide": (
@@ -1162,25 +1280,43 @@ def _generate_rule_based_recommendations(
                     or "Pastikan anak tidur cukup 11–13 jam/hari (hormon pertumbuhan aktif saat tidur malam), stimulasi motorik & bicara sesuai usia, dan cuci tangan pakai sabun (PHBS)."
                 ),
                 "action_steps": [
-                    "Rujuk anak ke Dokter/Petugas Gizi Puskesmas Airmadidi untuk pemeriksaan klinis dan evaluasi pemberian Susu PKMK (Pangan Olahan untuk Keperluan Medis Khusus)",
+                    "Rujuk anak ke Puskesmas Airmadidi sesuai alur PNPK untuk konfirmasi dan evaluasi",
                     protein_step,
                     "Tambahkan lemak sehat (1 sdt minyak kelapa/santan/mentega) di setiap porsi MP-ASI dan terapkan responsive feeding tanpa gawai",
                     "Pantau kenaikan berat badan dan panjang/tinggi badan setiap 2 minggu di Posyandu",
                 ],
                 "citation": citation,
             })
-        elif "KEK" in f_name or "BB_IBU_HAMIL_TURUN" in f_name:
+        elif f_name in OVERWEIGHT_FLAGS:
+            recs.append({
+                "title": "Konfirmasi Gizi Lebih & Konseling Gizi Seimbang",
+                "category": "GIZI",
+                "recommendation_text": (
+                    f"Status gizi lebih terdeteksi ({flag.get('detail', f_name)}). Dokumen rujukan (Buku KIA, PNPK Stunting) "
+                    "tidak memuat tata laksana gizi lebih; rujuk ke Puskesmas untuk konfirmasi dan konseling gizi."
+                ),
+                "food_guide": f"{fn.get('stage_and_texture', '')} Frekuensi: {fn.get('frequency_and_portion', '')} Jangan menambah porsi atau lemak tambahan.",
+                "milk_and_supplements": f"{ms.get('recommended_type', '')}",
+                "activity_and_stimulation": " ".join(ac.get("recommended_activities", [])[:2]),
+                "action_steps": [
+                    "Rujuk ke Puskesmas Airmadidi untuk konfirmasi status gizi lebih",
+                    "Jangan menambah porsi makan atau lemak tambahan pada MP-ASI",
+                    "Lanjutkan penimbangan dan pengukuran panjang badan setiap bulan di Posyandu",
+                ],
+                "citation": citation,
+            })
+        elif "KEK" in f_name and not f_name.startswith("RIWAYAT_") or f_name == "BB_IBU_HAMIL_TURUN":
             recs.append({
                 "title": "Pemberian Makanan Tambahan (PMT) & Pemulihan Gizi Ibu Hamil KEK",
                 "category": "GIZI_MATERNAL",
                 "recommendation_text": (
-                    "Ibu hamil dengan LiLA < 23,5 cm (KEK) atau penurunan berat badan wajib mendapatkan PMT Ibu Hamil selama minimal 90 hari "
-                    "dengan tambahan energi +500 kkal/hari dan protein hewani tinggi."
+                    f"{flag.get('detail', 'LiLA < 23,5 cm').rstrip('. ')}. Ibu hamil berisiko KEK. Makan lebih banyak dan lebih sering sesuai porsi ibu hamil "
+                    "Buku KIA, dan konsultasikan pemberian makanan tambahan (PMT) ibu hamil ke bidan/Puskesmas."
                 ),
                 "food_guide": (
-                    "Konsumsi 3x makan utama porsi lengkap + 2x selingan padat gizi (bubur kacang hijau, biskuit PMT, ubi/telur rebus). "
-                    "Utamakan lauk ikan tude/cakalang, telur 2 butir/hari, hati ayam, tempe/tahu, dan sayur daun kelor/bayam."
-                ),
+                    f"{fn.get('stage_and_texture', '')} {fn.get('frequency_and_portion', '')} "
+                    "Utamakan lauk ikan tude/cakalang, telur, hati ayam, tempe/tahu, dan sayur daun kelor/bayam."
+                ).strip(),
                 "milk_and_supplements": (
                     "Minum Susu Khusus Ibu Hamil tinggi protein, kalsium & asam folat 2 gelas/hari (pagi dan sore), "
                     "serta 1 tablet TTD setiap malam sebelum tidur (beri jeda minimal 2 jam antara susu dan TTD)."
@@ -1190,27 +1326,27 @@ def _generate_rule_based_recommendations(
                     "jalan pagi santai 20 menit, dan hindari paparan asap rokok."
                 ),
                 "action_steps": [
-                    "Distribusikan paket PMT Ibu Hamil KEK dan pantau kenaikan berat badan serta ukuran LiLA setiap bulan",
+                    "Konsultasikan PMT ibu hamil ke bidan/Puskesmas dan pantau berat badan serta LiLA setiap bulan",
                     "Edukasi ibu untuk makan porsi kecil tapi sering dengan 2 lauk protein hewani setiap kali makan",
                     "Anjurkan konsumsi Susu Ibu Hamil 2x sehari terpisah 2 jam dari jadwal minum Tablet Tambah Darah (TTD)",
                     "Jadwalkan pemeriksaan ANC terpadu bersama Bidan/Dokter di Puskesmas Airmadidi",
                 ],
                 "citation": citation,
             })
-        elif "ANEMIA" in f_name:
+        elif "ANEMIA" in f_name and not f_name.startswith("RIWAYAT_"):
             recs.append({
                 "title": "Tata Laksana Anemia Kehamilan, Diet Tinggi Zat Besi & Kepatuhan TTD",
                 "category": "MEDIS",
                 "recommendation_text": (
-                    "Ibu hamil dengan kadar Hb < 11,0 g/dL memerlukan peningkatan dosis suplementasi Tablet Tambah Darah (TTD) "
-                    "dan asupan pangan tinggi zat besi heme untuk mencegah perdarahan persalinan serta bayi lahir BBLR."
+                    f"{flag.get('detail', 'Hb < 11,0 g/dL').rstrip('. ')}. Pastikan Tablet Tambah Darah (TTD)/MMS diminum setiap hari dan periksakan ulang Hb "
+                    "ke bidan/Puskesmas. Dosis TTD saat anemia ditentukan bidan/dokter."
                 ),
                 "food_guide": (
                     "Konsumsi sumber zat besi heme yang mudah diserap tubuh setiap hari: hati ayam/sapi, ikan cakalang/tude, daging merah, telur, "
                     "sayur daun kelor/bayam, serta wajib disertai buah kaya Vitamin C (jeruk, jambu biji, pepaya)."
                 ),
                 "milk_and_supplements": (
-                    "Konsumsi Tablet Tambah Darah (TTD) sesuai anjuran Bidan/Dokter (1–2 tablet/hari saat anemia) pada malam hari dengan air putih/jeruk. "
+                    "Minum Tablet Tambah Darah (TTD) sesuai anjuran bidan/dokter pada malam hari dengan air putih/jeruk. "
                     "Jangan minum TTD bersama teh, kopi, atau susu (beri jeda minimal 2 jam dari Susu Ibu Hamil)."
                 ),
                 "activity_and_stimulation": (
@@ -1221,11 +1357,11 @@ def _generate_rule_based_recommendations(
                     "Pastikan kepatuhan minum TTD setiap malam sebelum tidur bersama air putih atau sari jeruk manis",
                     "Edukasi larangan minum teh/kopi setelah makan dan beri jeda 2 jam antara minum susu ibu hamil dengan TTD",
                     "Tingkatkan konsumsi hati ayam, ikan laut segar, telur, dan sayur daun kelor setiap hari",
-                    "Evaluasi ulang kadar Hemoglobin (Hb) di Puskesmas Airmadidi setelah 2–4 minggu terapi",
+                    "Periksakan ulang kadar Hemoglobin (Hb) di Puskesmas Airmadidi sesuai jadwal dari bidan/dokter",
                 ],
                 "citation": citation,
             })
-        elif "BBLR" in f_name or "PRETERM" in f_name:
+        elif f_name in {"RISIKO_BBLR", "RISIKO_BBLSR", "RISIKO_BBLER", "RISIKO_PREMATUR"}:
             recs.append({
                 "title": "Perawatan Metode Kanguru (PMK), ASI Eksklusif Intensif & Pemantauan BBLR",
                 "category": "NEONATAL",
@@ -1273,7 +1409,17 @@ def _generate_rule_based_recommendations(
                 "citation": citation,
             })
 
+    # Beberapa flag dapat memicu rekomendasi yang sama (mis. stunting + underweight); simpan satu saja
+    unique, seen_titles = [], set()
     for r in recs:
+        if r["title"] not in seen_titles:
+            seen_titles.add(r["title"])
+            unique.append(r)
+    recs = unique
+
+    chunks_by_id = {c["id"]: c for c in chunks if c.get("id")}
+    for r in recs:
+        attach_chunk_evidence(r, chunks_by_id)
         r["reasoning_mode"] = "FALLBACK_DETERMINISTIC"
         r["thought_process"] = [
             "Mode Darurat Deterministik Aktif: Rekomendasi disusun berdasarkan standar PNPK Kemenkes RI karena API LLM offline / kuota terbatas."

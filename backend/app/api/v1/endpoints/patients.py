@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 
 from app.core.database import get_db
 from app.models.patient import Patient, PatientType
-from app.models.visit import Visit
+from app.models.visit import Visit, PhaseEnum
 from app.models.report import Report
 from app.models.revision import RevisionRequest
 from app.models.audit_log import AuditLog
@@ -15,7 +15,7 @@ from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, L
 from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
 from app.models.user import User, UserRole
-from app.multiagent.tools.hpk_tracker import calculate_1000_hpk_status
+from app.multiagent.tools.hpk_tracker import calculate_1000_hpk_status, pregnancy_completed_status
 from app.multiagent.tools.who_zscore import calculate_who_zscore
 from app.multiagent.state_builder import build_maternal_history
 
@@ -26,7 +26,7 @@ def _serialize_visit_rich(v: Visit, patient: Patient) -> Dict[str, Any]:
     """Mengubah objek Visit menjadi dictionary lengkap lintas 3 fase + Z-Score + 1.000 HPK."""
     phase_str = v.phase.value if hasattr(v.phase, "value") else str(v.phase)
     p_type_str = patient.patient_type.value if hasattr(patient.patient_type, "value") else str(patient.patient_type)
-    gender_str = patient.gender.value if (patient.gender and hasattr(patient.gender, "value")) else (str(patient.gender) if patient.gender else "L")
+    gender_str = patient.gender.value if (patient.gender and hasattr(patient.gender, "value")) else (str(patient.gender) if patient.gender else None)
 
     latest_report = max(v.reports, key=lambda r: r.id) if v.reports else None
 
@@ -44,11 +44,12 @@ def _serialize_visit_rich(v: Visit, patient: Patient) -> Dict[str, Any]:
     z_bbu = None
     z_bbpb = None
     pbu_cat = None
-    if phase_str == "BADUTA" and (v.child_length_cm or v.child_weight_kg):
+    age_for_z = hpk_info.get("child_age_months") if hpk_info.get("data_available") else v.age_in_months
+    if phase_str == "BADUTA" and gender_str and age_for_z is not None and (v.child_length_cm or v.child_weight_kg):
         try:
             z_res = calculate_who_zscore(
                 gender=gender_str,
-                age_in_months=int(v.age_in_months if v.age_in_months is not None else hpk_info.get("child_age_months") or 12),
+                age_in_months=int(age_for_z),
                 weight_kg=float(v.child_weight_kg) if v.child_weight_kg else None,
                 length_cm=float(v.child_length_cm) if v.child_length_cm else None,
             )
@@ -84,11 +85,11 @@ def _serialize_visit_rich(v: Visit, patient: Patient) -> Dict[str, Any]:
         "gestational_age_at_birth_weeks": v.gestational_age_at_birth_weeks,
         "early_initiation_breastfeeding": v.early_initiation_breastfeeding,
         # Baduta
-        "age_in_months": v.age_in_months if v.age_in_months is not None else (hpk_info.get("child_age_months") if phase_str == "BADUTA" else None),
+        "age_in_months": age_for_z if phase_str == "BADUTA" else v.age_in_months,
         "child_weight_kg": v.child_weight_kg,
         "child_length_cm": v.child_length_cm,
         "child_head_circumference_cm": v.child_head_circumference_cm,
-        "weight_trend_kms": v.weight_trend_kms,
+        "weight_trend_kms": v.weight_trend_kms if phase_str == "BADUTA" else None,
         "feeding_status": v.feeding_status,
         "vitamin_a": v.vitamin_a,
         "immunization_status": v.immunization_status,
@@ -128,22 +129,37 @@ def _enrich_patient(db: Session, p: Patient) -> Patient:
     p.visits_count = len(p.visits) if p.visits else 0
 
     latest_visit = max(p.visits, key=lambda v: (v.visit_date, v.id)) if p.visits else None
-    if latest_visit:
-        phase_str = latest_visit.phase.value if hasattr(latest_visit.phase, "value") else str(latest_visit.phase)
-        p.hpk_status = calculate_1000_hpk_status(
-            phase=phase_str,
-            patient_type=p_type_str,
-            birth_date=p.birth_date,
-            visit_date=latest_visit.visit_date,
-            gestational_age_weeks=latest_visit.gestational_age_weeks,
-            trimester=latest_visit.trimester,
-            age_in_months=latest_visit.age_in_months,
+    p.hpk_status = None
+
+    if p_type_str == "MOTHER":
+        # Ibu yang sudah melahirkan setelah kunjungan kehamilan terakhir: fase kehamilan selesai,
+        # pemantauan 1.000 HPK dilanjutkan pada anak.
+        latest_child = (
+            db.query(Patient)
+            .filter(Patient.mother_id == p.id)
+            .order_by(Patient.birth_date.desc())
+            .first()
         )
+        if latest_child and latest_child.birth_date and (
+            not latest_visit or latest_child.birth_date >= latest_visit.visit_date
+        ):
+            p.hpk_status = pregnancy_completed_status(latest_child.name, latest_child.birth_date)
+        elif latest_visit:
+            p.hpk_status = calculate_1000_hpk_status(
+                phase="IBU_HAMIL",
+                patient_type=p_type_str,
+                visit_date=latest_visit.visit_date,
+                gestational_age_weeks=latest_visit.gestational_age_weeks,
+                trimester=latest_visit.trimester,
+            )
+        # Tanpa kunjungan kehamilan: usia kehamilan tidak diketahui, hpk_status = None
     else:
+        # Anak: posisi HPK dihitung dari tanggal lahir sampai kunjungan terakhir (atau hari ini)
         p.hpk_status = calculate_1000_hpk_status(
-            phase="IBU_HAMIL" if p_type_str == "MOTHER" else "BADUTA",
+            phase=None,
             patient_type=p_type_str,
             birth_date=p.birth_date,
+            visit_date=latest_visit.visit_date if latest_visit else date.today(),
         )
     return p
 
@@ -165,20 +181,13 @@ def get_patients(
     """
     query = db.query(Patient)
 
-    if current_user.role == UserRole.KADER:
-        kader_filters = []
-        if current_user.village_name:
-            v_clean = current_user.village_name.strip()
-            kader_filters.append(Patient.village_name == v_clean)
-            kader_filters.append(Patient.village_name.ilike(f"%{v_clean}%"))
-        if current_user.posyandu_name:
-            p_clean = current_user.posyandu_name.strip()
-            kader_filters.append(Patient.posyandu_name == p_clean)
-            kader_filters.append(Patient.posyandu_name.ilike(f"%{p_clean}%"))
-        if kader_filters:
-            query = query.filter(or_(*kader_filters))
+    from app.services.aggregates import scoped_patient_ids, same_village
+    scope_ids = scoped_patient_ids(db, current_user)
+    if scope_ids is not None:
+        query = query.filter(Patient.id.in_(scope_ids))
     elif village_name:
-        query = query.filter(Patient.village_name.ilike(f"%{village_name.strip()}%"))
+        ids = [p.id for p in db.query(Patient.id, Patient.village_name).all() if same_village(p.village_name, village_name)]
+        query = query.filter(Patient.id.in_(ids))
 
     if patient_type:
         query = query.filter(Patient.patient_type == patient_type)
@@ -218,209 +227,119 @@ def create_patient(
     return _enrich_patient(db, patient)
 
 
-AIRMADIDI_VILLAGES_LIST = [
-    "Airmadidi Atas", "Airmadidi Bawah", "Sarongsong Satu", "Sarongsong Dua",
-    "Sukur", "Rap-Rap", "Sawangan", "Sampiri", "Tanggari"
-]
-
 @router.get("/posyandu-aggregates")
 def get_posyandu_aggregates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Menghasilkan data rekapitulasi monitoring KIA 1.000 HPK agregat untuk seluruh posyandu/desa
-    di wilayah kerja Puskesmas Airmadidi, termasuk rasio KMS (N/T), kelulusan 1.000 HPK, dan kasus stunting/KEK.
+    Rekapitulasi 1.000 HPK per desa/kelurahan wilayah Puskesmas Airmadidi (khusus Admin & Dokter, Tabel 11).
+    Hitungan stunting/KEK/anemia memakai app.services.aggregates (sama dengan dashboard admin).
     """
+    if current_user.role not in (UserRole.ADMIN, UserRole.DOKTER):
+        raise HTTPException(status_code=403, detail="Rekap seluruh posyandu khusus Admin Puskesmas dan Dokter.")
+
+    from app.services import aggregates as agg
+
     all_patients = db.query(Patient).all()
-    all_visits = db.query(Visit).all()
     all_reports = db.query(Report).all()
-
-    # Pre-index reports by patient_id
-    reports_by_patient = {}
-    for r in all_reports:
-        reports_by_patient.setdefault(r.patient_id, []).append(r)
-
-    # Pre-index visits by patient_id
-    visits_by_patient = {}
-    for v in all_visits:
+    visits_by_patient: Dict[int, List[Visit]] = {}
+    for v in db.query(Visit).all():
         visits_by_patient.setdefault(v.patient_id, []).append(v)
+    reports_by_patient = agg.index_by_patient(all_reports)
+    children_by_mother = agg.children_index(all_patients)
 
-    village_stats = []
-    
-    def _is_mother(p):
-        t = str(getattr(p.patient_type, "value", p.patient_type) or "").upper()
-        return "MOTHER" in t or "IBU" in t
-
-    def _is_child(p):
-        t = str(getattr(p.patient_type, "value", p.patient_type) or "").upper()
-        return "CHILD" in t or "ANAK" in t
-
-    total_target_all = len(all_patients)
-    total_mothers_all = sum(1 for p in all_patients if _is_mother(p))
-    total_children_all = sum(1 for p in all_patients if _is_child(p))
-    
-    total_stunting_all = 0
-    total_kek_all = 0
-    total_anemia_all = 0
-    total_kms_naik_all = 0
-    total_kms_tidak_naik_all = 0
-    total_graduated_optimal_all = 0
-    total_graduated_evaluasi_all = 0
-
-    def _find_village_idx(patient):
-        p_vill = (patient.village_name or "").strip().lower()
-        if not p_vill:
-            return 0
-        clean_vill = p_vill.replace("desa", "").replace("kelurahan", "").replace("posyandu", "").strip()
-        for idx, v_name in enumerate(AIRMADIDI_VILLAGES_LIST):
-            v_lower = v_name.lower()
-            if clean_vill == v_lower or clean_vill in v_lower or v_lower in clean_vill or (clean_vill == "airmadidi" and idx == 0):
-                return idx
-            if "sarongsong" in clean_vill and ("1" in clean_vill or "satu" in clean_vill) and "satu" in v_lower:
-                return idx
-            if "sarongsong" in clean_vill and ("2" in clean_vill or "dua" in clean_vill) and "dua" in v_lower:
-                return idx
-            if "rap" in clean_vill and "rap" in v_lower:
-                return idx
-        return 0
-
-    patients_by_village = {idx: [] for idx in range(len(AIRMADIDI_VILLAGES_LIST))}
+    by_village: Dict[str, List[Patient]] = {}
     for p in all_patients:
-        v_idx = _find_village_idx(p)
-        patients_by_village[v_idx].append(p)
+        by_village.setdefault(agg.village_bucket(p), []).append(p)
+    village_names = list(agg.AIRMADIDI_VILLAGES) + ([agg.OTHER_VILLAGE] if agg.OTHER_VILLAGE in by_village else [])
 
-    for idx, v_name in enumerate(AIRMADIDI_VILLAGES_LIST):
-        v_patients = patients_by_village[idx]
+    totals_all = {"stunting": 0, "kek": 0, "anemia": 0, "kms_naik": 0, "kms_tidak_naik": 0, "grad_optimal": 0, "grad_evaluasi": 0}
+    village_stats = []
+    for v_name in village_names:
+        v_patients = by_village.get(v_name, [])
+        v_ids = {p.id for p in v_patients}
+        v_tot = agg.summarize(v_patients, [r for r in all_reports if r.patient_id in v_ids], children_by_mother)
 
-        v_mothers = [p for p in v_patients if _is_mother(p)]
-        v_children = [p for p in v_patients if _is_child(p)]
-        
-        stunting_count = 0
-        kek_count = 0
-        anemia_count = 0
-        high_risk_count = 0
-        kms_naik = 0
-        kms_tidak_naik = 0
-        grad_optimal = 0
-        grad_evaluasi = 0
-
+        kms_naik = kms_tidak_naik = grad_optimal = grad_evaluasi = 0
         for p in v_patients:
-            p_reports = reports_by_patient.get(p.id, [])
-            p_visits = visits_by_patient.get(p.id, [])
-            
-            # Check latest report risk
-            if p_reports:
-                latest_report = max(p_reports, key=lambda r: r.id)
-                flags = latest_report.risk_flags or []
-                has_stunt = any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
-                has_kek = any("KEK" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
-                has_anemia = any("ANEMIA" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in flags)
-                
-                if has_stunt: stunting_count += 1
-                if has_kek: kek_count += 1
-                if has_anemia: anemia_count += 1
-                if latest_report.overall_status == "RISIKO_TINGGI": high_risk_count += 1
+            if p.patient_type != PatientType.CHILD:
+                continue
+            for v in visits_by_patient.get(p.id, []):
+                if v.phase != PhaseEnum.BADUTA:
+                    continue  # N/T hanya bermakna pada penimbangan baduta
+                trend = str(v.weight_trend_kms or "").upper()
+                if trend in ("NAIK", "N"):
+                    kms_naik += 1
+                elif trend in ("TIDAK_NAIK", "T"):
+                    kms_tidak_naik += 1
+            # Lulus 1.000 HPK: usia >= 24 bulan; evaluasi bila laporan tervalidasi terakhir masih stunting
+            if p.birth_date and (date.today() - p.birth_date).days >= 730:
+                latest = agg.latest_report(reports_by_patient.get(p.id, []))
+                if agg.classify_patient(p, latest, children_by_mother)["stunting"]:
+                    grad_evaluasi += 1
+                else:
+                    grad_optimal += 1
 
-            # KMS trends for children
-            if _is_child(p):
-                for v in p_visits:
-                    trend = str(v.weight_trend_kms or "").upper()
-                    if trend in ["NAIK", "N"]:
-                        kms_naik += 1
-                    elif trend in ["TIDAK_NAIK", "T"]:
-                        kms_tidak_naik += 1
-                
-                # Graduation check for child >= 24 months
-                if p.birth_date:
-                    days_age = (date.today() - p.birth_date).days
-                    if days_age >= 730:
-                        if p_reports and any("STUNTING" in (f.get("flag", "") if isinstance(f, dict) else str(f)) for f in (max(p_reports, key=lambda r: r.id).risk_flags or [])):
-                            grad_evaluasi += 1
-                        else:
-                            grad_optimal += 1
+        for k, val in (("stunting", v_tot["stunting"]), ("kek", v_tot["kek"]), ("anemia", v_tot["anemia"]),
+                       ("kms_naik", kms_naik), ("kms_tidak_naik", kms_tidak_naik),
+                       ("grad_optimal", grad_optimal), ("grad_evaluasi", grad_evaluasi)):
+            totals_all[k] += val
 
-        total_stunting_all += stunting_count
-        total_kek_all += kek_count
-        total_anemia_all += anemia_count
-        total_kms_naik_all += kms_naik
-        total_kms_tidak_naik_all += kms_tidak_naik
-        total_graduated_optimal_all += grad_optimal
-        total_graduated_evaluasi_all += grad_evaluasi
-
-        # Status Posyandu category
-        if stunting_count >= 3 or high_risk_count >= 3:
-            status_label = "Prioritas Dampingan"
-            status_color = "rose"
-        elif stunting_count > 0 or high_risk_count > 0:
-            status_label = "Waspada Stunting"
-            status_color = "amber"
+        if v_tot["stunting"] >= 3 or v_tot["high_risk"] >= 3:
+            status_label, status_color = "Prioritas Dampingan", "rose"
+        elif v_tot["stunting"] > 0 or v_tot["high_risk"] > 0:
+            status_label, status_color = "Waspada Stunting", "amber"
         else:
-            status_label = "Terkendali (Aman)"
-            status_color = "emerald"
+            status_label, status_color = "Terkendali (Aman)", "emerald"
 
         village_stats.append({
             "village_name": v_name,
             "posyandu_name": f"Posyandu {v_name}",
             "total_patients": len(v_patients),
-            "total_mothers": len(v_mothers),
-            "total_children": len(v_children),
-            "stunting_count": stunting_count,
-            "kek_count": kek_count,
-            "anemia_count": anemia_count,
-            "high_risk_count": high_risk_count,
+            "total_mothers": sum(1 for p in v_patients if p.patient_type == PatientType.MOTHER),
+            "total_children": sum(1 for p in v_patients if p.patient_type == PatientType.CHILD),
+            "stunting_count": v_tot["stunting"],
+            "kek_count": v_tot["kek"],
+            "anemia_count": v_tot["anemia"],
+            "high_risk_count": v_tot["high_risk"],
             "kms_naik_count": kms_naik,
             "kms_tidak_naik_count": kms_tidak_naik,
             "graduated_optimal": grad_optimal,
             "graduated_evaluasi": grad_evaluasi,
             "status_label": status_label,
             "status_color": status_color,
-            "is_user_village": bool(current_user.village_name and current_user.village_name.strip().lower() == v_name.lower()),
+            "is_user_village": agg.same_village(current_user.village_name, v_name),
         })
 
-    total_kms = total_kms_naik_all + total_kms_tidak_naik_all
-    kms_naik_percent = round((total_kms_naik_all / total_kms * 100), 1) if total_kms > 0 else 0.0
-
-    total_grad = total_graduated_optimal_all + total_graduated_evaluasi_all
-    grad_rate = round((total_graduated_optimal_all / total_grad * 100), 1) if total_grad > 0 else 100.0
+    total_kms = totals_all["kms_naik"] + totals_all["kms_tidak_naik"]
+    total_grad = totals_all["grad_optimal"] + totals_all["grad_evaluasi"]
 
     return {
         "summary": {
-            "total_target_all": total_target_all,
-            "total_mothers_all": total_mothers_all,
-            "total_children_all": total_children_all,
-            "total_stunting_all": total_stunting_all,
-            "total_kek_all": total_kek_all,
-            "total_anemia_all": total_anemia_all,
-            "total_kms_naik": total_kms_naik_all,
-            "total_kms_tidak_naik": total_kms_tidak_naik_all,
-            "kms_naik_percent": kms_naik_percent,
-            "total_graduated_optimal": total_graduated_optimal_all,
-            "total_graduated_evaluasi": total_graduated_evaluasi_all,
-            "graduation_rate": grad_rate,
-            "user_village": current_user.village_name or "Airmadidi Atas",
+            "total_target_all": len(all_patients),
+            "total_mothers_all": sum(1 for p in all_patients if p.patient_type == PatientType.MOTHER),
+            "total_children_all": sum(1 for p in all_patients if p.patient_type == PatientType.CHILD),
+            "total_stunting_all": totals_all["stunting"],
+            "total_kek_all": totals_all["kek"],
+            "total_anemia_all": totals_all["anemia"],
+            "total_kms_naik": totals_all["kms_naik"],
+            "total_kms_tidak_naik": totals_all["kms_tidak_naik"],
+            "kms_naik_percent": round(totals_all["kms_naik"] / total_kms * 100, 1) if total_kms else None,
+            "total_graduated_optimal": totals_all["grad_optimal"],
+            "total_graduated_evaluasi": totals_all["grad_evaluasi"],
+            "graduation_rate": round(totals_all["grad_optimal"] / total_grad * 100, 1) if total_grad else None,
+            "user_village": current_user.village_name,
             "user_role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
-            "is_kader": current_user.role == UserRole.KADER,
+            "is_kader": False,
         },
         "villages": village_stats,
     }
 
 
-
 def _is_patient_in_kader_scope(patient: Patient, current_user: User) -> bool:
-    if current_user.role != UserRole.KADER:
-        return True
-    u_vill = (current_user.village_name or "").strip().lower()
-    p_vill = (patient.village_name or "").strip().lower()
-    if u_vill and p_vill:
-        if u_vill == p_vill or u_vill in p_vill or p_vill in u_vill:
-            return True
-    u_pos = (current_user.posyandu_name or "").strip().lower()
-    p_pos = (patient.posyandu_name or "").strip().lower()
-    if u_pos and p_pos:
-        if u_pos == p_pos or u_pos in p_pos or p_pos in u_pos:
-            return True
-    return not u_vill or not p_vill
+    from app.services.aggregates import in_kader_scope
+    return in_kader_scope(patient, current_user)
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)

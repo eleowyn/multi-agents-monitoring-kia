@@ -339,7 +339,7 @@ const ArsipLaporan = () => {
                       return (
                         <tr
                           key={r.id}
-                          onClick={() => navigate(`/kader/validasi-laporan/${r.visit_id}`)}
+                          onClick={() => navigate(`/kader/validasi-laporan/${r.id}`)}
                           className="group cursor-pointer hover:bg-muted/50 transition-colors duration-150"
                           title="Klik baris untuk membuka lembar laporan"
                         >
@@ -439,7 +439,7 @@ const ArsipLaporan = () => {
                 return (
                   <div
                     key={r.id}
-                    onClick={() => navigate(`/kader/validasi-laporan/${r.visit_id}`)}
+                    onClick={() => navigate(`/kader/validasi-laporan/${r.id}`)}
                     className="card-interactive p-4 bg-card rounded-xl border border-line shadow-card space-y-3 cursor-pointer hover:border-sky-500/50 transition-all"
                   >
                     <div className="flex justify-between items-start">
@@ -465,7 +465,7 @@ const ArsipLaporan = () => {
 
                     <div className="flex items-center gap-2 pt-2 border-t border-line-light" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => navigate(`/kader/validasi-laporan/${r.visit_id}`)}
+                        onClick={() => navigate(`/kader/validasi-laporan/${r.id}`)}
                         className="flex-1 py-2 bg-muted text-heading hover:bg-card rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-line transition-colors cursor-pointer"
                       >
                         <ExternalLink className="w-3.5 h-3.5 text-dim" />

@@ -19,7 +19,6 @@ import {
   MapPin,
   Printer,
   Sparkles,
-  Star,
   ClipboardList,
   Utensils,
   Droplets,
@@ -148,7 +147,7 @@ const humanRisk = (flag) => {
 };
 
 const cleanCitation = (source) => {
-  if (!source) return "Buku KIA Kemenkes RI";
+  if (!source) return "Tanpa sumber dokumen";
   const s = String(source);
   if (s.includes("Buku_KIA") || s.toLowerCase().includes("buku_kia")) {
     return "Buku KIA 2024 (Kemenkes RI)";
@@ -160,6 +159,40 @@ const cleanCitation = (source) => {
     return "Petunjuk Teknis Posyandu Integrasi Layanan Primer (ILP)";
   }
   return s.replace(/\.pdf$/i, "").replace(/[_\(\)]/g, " ").trim();
+};
+
+const pageLabel = (page) => (page && page !== "-" ? `Halaman PDF ${page}` : null);
+
+// Kutipan dokumen dipisahkan dari teks AI. Hanya CHUNK_DOKUMEN yang ditampilkan sebagai kutipan asli buku.
+const EVIDENCE_LABELS = {
+  CHUNK_DOKUMEN: "Kutipan asli dokumen",
+  RINGKASAN_TERKURASI: "Ringkasan terkurasi peneliti (bukan kutipan langsung buku)",
+  KUTIPAN_VERSI_LAMA: "Kutipan versi lama, belum cocok dengan teks dokumen",
+};
+
+const EvidenceQuote = ({ rec, className = "" }) => {
+  const status = rec?.evidence_status || (rec?.evidence_quote ? "KUTIPAN_VERSI_LAMA" : "TANPA_KUTIPAN");
+  const page = pageLabel(rec?.citation?.page);
+  if (!rec?.evidence_quote || !EVIDENCE_LABELS[status]) {
+    return (
+      <p className={`text-xs text-caption ${className}`}>
+        {status === "ATURAN_SISTEM" ? "Aturan sistem, tanpa kutipan dokumen." : "Tanpa kutipan dokumen. Teks di atas adalah saran AI."}
+      </p>
+    );
+  }
+  const isOriginal = status === "CHUNK_DOKUMEN";
+  return (
+    <div className={`text-xs space-y-1 ${className}`}>
+      <p className={`font-semibold ${isOriginal ? "text-sky-800 dark:text-sky-300" : "text-amber-800 dark:text-amber-300"}`}>
+        {EVIDENCE_LABELS[status]}: {cleanCitation(rec.citation?.source)}
+        {rec.citation?.section ? `, ${rec.citation.section}` : ""}
+        {page ? ` (${page})` : ""}
+      </p>
+      <p className="text-body italic leading-relaxed pl-3 border-l-2 border-sky-500 whitespace-pre-line">
+        "{rec.evidence_quote}"
+      </p>
+    </div>
+  );
 };
 
 const ValidasiLaporan = () => {
@@ -201,9 +234,6 @@ const ValidasiLaporan = () => {
       [recIdx]: !prev[recIdx]
     }));
   };
-  const [ratingScore, setRatingScore] = useState(0);
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
-  const [ratingLoading, setRatingLoading] = useState(false);
 
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -219,10 +249,6 @@ const ValidasiLaporan = () => {
       setError("");
       const res = await api.get(`/reports/${reportId}`);
             setReport(res.data);
-      if (res.data?.kader_rating) {
-        setRatingScore(res.data.kader_rating);
-        setRatingSubmitted(true);
-      }
     } catch (err) {
       console.error(err);
       setError("Gagal memuat detail laporan hasil analisis AI.");
@@ -575,17 +601,16 @@ const ValidasiLaporan = () => {
           {confidence && (
             <div>
               <p className="text-xs text-caption font-medium">Tingkat Kesesuaian Klinis</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                  confidence.confidence_label === "TINGGI"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                    : confidence.confidence_label === "SEDANG"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                }`}>
-                  {confidence.confidence_score}% &bull; {confidence.confidence_label}
-                </span>
-              </div>
+              <p className="text-sm sm:text-base font-semibold text-heading mt-1">
+                {confidence.confidence_score}%
+              </p>
+              {confidence.components && (
+                <p className="text-xs text-caption mt-0.5">
+                  Data input {confidence.components.input_validity_pct}%, keterhubungan rujukan{" "}
+                  {confidence.components.rag_grounding_pct}%, kelengkapan riwayat{" "}
+                  {confidence.components.longitudinal_completeness_pct}%
+                </p>
+              )}
             </div>
           )}
           <div>
@@ -1082,20 +1107,10 @@ const ValidasiLaporan = () => {
                         {rec.recommendation_text}
                       </p>
 
-                      {/* Dua Lapis: 1. Dasar Dokumen Rujukan RAG (Buku KIA / PNPK) */}
-                      {rec.citation && (
-                        <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs space-y-1">
-                          <div className="flex items-center gap-1.5 text-sky-800 dark:text-sky-300 font-bold">
-                            <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                            <span>Dasar Pedoman Resmi: {cleanCitation(rec.citation.source)} (Hal. {rec.citation.page || "-"})</span>
-                          </div>
-                          {rec.evidence_quote && (
-                            <p className="text-caption italic pl-5 leading-relaxed">
-                              "{rec.evidence_quote}"
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      {/* Lapis 1: kutipan dokumen rujukan (teks chunk apa adanya) */}
+                      <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg">
+                        <EvidenceQuote rec={rec} />
+                      </div>
 
                       {/* Dua Lapis: 2. Arahan Edukasi & Porsi Pangan Lokal (Sintesis AI) */}
                       {rec.food_guide && (
@@ -1199,11 +1214,7 @@ const ValidasiLaporan = () => {
                             </ol>
                           </div>
                         )}
-                        {rec.evidence_quote && (
-                          <div className="italic text-slate-700 bg-slate-50 p-2 border-l-2 border-slate-500">
-                            <strong>Dasar Rujukan Resmi:</strong> "{rec.evidence_quote}" ({cleanCitation(rec.citation?.source)}, Halaman {rec.citation?.page || "-"})
-                          </div>
-                        )}
+                        <EvidenceQuote rec={rec} className="bg-slate-50 p-2" />
                       </div>
                     </div>
                   );
@@ -1491,61 +1502,6 @@ const ValidasiLaporan = () => {
         </div>
       </div>
 
-            {/* ─── Kader Rating Widget (1 - 5 Bintang) ─── */}
-      {report.status === "APPROVED" && (
-        <div className="no-print p-5 bg-card border border-line rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-heading flex items-center gap-2">
-              <Star className="w-4 h-4 text-amber-500" />
-              <span>Evaluasi Rekomendasi Klinis oleh Petugas</span>
-            </h4>
-            <p className="text-xs text-caption">
-              Berikan penilaian 1 - 5 bintang terhadap ketepatan saran klinis. Penilaian &ge; 4 disimpan sebagai contoh pembelajaran acuan, sedangkan &le; 2 ditandai untuk evaluasi supervisi dokter.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  disabled={ratingLoading || ratingSubmitted}
-                  onClick={async () => {
-                    try {
-                      setRatingLoading(true);
-                      await api.post(`/reports/${report.id}/rate`, {
-                        score: star,
-                        feedback: `Rating ${star} dari Kader Posyandu`,
-                      });
-                      setRatingScore(star);
-                      setRatingSubmitted(true);
-                    } catch (err) {
-                      console.error("Gagal mengirim rating:", err);
-                      alert(getErrorMessage(err, "Gagal menyimpan rating"));
-                    } finally {
-                      setRatingLoading(false);
-                    }
-                  }}
-                  className={`p-1.5 rounded-lg transition-transform ${
-                    star <= ratingScore
-                      ? "text-amber-500 scale-110"
-                      : "text-gray-300 dark:text-gray-600 hover:text-amber-400"
-                  } cursor-pointer disabled:cursor-default`}
-                  title={`Beri rating ${star} dari 5`}
-                >
-                  <Star className="w-6 h-6 fill-current" />
-                </button>
-              ))}
-            </div>
-            {ratingSubmitted && (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                Tersimpan ({ratingScore}/5)
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ═══ Clean Minimalist Detail Modal Pop-up ═══ */}
       {detailModal && (
         <div
@@ -1596,7 +1552,7 @@ const ValidasiLaporan = () => {
                         <span>Rujukan: {detailModal.chunk.source}</span>
                       </span>
                       <span className="font-medium text-sky-800 dark:text-sky-300">
-                        Halaman {detailModal.chunk.page || "-"}
+                        {pageLabel(detailModal.chunk.page) || "Halaman tidak tercatat"}
                       </span>
                     </div>
                     <p className="text-xs text-caption pl-5.5">
@@ -1610,7 +1566,7 @@ const ValidasiLaporan = () => {
                       Teks Asli Dokumen Rujukan (Buku Pedoman):
                     </p>
                     <div className="p-4 sm:p-5 bg-card rounded-xl border border-line text-sm text-heading leading-relaxed border-l-4 border-sky-500 font-normal">
-                      "{detailModal.chunk.evidence || "Pencegahan stunting pada fase baduta (6-24 bulan) berfokus pada pemberian ASI Eksklusif hingga 6 bulan dilanjutkan MP-ASI yang adekuat secara kualitas dan kuantitas serta kaya protein hewani (Buku KIA Hal. 32)."}"
+                      {detailModal.chunk.evidence ? `"${detailModal.chunk.evidence}"` : "Teks chunk tidak tersedia untuk rekomendasi ini."}
                     </div>
                   </div>
 
@@ -1643,17 +1599,9 @@ const ValidasiLaporan = () => {
                     </div>
                   )}
 
-                  {detailModal.rec.evidence_quote && (
-                    <div className="p-4 bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 rounded-xl space-y-1.5">
-                      <p className="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                        <span>Kutipan Teks Dokumen Resmi Rujukan ({cleanCitation(detailModal.rec.citation?.source)}, Hal. {detailModal.rec.citation?.page || "-"}):</span>
-                      </p>
-                      <p className="text-xs sm:text-sm text-body italic leading-relaxed pl-3 border-l-2 border-sky-500">
-                        "{detailModal.rec.evidence_quote}"
-                      </p>
-                    </div>
-                  )}
+                  <div className="p-4 bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 rounded-xl">
+                    <EvidenceQuote rec={detailModal.rec} />
+                  </div>
 
                   {detailModal.rec.ai_insight && (
                     <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1.5">
@@ -2054,7 +2002,7 @@ const ValidasiLaporan = () => {
                               [{pl.worker_thread || `ParallelEval_${pIdx}`}] {pl.agent_name}
                             </span>
                             <span className="px-2 py-0.5 rounded bg-subtle text-heading border border-line font-semibold">
-                              {pl.is_compliant ? "PATUH (VALID)" : "DEVIASI"}
+                              {pl.is_compliant === true ? "PATUH (VALID)" : pl.is_compliant === false ? "DEVIASI" : "Tidak dievaluasi"}
                             </span>
                           </div>
                           <p className="text-body leading-relaxed">{pl.evaluation_notes}</p>

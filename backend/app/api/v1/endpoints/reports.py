@@ -17,8 +17,15 @@ from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
 from app.services.pdf_service import generate_visit_report_pdf
 from app.multiagent.graph import kia_multiagent_app
+from app.services.aggregates import in_kader_scope, same_village, scoped_patient_ids
 
 router = APIRouter()
+
+
+def _check_report_scope(report: Report, current_user: User) -> None:
+    """Kader hanya boleh mengakses laporan pasien di wilayahnya (P4-23)."""
+    if report.patient and not in_kader_scope(report.patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Laporan ini milik Posyandu desa lain.")
 
 
 @router.get("/", response_model=List[ReportListItemResponse])
@@ -42,10 +49,12 @@ def list_reports(
         .join(Visit, Report.visit_id == Visit.id)
     )
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        query = query.filter(Patient.village_name.ilike(f"%{current_user.village_name.strip()}%"))
+    scope_ids = scoped_patient_ids(db, current_user)
+    if scope_ids is not None:
+        query = query.filter(Report.patient_id.in_(scope_ids))
     elif village_name:
-        query = query.filter(Patient.village_name.ilike(f"%{village_name.strip()}%"))
+        ids = [p.id for p in db.query(Patient.id, Patient.village_name).all() if same_village(p.village_name, village_name)]
+        query = query.filter(Report.patient_id.in_(ids))
 
     if status:
         query = query.filter(Report.status == status)
@@ -185,281 +194,74 @@ def _extract_visit_data(visit: Optional[Visit], db: Optional[Session] = None, ri
     }
 
 
-def _enrich_evidence_quotes(recs: list, verifs: list) -> list:
+def _norm_text(t: Any) -> str:
+    import re as _re
+    return _re.sub(r"\s+", " ", str(t or "")).strip().lower()
+
+
+def _mark_legacy_quotes(recs: list) -> list:
     """
-    Memastikan setiap butir rekomendasi memiliki kutipan teks asli (evidence_quote)
-    yang valid dari pedoman resmi (Buku KIA / PNPK Stunting), bukan placeholder generik.
+    Laporan lama menyimpan kutipan versi lama. Isinya TIDAK diubah; hanya diberi
+    status: CHUNK_DOKUMEN bila kutipan masih ada di chunk ChromaDB yang dirujuk,
+    selain itu KUTIPAN_VERSI_LAMA (belum terverifikasi terhadap chunk asli).
     """
-    from app.multiagent.rag.ingest import DEFAULT_CLINICAL_GUIDELINES
-
-    enriched = []
-    for rec in recs:
-        r = dict(rec)
-        eq = str(r.get("evidence_quote") or "").strip()
-        # Jika belum ada kutipan asli atau masih teks placeholder generik
-        if not eq or "Teks rujukan resmi sesuai standar Kemenkes RI" in eq:
-            cit = r.get("citation") or {}
-            cit_page = cit.get("page")
-            cit_sec = str(cit.get("section") or "").lower()
-            rec_title = str(r.get("title") or "").lower()
-            rec_cat = str(r.get("category") or "").lower()
-
-            found_text = None
-
-            # 1. Cek dari verification_details jika ada snippet evidence yang otentik
-            if verifs:
-                for v in verifs:
-                    v_ev = str(v.get("evidence") or "").strip()
-                    if v_ev and "Sitasi terverifikasi pada dokumen rujukan resmi" not in v_ev:
-                        v_title = str(v.get("title") or "").lower()
-                        if (rec_title and (rec_title in v_title or v_title in rec_title)) or (str(cit_page) == str(v.get("citation_page"))):
-                            found_text = v_ev
-                            break
-
-            # 2. Cek kecocokan halaman di DEFAULT_CLINICAL_GUIDELINES
-            if not found_text and cit_page:
-                try:
-                    p_num = int(cit_page)
-                    for g in DEFAULT_CLINICAL_GUIDELINES:
-                        if int(g.get("page", -1)) == p_num:
-                            found_text = g["content"]
-                            break
-                except (ValueError, TypeError):
-                    pass
-
-            # 3. Cek kecocokan bab / topik
-            if not found_text and cit_sec:
-                for g in DEFAULT_CLINICAL_GUIDELINES:
-                    g_sec = str(g.get("section") or "").lower()
-                    if cit_sec in g_sec or g_sec in cit_sec:
-                        found_text = g["content"]
-                        break
-
-            # 4. Cek kecocokan kategori / judul
-            if not found_text:
-                full_kw = f"{rec_title} {rec_cat} {cit_sec}"
-                if any(w in full_kw for w in ["stunting", "baduta", "gizi", "tumbuh", "anak"]):
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[1]["content"] if "pencegahan" in full_kw or "baduta" in full_kw else DEFAULT_CLINICAL_GUIDELINES[0]["content"]
-                elif any(w in full_kw for w in ["kek", "lila", "hamil", "ibu"]):
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[2]["content"]
-                elif any(w in full_kw for w in ["anemia", "hb"]):
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[3]["content"]
-                elif any(w in full_kw for w in ["bblr", "bayi", "lahir"]):
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[4]["content"]
-                elif any(w in full_kw for w in ["kspr", "risiko"]):
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[5]["content"]
-                else:
-                    found_text = DEFAULT_CLINICAL_GUIDELINES[1]["content"]
-
-            r["evidence_quote"] = found_text
-
-        if not r.get("ai_insight"):
-            r["ai_insight"] = (
-                "Catatan Tambahan AI: Libatkan peran keluarga dalam pendampingan makan harian dan "
-                "terapkan variasi menu pangan lokal kaya protein hewani untuk percepatan pemulihan tumbuh kembang."
-            )
-
-        enriched.append(r)
-    return enriched
+    pending = [r for r in recs if isinstance(r, dict) and not r.get("evidence_status")]
+    if not pending:
+        return recs
+    chunk_ids = [(r.get("citation") or {}).get("chunk_id") for r in pending]
+    chunk_ids = [c for c in chunk_ids if c]
+    chunk_text: Dict[str, str] = {}
+    if chunk_ids:
+        try:
+            from app.multiagent.rag.vectorstore import get_or_create_collection
+            got = get_or_create_collection().get(ids=list(set(chunk_ids)), include=["documents"])
+            chunk_text = dict(zip(got["ids"], got["documents"]))
+        except Exception:
+            chunk_text = {}
+    out = []
+    for r in recs:
+        if isinstance(r, dict) and not r.get("evidence_status"):
+            r = dict(r)
+            quote = _norm_text(r.get("evidence_quote"))
+            doc = _norm_text(chunk_text.get((r.get("citation") or {}).get("chunk_id")))
+            if not quote:
+                r["evidence_status"] = "TANPA_KUTIPAN"
+            elif doc and quote.rstrip(". ") in doc:
+                r["evidence_status"] = "CHUNK_DOKUMEN"
+            else:
+                r["evidence_status"] = "KUTIPAN_VERSI_LAMA"
+        out.append(r)
+    return out
 
 
 def _enrich_report_telemetry(report: Report, db: Session) -> None:
     """
-    Memastikan setiap laporan (termasuk laporan lama di database) memiliki data
-    `agent_telemetry` lengkap di dalam `final_report_json`:
-    - Bukti urutan Sequential (Agent 1 -> Agent 2 -> Agent 3) dengan timestamp milidetik.
-    - Bukti eksekusi Parallel Evaluator (3 worker threads) dari tabel audit_logs.
-    - Bukti Lifetime (SPAWNED -> EXECUTING -> TERMINATED / Ephemeral).
-    - Bukti Konsumsi Token (Input, Output, Total) per-agent.
-    - Klasifikasi tingkat kepentingan & kesulitan tiap agent.
+    Melengkapi tampilan laporan TANPA mengarang data:
+    - Status kutipan laporan lama ditandai (lihat _mark_legacy_quotes).
+    - Telemetri agent hanya yang benar-benar tercatat saat analisis. Laporan lama yang
+      tidak punya telemetri ditandai `available: False` (tidak dibuat angka sintetis).
+    - Log evaluator paralel hanya dari tabel audit_logs; is_compliant NULL tetap NULL
+      ("Tidak dievaluasi").
     """
-    import json as _json
-    from datetime import timedelta
-    from app.multiagent.agents.verifier import _consolidate_pipeline_telemetry
-
     fr_json = dict(report.final_report_json or {})
-    visit = report.visit
-    phase_str = (
-        (visit.phase.value if hasattr(visit.phase, "value") else str(visit.phase))
-        if visit and visit.phase
-        else fr_json.get("metadata", {}).get("phase", "BADUTA")
-    )
-    risk_flags = report.risk_flags or []
-    risk_narrative = report.risk_narrative or ""
     recs = list(report.recommendations or fr_json.get("recommendations") or [])
-    verifs = list(report.verification_summary or fr_json.get("verification_summary") or [])
     if recs:
-        recs = _enrich_evidence_quotes(recs, verifs)
+        recs = _mark_legacy_quotes(recs)
         report.recommendations = recs
         fr_json["recommendations"] = recs
 
     is_approved = report.status == ReportStatus.APPROVED
     rev_cnt = report.revision_count or 0
 
-    existing_tel = fr_json.get("agent_telemetry") or {}
+    existing_tel = dict(fr_json.get("agent_telemetry") or {})
     if not existing_tel or "agents" not in existing_tel:
-        base_dt = report.created_at or datetime.now()
-        if hasattr(base_dt, "replace"):
-            base_dt = base_dt.replace(tzinfo=None)
-        else:
-            base_dt = datetime.now()
-
-        has_risk = len(risk_flags) > 0
-        t1_s = base_dt.isoformat(timespec="milliseconds")
-        t1_e = (base_dt + timedelta(milliseconds=185)).isoformat(timespec="milliseconds")
-        t2_s = (base_dt + timedelta(milliseconds=187)).isoformat(timespec="milliseconds")
-        t2_e = (base_dt + timedelta(milliseconds=540 if has_risk else 192)).isoformat(timespec="milliseconds")
-        t3_s = (base_dt + timedelta(milliseconds=542 if has_risk else 194)).isoformat(timespec="milliseconds")
-        t3_e = (base_dt + timedelta(milliseconds=790 if has_risk else 225)).isoformat(timespec="milliseconds")
-
-        a1_in = max(140, len(risk_narrative) * 2)
-        a1_out = max(45, len(risk_narrative) // 4)
-        a2_in = max(420, len(_json.dumps(risk_flags)) * 3) if has_risk else 0
-        a2_out = max(210, len(_json.dumps(recs)) // 4) if has_risk else 0
-        a3_in = max(310, len(_json.dumps(recs)) // 3) if has_risk else 0
-        a3_out = max(85, len(_json.dumps(verifs)) // 4) if has_risk else 0
-
-        synth_state_tel = {
-            "agent_1": {
-                "agent_id": "agent_1",
-                "agent_name": "Agent 1: Deteksi Risiko Deterministik & ReAct",
-                "execution_order": 1,
-                "execution_pattern": "SEQUENTIAL_STEP_1 (Entry Point)",
-                "lifecycle_state": "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)",
-                "spawned_at": t1_s,
-                "terminated_at": t1_e,
-                "lifetime_ms": 185.0,
-                "mode": "LLM",
-                "complexity_rank": "Paling Penting (Keselamatan Jiwa / Clinical Safety Gatekeeper)",
-                "complexity_reason": (
-                    "Gerbang skrining keselamatan awal ibu & anak (Stunting Berat, Gizi Buruk, BBLR, KEK, Anemia, KSPR Risiko Tinggi). "
-                    "Stage 1 dikunci 100% deterministik baku WHO/Permenkes agar bebas false-negative."
-                ),
-                "tools_invoked": [
-                    "calculate_1000_hpk_status",
-                    "check_visit_plausibility",
-                    "run_clinical_calculators (WHO Z-Score / KSPR / LiLA / Hb / BBLR)",
-                ],
-                "token_usage": {
-                    "input_tokens": a1_in,
-                    "output_tokens": a1_out,
-                    "total_tokens": a1_in + a1_out,
-                    "llm_calls": 1,
-                    "source": "TOKENIZER_ESTIMATE",
-                    "estimated_saved_tokens": 0,
-                },
-                "task_proof": {
-                    "input_summary": f"Fase {phase_str}",
-                    "output_summary": f"{len(risk_flags)} Flag Risiko Aktif ({', '.join(f.get('flag', '') for f in risk_flags) or 'Tidak Ada Risiko'}), requires_rag={has_risk}",
-                    "is_grounded_numeric_guard": True,
-                },
-            },
-            "agent_2": {
-                "agent_id": "agent_2",
-                "agent_name": "Agent 2: Rekomendasi Klinis RAG & Care Plan",
-                "execution_order": 2,
-                "execution_pattern": (
-                    "SEQUENTIAL_STEP_2 (Conditional Router: requires_rag=True)"
-                    if has_risk
-                    else "SKIPPED_BY_CONDITIONAL_ROUTER (requires_rag=False -> Langsung ke Agent 3)"
-                ),
-                "lifecycle_state": (
-                    "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)"
-                    if has_risk
-                    else "BYPASSED_IDLE (Tidak Di-spawn karena Pasien Sehat / 0 Flag Risiko)"
-                ),
-                "spawned_at": t2_s,
-                "terminated_at": t2_e,
-                "lifetime_ms": 353.0 if has_risk else 5.0,
-                "mode": "LLM_REACT" if has_risk else "NO_RISK",
-                "complexity_rank": "Paling Sulit (Multi-Hop ReAct, RAG ChromaDB & Sintesis Klinis Kontekstual)",
-                "complexity_reason": (
-                    "Menjalankan siklus ReAct otonom, menarik vektor Buku KIA/PNPK dari ChromaDB, serta merumuskan menu "
-                    "pangan lokal Minahasa, panduan ASI/susu/TTD, dan aktivitas harian ke JSON tersitasi."
-                ),
-                "tools_invoked": (
-                    [
-                        "build_comprehensive_care_plan",
-                        "retrieve_clinical_guidelines (ChromaDB Vector Search)",
-                        "ReAct Tool: search_guidelines",
-                    ]
-                    if has_risk
-                    else ["build_comprehensive_care_plan", "conditional_router_bypass (requires_rag=False)"]
-                ),
-                "thought_process": (
-                    [
-                        f"Langkah 1: Menarik pedoman Buku KIA/PNPK dari ChromaDB untuk {len(risk_flags)} flag risiko.",
-                        f"Langkah 2: Menyusun {len(recs)} rekomendasi klinis beserta menu lokal Minahasa & Care Plan 1.000 HPK.",
-                    ]
-                    if has_risk
-                    else ["Kondisi sehat (0 flag risiko): Conditional Router meneruskan state langsung ke Agent 3."]
-                ),
-                "token_usage": {
-                    "input_tokens": a2_in,
-                    "output_tokens": a2_out,
-                    "total_tokens": a2_in + a2_out,
-                    "llm_calls": 1 if has_risk else 0,
-                    "source": "TOKENIZER_ESTIMATE" if has_risk else "DETERMINISTIC_ZERO_TOKEN",
-                    "estimated_saved_tokens": 0 if has_risk else 650,
-                },
-                "task_proof": {
-                    "input_summary": f"Fase {phase_str}, {len(risk_flags)} Flag Risiko",
-                    "output_summary": f"{len(recs)} Rekomendasi Tersitasi + Care Plan 1.000 HPK",
-                    "chunks_retrieved_count": len(recs) * 2 if has_risk else 0,
-                    "recommendations_count": len(recs),
-                },
-            },
+        existing_tel = {
+            "available": False,
+            "note": "Telemetri agent tidak tercatat untuk laporan ini (dibuat sebelum pencatatan telemetri).",
+            "agents": {},
         }
-        verified_cnt = sum(1 for v in verifs if v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY"))
-        g_rate = round((verified_cnt / max(1, len(verifs))) * 100.0, 1) if verifs else 100.0
-        synth_a3 = {
-            "agent_id": "agent_3",
-            "agent_name": "Agent 3: Verifikasi Grounding & Integrasi Laporan",
-            "execution_order": 3,
-            "execution_pattern": "SEQUENTIAL_STEP_3 (Final Verifier -> END)",
-            "lifecycle_state": "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)",
-            "spawned_at": t3_s,
-            "terminated_at": t3_e,
-            "lifetime_ms": 248.0 if has_risk else 31.0,
-            "mode": "LLM_JUDGE" if has_risk else "SINGLE_PASS_HEALTHY",
-            "complexity_rank": "Paling Mudah / Terfokus (Closed-Context Faithfulness Judge & Integrator)",
-            "complexity_reason": (
-                "Melakukan evaluasi keterhubungan tertutup (faithfulness scoring 0.0-1.0) antara draf rekomendasi Agent 2 "
-                "dengan potongan teks rujukan ChromaDB yang sudah tersedia, lalu mengemas Final Report JSON."
-            ),
-            "tools_invoked": (
-                ["llm_judge_grounding_evaluator", "_build_final_report_json"]
-                if has_risk
-                else ["single_pass_healthy_integrator", "_build_final_report_json"]
-            ),
-            "token_usage": {
-                "input_tokens": a3_in,
-                "output_tokens": a3_out,
-                "total_tokens": a3_in + a3_out,
-                "llm_calls": 1 if has_risk else 0,
-                "source": "TOKENIZER_ESTIMATE" if has_risk else "DETERMINISTIC_ZERO_TOKEN",
-                "estimated_saved_tokens": 0 if has_risk else 380,
-            },
-            "task_proof": {
-                "input_summary": f"{len(recs)} Rekomendasi Agent 2",
-                "output_summary": f"{verified_cnt}/{len(verifs)} Terverifikasi ({g_rate}% Grounded), Status: {report.overall_status}",
-                "verified_count": verified_cnt,
-                "grounding_rate_percent": g_rate,
-            },
-        }
-        existing_tel = _consolidate_pipeline_telemetry(
-            state_telemetry=synth_state_tel,
-            det_results={},
-            agent3_telemetry=synth_a3,
-            phase=phase_str,
-            risk_flags=risk_flags,
-            risk_narrative=risk_narrative,
-            recommendations=recs,
-            verification_details=verifs,
-            revision_count=rev_cnt,
-            is_approved=is_approved,
-        )
     else:
+        existing_tel["available"] = True
         arch = existing_tel.get("architecture_pattern") or {}
         arch["thread_checkpoint_status"] = (
             "THREAD_CLOSED (Laporan Disetujui Kader - Siklus Hidup Selesai Permanen)"
@@ -468,41 +270,23 @@ def _enrich_report_telemetry(report: Report, db: Session) -> None:
         )
         existing_tel["architecture_pattern"] = arch
 
-    # Lampirkan bukti Parallel Evaluator dari tabel audit_logs untuk laporan ini
     audit_rows = (
         db.query(AuditLog)
         .filter(AuditLog.report_id == report.id)
         .order_by(AuditLog.id.asc())
         .all()
     )
-    parallel_evals = []
-    if audit_rows:
-        for idx, row in enumerate(audit_rows):
-            parallel_evals.append({
-                "id": row.id,
-                "worker_thread": f"ParallelEval_{idx}",
-                "agent_name": row.agent_name,
-                "is_compliant": row.is_compliant if row.is_compliant is not None else True,
-                "evaluation_notes": row.evaluation_notes or "Evaluasi paralel patuh.",
-                "created_at": str(row.created_at),
-            })
-    else:
-        p_start = (existing_tel.get("agents", {}).get("agent_3", {}).get("terminated_at")) or datetime.now().isoformat(timespec="milliseconds")
-        for idx, a_label in enumerate([
-            "Agent 1 (Deteksi Risiko Deterministik)",
-            "Agent 2 (Rekomendasi Klinis RAG)",
-            "Agent 3 (Verifikasi & Grounding Laporan)",
-        ]):
-            parallel_evals.append({
-                "id": idx + 1,
-                "worker_thread": f"ParallelEval_{idx}",
-                "agent_name": a_label,
-                "is_compliant": True,
-                "evaluation_notes": f"Dievaluasi secara paralel bersamaan pada {p_start} (ThreadPoolExecutor worker #{idx + 1}). Output agen patuh terhadap instruksi peran & pedoman Buku KIA/PNPK.",
-                "created_at": p_start,
-            })
-
-    existing_tel["parallel_evaluator_logs"] = parallel_evals
+    existing_tel["parallel_evaluator_logs"] = [
+        {
+            "id": row.id,
+            "worker_thread": f"ParallelEval_{idx}",
+            "agent_name": row.agent_name,
+            "is_compliant": row.is_compliant,
+            "evaluation_notes": row.evaluation_notes,
+            "created_at": str(row.created_at),
+        }
+        for idx, row in enumerate(audit_rows)
+    ]
     fr_json["agent_telemetry"] = existing_tel
     report.final_report_json = fr_json
 
@@ -515,9 +299,8 @@ def get_report(
 ):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
-        report = db.query(Report).filter(Report.visit_id == report_id).order_by(Report.id.desc()).first()
-    if not report:
         raise HTTPException(status_code=404, detail="Laporan tidak ditemukan.")
+    _check_report_scope(report, current_user)
     _enrich_report_telemetry(report, db)
     report.visit_data = _extract_visit_data(report.visit, db, report.risk_flags)
     return report
@@ -532,6 +315,7 @@ def get_report_by_visit(
     report = db.query(Report).filter(Report.visit_id == visit_id).order_by(Report.id.desc()).first()
     if not report:
         raise HTTPException(status_code=404, detail="Laporan untuk kunjungan ini belum tersedia.")
+    _check_report_scope(report, current_user)
     _enrich_report_telemetry(report, db)
     report.visit_data = _extract_visit_data(report.visit, db, report.risk_flags)
     return report
@@ -551,9 +335,13 @@ def validate_report_by_kader(
     visit = db.query(Visit).filter(Visit.id == report.visit_id).first()
     patient = db.query(Patient).filter(Patient.id == report.patient_id).first()
 
-    if current_user.role == UserRole.KADER and current_user.village_name:
-        if patient.village_name and current_user.village_name.strip().lower() not in patient.village_name.strip().lower() and patient.village_name.strip().lower() not in current_user.village_name.strip().lower():
-            raise HTTPException(status_code=403, detail="Akses ditolak: Laporan ini milik Posyandu desa lain.")
+    _check_report_scope(report, current_user)
+
+    if report.status != ReportStatus.DRAFT:
+        raise HTTPException(
+            status_code=400,
+            detail="Hanya laporan berstatus DRAFT yang dapat divalidasi. Perubahan laporan yang sudah disahkan dilakukan melalui pengajuan revisi ke Admin Puskesmas.",
+        )
 
     if val_req.status == ReportStatus.APPROVED:
         report.status = ReportStatus.APPROVED
@@ -595,7 +383,8 @@ def validate_report_by_kader(
             iteration_count=report.revision_count,
         )
 
-        thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}"}}
+        # Thread baru per iterasi agar state analisis sebelumnya tidak terbawa (Bab 4.2.3 no.3)
+        thread_config = {"configurable": {"thread_id": f"visit_{report.visit_id}_r{report.revision_count}"}}
         revised_state = kia_multiagent_app.invoke(initial_state, config=thread_config)
 
         report.risk_flags = revised_state.get("risk_flags", [])
@@ -624,6 +413,7 @@ def download_report_pdf(
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Laporan tidak ditemukan.")
+    _check_report_scope(report, current_user)
     if report.status != ReportStatus.APPROVED:
         raise HTTPException(status_code=400, detail="Dokumen PDF hanya tersedia untuk laporan yang telah disahkan.")
 
@@ -723,45 +513,3 @@ def bulk_delete_reports(
     deleted_count = db.query(Report).filter(Report.id.in_(req.ids)).delete(synchronize_session=False)
     db.commit()
     return {"deleted_count": deleted_count, "message": f"{deleted_count} laporan berhasil dihapus."}
-
-
-from pydantic import BaseModel, Field
-
-class ReportRatingRequest(BaseModel):
-    rating: int = Field(..., ge=1, le=5, description="Skala penilaian kepuasan kader (1 s.d. 5)")
-    feedback_notes: Optional[str] = Field(default=None, description="Catatan ulasan kader")
-
-
-@router.post("/{report_id}/rate")
-def rate_report_by_kader(
-    report_id: int,
-    rate_req: ReportRatingRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Menyimpan penilaian rating 1-5 bintang dari kader terhadap hasil analisis AI.
-    Rating 4-5 disimpan sebagai few-shot memory (exemplar), rating 1-2 di-flag ke Dokter.
-    """
-    report = db.query(Report).filter(Report.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="Laporan tidak ditemukan.")
-
-    final_json = dict(report.final_report_json or {})
-    final_json["kader_rating"] = rate_req.rating
-    final_json["kader_feedback_notes"] = rate_req.feedback_notes
-    final_json["is_exemplar"] = (rate_req.rating >= 4)
-    final_json["needs_doctor_review"] = (rate_req.rating <= 2)
-    final_json["rated_at"] = datetime.utcnow().isoformat()
-    final_json["rated_by"] = current_user.full_name
-
-    report.final_report_json = final_json
-    db.commit()
-    db.refresh(report)
-
-    return {
-        "status": "success",
-        "message": f"Rating {rate_req.rating}/5 berhasil disimpan.",
-        "is_exemplar": final_json["is_exemplar"],
-        "needs_doctor_review": final_json["needs_doctor_review"]
-    }

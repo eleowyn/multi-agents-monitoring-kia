@@ -3,14 +3,13 @@ from pydantic import BaseModel, Field
 
 
 class CitationModel(BaseModel):
-    source: str = Field(
-        default="Buku KIA 2024 (Kemenkes RI)",
-        description="Nama dokumen rujukan resmi (e.g. Buku KIA RI 2024, KMK No. 1928/2022)",
-    )
-    section: Optional[str] = Field(default="", description="Nama bab atau bagian pedoman")
-    page: Optional[Union[int, str]] = Field(default=1, description="Nomor halaman")
-    chunk_id: Optional[str] = Field(default=None, description="ID chunk dari ChromaDB")
-    quote: Optional[str] = Field(default=None, description="Kutipan teks asli dari dokumen rujukan")
+    """Sitasi diisi sistem dari metadata chunk ChromaDB, bukan ditulis LLM."""
+    source: Optional[str] = Field(default=None, description="Sumber dokumen sesuai metadata chunk")
+    section: Optional[str] = Field(default=None, description="Bagian/heading sesuai metadata chunk")
+    page: Optional[Union[int, str]] = Field(default=None, description="Halaman PDF sesuai metadata chunk")
+    chunk_id: Optional[str] = Field(default=None, description="ID chunk ChromaDB")
+    origin: Optional[str] = Field(default=None, description="MARKDOWN_DOC | PDF | CURATED_SUMMARY")
+    derived_from: Optional[str] = Field(default=None, description="Dokumen asal ringkasan terkurasi")
 
 
 class RecommendationItem(BaseModel):
@@ -47,7 +46,11 @@ class RecommendationItem(BaseModel):
     )
     evidence_quote: Optional[str] = Field(
         default=None,
-        description="Kutipan kalimat asli dari Buku KIA / PNPK Stunting sebagai bukti pendukung",
+        description="Isi chunk asli yang dirujuk (diisi sistem, verbatim dari ChromaDB)",
+    )
+    evidence_status: Optional[str] = Field(
+        default=None,
+        description="CHUNK_DOKUMEN | RINGKASAN_TERKURASI | TANPA_KUTIPAN | ATURAN_SISTEM",
     )
     reasoning_mode: Optional[str] = Field(
         default="LLM_REACT",

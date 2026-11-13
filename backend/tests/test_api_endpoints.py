@@ -6,25 +6,44 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from main import app
-from app.core.database import Base, engine, SessionLocal
+from app.core.database import Base, get_db
 from app.api.v1.endpoints.auth import seed_default_users
+import app.services.eval_logger as eval_logger
+
+# Database SQLite di memori: pengujian tidak boleh menulis ke database MySQL aplikasi
+engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def _get_test_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 client = TestClient(app)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
+    app.dependency_overrides[get_db] = _get_test_db
+    original_session = eval_logger.SessionLocal
+    eval_logger.SessionLocal = SessionLocal  # log evaluator latar belakang ikut ke DB uji
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     seed_default_users(db)
-    from app.models.user import User
-    kader = db.query(User).filter(User.username == "kader1").first()
-    if kader and not kader.is_active:
-        kader.is_active = True
-        db.commit()
     db.close()
-
+    yield
+    app.dependency_overrides.pop(get_db, None)
+    eval_logger.SessionLocal = original_session
+    Base.metadata.drop_all(bind=engine)
 
 
 def test_auth_login_kader():

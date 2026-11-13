@@ -207,10 +207,13 @@ const InputKunjungan = () => {
     if (!selectedPatient) return null;
 
     if (phase === "IBU_HAMIL" || selectedPatient.patient_type === "MOTHER") {
+      // Sama dengan backend: minggu x 7; tanpa minggu dipakai titik tengah trimester (perkiraan)
+      const isEstimated = !gestationalAge;
       const weeks = gestationalAge
         ? parseInt(gestationalAge, 10)
-        : (trimester === 1 ? 10 : (trimester === 2 ? 20 : 34));
-      const days = Math.min(270, Math.max(1, (weeks || 20) * 7));
+        : ({ 1: 7, 2: 20, 3: 34 }[Number(trimester)] || null);
+      if (!weeks) return null;
+      const days = Math.min(270, Math.max(1, weeks * 7));
       const remaining = Math.max(0, 1000 - days);
       const percent = ((days / 1000) * 100).toFixed(1);
       return {
@@ -218,7 +221,7 @@ const InputKunjungan = () => {
         percent,
         remaining,
         phaseCode: "IBU_HAMIL",
-        label: `Hari ke-${days} dari 1.000 HPK (${percent}%) • Fase 1: Kehamilan (Trimester ${trimester})`,
+        label: `Hari ke-${days} dari 1.000 HPK (${percent}%) • Fase 1: Kehamilan (Trimester ${trimester})${isEstimated ? " • perkiraan, isi usia kehamilan untuk angka pasti" : ""}`,
         isGraduation: false,
       };
     } else {
@@ -242,7 +245,16 @@ const InputKunjungan = () => {
       const totalHpkDay = Math.min(1000, 270 + diffDays);
       const remaining = Math.max(0, 1000 - totalHpkDay);
       const percent = ((totalHpkDay / 1000) * 100).toFixed(1);
-      const calcMonths = Math.min(24, Math.floor(diffDays / 30.4375));
+      // Umur bulan penuh, sama dengan backend (tidak dipotong ke 24 diam-diam)
+      let calcMonths = (vDate.getFullYear() - bDate.getFullYear()) * 12 + (vDate.getMonth() - bDate.getMonth());
+      if (vDate.getDate() < bDate.getDate()) calcMonths -= 1;
+      calcMonths = Math.max(0, calcMonths);
+      if (calcMonths > 24) {
+        return {
+          error: `Usia anak ${calcMonths} bulan sudah melewati periode 1.000 HPK (0-24 bulan).`,
+          isInvalid: true,
+        };
+      }
       const isGrad = diffDays >= 730 || totalHpkDay >= 1000;
 
       return {
@@ -405,7 +417,8 @@ const InputKunjungan = () => {
         child_head_circumference_cm: childHeadCirc
           ? parseFloat(childHeadCirc)
           : null,
-        weight_trend_kms: weightTrend,
+        // Kode KMS N/T/B hanya berlaku untuk penimbangan baduta
+        weight_trend_kms: phase === "BADUTA" ? weightTrend : null,
         feeding_status: feedingStatus,
         vitamin_a: vitaminA,
         immunization_status: phase === "BADUTA" ? immunizationStatus : null,
@@ -667,6 +680,13 @@ const InputKunjungan = () => {
           >
             {phaseTabs.map((tab) => {
               const isActive = phase === tab.value;
+              const pType = selectedPatient?.patient_type;
+              const allowed = !pType
+                ? true
+                : pType === "MOTHER"
+                ? tab.value === "IBU_HAMIL"
+                : tab.value !== "IBU_HAMIL" &&
+                  (!hpkLiveInfo?.phaseCode || hpkLiveInfo.isInvalid || hpkLiveInfo.phaseCode === tab.value);
               return (
                 <button
                   key={tab.value}
@@ -675,7 +695,9 @@ const InputKunjungan = () => {
                   aria-selected={isActive}
                   aria-controls={`panel-${tab.value}`}
                   onClick={() => setPhase(tab.value)}
-                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border ${
+                  disabled={!allowed}
+                  title={allowed ? undefined : "Fase tidak sesuai tipe atau umur pasien"}
+                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border disabled:opacity-40 disabled:cursor-not-allowed ${
                     isActive
                       ? tab.activeClass
                       : "bg-transparent border-transparent text-body dark:text-slate-300 hover:text-heading hover:bg-card"
@@ -1098,7 +1120,7 @@ const InputKunjungan = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !selectedPatient}
+              disabled={loading || !selectedPatient || hpkLiveInfo?.isInvalid}
               aria-label={
                 loading
                   ? "Sedang memproses data kunjungan"

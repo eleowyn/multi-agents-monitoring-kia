@@ -109,12 +109,12 @@ const AuditLogs = () => {
     (acc, l) => acc + Number(l.token_usage?.output_tokens || 0),
     0
   );
+  // Rata-rata hanya dari log yang benar-benar mencatat durasi
+  const timedLogs = logs.filter((l) => l.lifetime_ms != null);
   const avgLifetimeMs =
-    logs.length > 0
-      ? Math.round(
-          logs.reduce((acc, l) => acc + Number(l.lifetime_ms || 0), 0) / logs.length
-        )
-      : 0;
+    timedLogs.length > 0
+      ? Math.round(timedLogs.reduce((acc, l) => acc + Number(l.lifetime_ms), 0) / timedLogs.length)
+      : null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-5 animate-fade-in">
@@ -259,7 +259,7 @@ const AuditLogs = () => {
 
                       <td className="p-3.5 font-mono text-xs">
                         <p className="text-heading font-medium">
-                          {log.lifetime_ms ?? 0} ms
+                          {log.lifetime_ms != null ? `${log.lifetime_ms} ms` : "tidak tercatat"}
                         </p>
                         <p className="text-caption text-xs truncate max-w-[180px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
                           {log.spawned_at ? log.spawned_at.slice(11, 19) : "-"}
@@ -268,10 +268,10 @@ const AuditLogs = () => {
 
                       <td className="p-3.5 font-mono text-xs">
                         <p className="text-heading font-medium">
-                          {(tok.total_tokens ?? 0).toLocaleString("id-ID")}
+                          {tok.total_tokens != null ? tok.total_tokens.toLocaleString("id-ID") : "tidak tercatat"}
                         </p>
                         <p className="text-caption text-xs">
-                          In: {tok.input_tokens ?? 0} &bull; Out: {tok.output_tokens ?? 0}
+                          In: {tok.input_tokens ?? "-"} &bull; Out: {tok.output_tokens ?? "-"}
                         </p>
                       </td>
 
@@ -289,7 +289,7 @@ const AuditLogs = () => {
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-xs text-body">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Menunggu</span>
+                            <span>Tidak dievaluasi</span>
                           </span>
                         )}
                       </td>
@@ -331,7 +331,7 @@ const AuditLogs = () => {
           <span className="text-line hidden sm:inline">&bull;</span>
           <span>Output: <strong className="text-heading font-medium">{totalOutputTokensAll.toLocaleString("id-ID")}</strong></span>
           <span className="text-line hidden sm:inline">&bull;</span>
-          <span>Rata-rata Durasi: <strong className="text-heading font-medium">{avgLifetimeMs} ms</strong></span>
+          <span>Rata-rata Durasi: <strong className="text-heading font-medium">{avgLifetimeMs != null ? `${avgLifetimeMs} ms` : "tidak tercatat"}</strong></span>
         </div>
       </div>
 
@@ -391,7 +391,7 @@ const AuditLogs = () => {
                     Terminated: <strong>{selectedLogModal.terminated_at || "-"}</strong>
                   </p>
                   <p className="text-body">
-                    Durasi: <strong className="text-heading">{selectedLogModal.lifetime_ms ?? 0} ms</strong> (Ephemeral)
+                    Durasi: <strong className="text-heading">{selectedLogModal.lifetime_ms != null ? `${selectedLogModal.lifetime_ms} ms` : "tidak tercatat"}</strong> (Ephemeral)
                   </p>
                 </div>
 
@@ -400,13 +400,13 @@ const AuditLogs = () => {
                     Konsumsi Token
                   </p>
                   <p className="font-mono text-heading">
-                    Input Prompt: <strong>{selectedLogModal.token_usage?.input_tokens ?? 0} token</strong>
+                    Input Prompt: <strong>{selectedLogModal.token_usage?.input_tokens ?? "tidak tercatat"}</strong>
                   </p>
                   <p className="font-mono text-heading">
-                    Output: <strong>{selectedLogModal.token_usage?.output_tokens ?? 0} token</strong>
+                    Output: <strong>{selectedLogModal.token_usage?.output_tokens ?? "tidak tercatat"}</strong>
                   </p>
                   <p className="font-mono text-heading">
-                    Total: <strong>{selectedLogModal.token_usage?.total_tokens ?? 0} token</strong>
+                    Total: <strong>{selectedLogModal.token_usage?.total_tokens ?? "tidak tercatat"}</strong>
                   </p>
                 </div>
               </div>
