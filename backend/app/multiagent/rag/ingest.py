@@ -244,11 +244,17 @@ def chunk_markdown_file(
         text = "\n".join(p["text"] for p in current).strip()
         if body and len(text) >= 40:
             section = body[0]["section"] or "Tanpa Judul Bagian"
+            pages_in_chunk: List[str] = []
+            for p in current:
+                pg = str(p.get("page") or "").strip()
+                if pg and pg != "-" and pg not in pages_in_chunk:
+                    pages_in_chunk.append(pg)
+            page_val = ", ".join(pages_in_chunk) if pages_in_chunk else current[0]["page"]
             chunks.append({
                 "id": f"{doc_prefix}_{len(chunks):04d}",
                 "source": doc_source,
                 "section": section,
-                "page": current[0]["page"],
+                "page": page_val,
                 "category": _categorize(section, text, default_category),
                 "origin": "MARKDOWN_DOC",
                 "content": text,
@@ -364,20 +370,43 @@ def _collect_documents(include_curated: bool = True) -> Tuple[List[str], List[Di
 
 
 def _read_collection_items() -> Tuple[List[Dict[str, Any]], str]:
-    """Isi koleksi ChromaDB utama (yang benar-benar dipakai agent). Kosong bila belum di-ingest."""
+    """Isi koleksi ChromaDB utama atau koleksi lokal yang dipakai agent."""
+    from app.multiagent.rag.vectorstore import get_legacy_collection
+
     try:
         collection = get_or_create_collection()
-        if collection.count() == 0:
-            return [], "CHROMADB_KOSONG"
-        data = collection.get(include=["documents", "metadatas"])
+        if collection.count() > 0:
+            data = collection.get(include=["documents", "metadatas"])
+            items = [
+                {"id": c_id, "content": doc, **(meta or {})}
+                for c_id, doc, meta in zip(data["ids"], data["documents"], data["metadatas"])
+            ]
+            items.sort(key=lambda x: x["id"])
+            return items, "CHROMADB_GEMINI"
+
+        legacy = get_legacy_collection()
+        if legacy is not None and legacy.count() > 0:
+            data = legacy.get(include=["documents", "metadatas"])
+            items = [
+                {"id": c_id, "content": doc, **(meta or {})}
+                for c_id, doc, meta in zip(data["ids"], data["documents"], data["metadatas"])
+            ]
+            items.sort(key=lambda x: x["id"])
+            return items, "CHROMADB_LOCAL"
     except Exception as e:
         print(f"[RAG WARNING] Gagal membaca ChromaDB: {e}")
-        return [], "CHROMADB_TIDAK_TERHUBUNG"
-    items = []
-    for c_id, doc, meta in zip(data["ids"], data["documents"], data["metadatas"]):
-        items.append({"id": c_id, "content": doc, **(meta or {})})
-    items.sort(key=lambda x: x["id"])
-    return items, "CHROMADB"
+
+    # Fallback langsung ke dokumen sumber bila ChromaDB belum di-ingest
+    try:
+        docs, metas, ids = _collect_documents()
+        items = [
+            {"id": c_id, "content": doc, **(meta or {})}
+            for c_id, doc, meta in zip(ids, docs, metas)
+        ]
+        items.sort(key=lambda x: x["id"])
+        return items, "MARKDOWN_DIRECT"
+    except Exception:
+        return [], "CHROMADB_KOSONG"
 
 
 def get_all_knowledge_chunks(
@@ -385,25 +414,40 @@ def get_all_knowledge_chunks(
     source: Optional[str] = None,
     category: Optional[str] = None,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 500,
 ) -> Dict[str, Any]:
     """
-    Daftar chunk rujukan untuk halaman Koleksi Rujukan.
-    Dibaca langsung dari koleksi ChromaDB yang dipakai agent, sehingga yang tampil
-    sama dengan yang di-retrieve. Bila ChromaDB belum terisi, daftar kosong
-    beserta `store_status` agar tidak menampilkan chunk yang tidak dipakai agent.
+    Daftar chunk rujukan untuk halaman Koleksi Rujukan beserta statistik ringkas
+    jumlah chunk per dokumen sumber dan kategori.
     """
     raw_items, store_status = _read_collection_items()
+
+    source_counts: Dict[str, int] = {}
+    category_counts: Dict[str, int] = {}
+    for m in raw_items:
+        src_name = m.get("source") or "Lainnya"
+        cat_name = m.get("category") or "GENERAL_KIA"
+        source_counts[src_name] = source_counts.get(src_name, 0) + 1
+        category_counts[cat_name] = category_counts.get(cat_name, 0) + 1
+
+    norm_source_filter = source.replace("_", " ").lower().strip() if source else None
     items = []
     for m in raw_items:
         c = m.get("content") or ""
-        if source and source.lower() not in (m.get("source") or "").lower():
+        src_val = (m.get("source") or "").replace("_", " ").lower()
+        if norm_source_filter and norm_source_filter not in src_val:
             continue
         if category and category.upper() != (m.get("category") or "").upper():
             continue
         if search:
             s_low = search.lower()
-            if s_low not in c.lower() and s_low not in (m.get("section") or "").lower() and s_low not in (m.get("source") or "").lower():
+            if (
+                s_low not in c.lower()
+                and s_low not in (m.get("section") or "").lower()
+                and s_low not in (m.get("source") or "").lower()
+                and s_low not in (m.get("id") or "").lower()
+                and s_low not in str(m.get("page") or "").lower()
+            ):
                 continue
         items.append({
             "id": m["id"],
@@ -422,7 +466,11 @@ def get_all_knowledge_chunks(
         })
 
     return {
+        "total_collection_chunks": len(raw_items),
         "total_chunks": len(items),
+        "returned_count": len(items[skip:skip + limit]),
+        "source_counts": source_counts,
+        "category_counts": category_counts,
         "store_status": store_status,
         "skip": skip,
         "limit": limit,

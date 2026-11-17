@@ -106,6 +106,11 @@ class AuditLogResponse(BaseModel):
     is_compliant: Optional[bool] = None
     evaluation_notes: Optional[str]
     created_at: Any
+    patient_name: Optional[str] = None
+    patient_nik: Optional[str] = None
+    village_name: Optional[str] = None
+    phase: Optional[str] = None
+    overall_status: Optional[str] = None
     execution_order: Optional[int] = None
     execution_pattern: Optional[str] = None
     parallel_worker: Optional[str] = None
@@ -117,6 +122,8 @@ class AuditLogResponse(BaseModel):
     complexity_reason: Optional[str] = None
     token_usage: Optional[Dict[str, Any]] = None
     tools_invoked: Optional[List[str]] = None
+    thought_process: Optional[List[str]] = None
+    agent_work_detail: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

@@ -100,7 +100,7 @@ const AdminDashboard = () => {
             Dashboard Monitoring KIA & Stunting
           </h1>
           <p className="text-sm text-caption mt-1">
-            Puskesmas Kecamatan Airmadidi &bull; Rekapitulasi agregat pemantauan 1.000 HPK lintas 9 Desa
+            Puskesmas Kecamatan Airmadidi &bull; Rekapitulasi agregat pemantauan 1.000 HPK seluruh wilayah kerja
             {lastUpdated && ` • Sinkronisasi: ${lastUpdated} WITA`}
           </p>
         </div>
@@ -342,7 +342,7 @@ const AdminDashboard = () => {
               <tfoot className="bg-muted/50 border-t-2 border-line text-xs font-semibold">
                 <tr>
                   <td className="p-3.5 text-heading">
-                    Total Wilayah Kerja (9 Desa)
+                    Total Seluruh Wilayah Kerja
                   </td>
                   <td className="p-3.5 text-center text-heading tabular-nums">
                     {villageTotals?.total_patients || 0}

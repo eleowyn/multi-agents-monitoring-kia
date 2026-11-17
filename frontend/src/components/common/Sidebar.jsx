@@ -65,8 +65,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: "/admin/manage-kader", label: "Kelola Kader & Posyandu", icon: UserCheck },
     { to: "/admin/jadwal-posyandu", label: "Manajemen Jadwal Posyandu", icon: Calendar },
     { to: "/admin/revisions", label: "Validasi Revisi Data", icon: FileEdit, count: pendingRevisions },
-    { to: "/admin/audit-logs", label: "Audit Log Evaluator AI", icon: ShieldAlert },
-    { to: "/admin/knowledge-chunks", label: "Koleksi Rujukan & Chunks RAG", icon: BookOpen },
+    { to: "/admin/audit-logs", label: "Log Audit Sistem", icon: ShieldAlert },
+    { to: "/admin/knowledge-chunks", label: "Koleksi Chunk & Rujukan", icon: BookOpen },
   ];
 
   const doctorLinks = [

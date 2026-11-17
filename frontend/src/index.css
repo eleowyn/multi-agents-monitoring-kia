@@ -317,6 +317,16 @@ button:focus-visible {
 /* ============================================================
    FORM ELEMENTS
    ============================================================ */
+input[type="text"]:not([class*="h-"]),
+input[type="password"]:not([class*="h-"]),
+input[type="number"]:not([class*="h-"]),
+input[type="date"]:not([class*="h-"]),
+input[type="email"]:not([class*="h-"]),
+select:not([class*="h-"]),
+textarea {
+  min-height: var(--touch-min);
+}
+
 input[type="text"],
 input[type="password"],
 input[type="number"],
@@ -324,16 +334,19 @@ input[type="date"],
 input[type="email"],
 select,
 textarea {
-  min-height: var(--touch-min);
   font-size: 0.875rem;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
 
 button,
 [role="button"] {
-  min-height: var(--touch-min);
   cursor: pointer;
   transition: all var(--transition-base);
+}
+
+button:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+[role="button"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]) {
+  min-height: var(--touch-min);
 }
 
 button:disabled,

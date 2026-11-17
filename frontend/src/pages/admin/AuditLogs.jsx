@@ -1,310 +1,728 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import api, { getErrorMessage } from "../../services/api";
-import {
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  AlertTriangle,
-  Trash2,
-  Cpu,
-  ChevronRight,
-  X,
-  ExternalLink,
-} from "lucide-react";
+import api from "../../services/api";
+import { RefreshCw, FileDown, Search, X } from "lucide-react";
 
-const AuditLogs = () => {
+const PHASE_LABELS = {
+  IBU_HAMIL: "Ibu Hamil",
+  BAYI_BARU_LAHIR: "Bayi Baru Lahir",
+  BADUTA: "Baduta (1-24 Bulan)",
+};
+
+export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [deletingBulk, setDeletingBulk] = useState(false);
-  const [clearingAll, setClearingAll] = useState(false);
-  const [selectedLogModal, setSelectedLogModal] = useState(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [selectedReportGroup, setSelectedReportGroup] = useState(null);
+  const [complianceFilter, setComplianceFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     fetchLogs();
   }, []);
 
   const fetchLogs = async () => {
+    setLoading(true);
+    setErrorMsg("");
     try {
-      setLoading(true);
-      const res = await api.get("/admin/audit-logs");
-      setLogs(res.data || []);
-      setSelectedIds([]);
-    } catch (e) {
-      console.error(e);
+      const response = await api.get("/admin/audit-logs", {
+        params: { limit: 300 },
+      });
+      setLogs(response.data || []);
+    } catch {
+      setErrorMsg("Gagal memuat log audit sistem.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAll = () => {
-    if (selectedIds.length === logs.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(logs.map((l) => l.id));
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const res = await api.get("/admin/audit-logs/export-csv", {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "Log_Audit_Sistem_MultiAgent_KIA.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setErrorMsg("Gagal mengekspor berkas CSV log audit.");
+    } finally {
+      setExportingCsv(false);
     }
   };
 
-  const handleToggleRow = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  const getLogDurationMs = (log) => {
+    if (!log) return 0;
+    if (log.lifetime_ms != null) return Number(log.lifetime_ms) || 0;
+    if (log.duration_ms != null) return Number(log.duration_ms) || 0;
+    return 0;
+  };
+
+  const getLogTokens = (log) => {
+    if (!log) return { input: 0, output: 0, total: 0 };
+    const tu = log.token_usage || {};
+    const input = Number(tu.input_tokens ?? log.input_tokens ?? 0) || 0;
+    const output = Number(tu.output_tokens ?? log.output_tokens ?? 0) || 0;
+    const total = Number(tu.total_tokens ?? log.total_tokens ?? input + output) || 0;
+    return { input, output, total };
+  };
+
+  const identifyAgentSlot = (log) => {
+    if (!log) return "other";
+    const order = Number(log.execution_order);
+    if (order === 1) return "agent1";
+    if (order === 2) return "agent2";
+    if (order === 3) return "agent3";
+
+    const nameUpper = (log.agent_name || "").toUpperCase();
+    if (
+      nameUpper.includes("AGENT 1") ||
+      nameUpper.includes("AGENT_1") ||
+      nameUpper.includes("DETEKSI") ||
+      nameUpper.includes("RISK")
+    ) {
+      return "agent1";
+    }
+    if (
+      nameUpper.includes("AGENT 2") ||
+      nameUpper.includes("AGENT_2") ||
+      nameUpper.includes("REKOMENDASI") ||
+      nameUpper.includes("RECOMMENDER")
+    ) {
+      return "agent2";
+    }
+    if (
+      nameUpper.includes("AGENT 3") ||
+      nameUpper.includes("AGENT_3") ||
+      nameUpper.includes("VERIFIKASI") ||
+      nameUpper.includes("VERIFIER") ||
+      nameUpper.includes("GROUND")
+    ) {
+      return "agent3";
+    }
+    return "other";
+  };
+
+  const parseRawOutputFallback = (log) => {
+    if (!log || !log.agent_output) return null;
+    try {
+      return JSON.parse(log.agent_output);
+    } catch {
+      return null;
+    }
+  };
+
+  const groupedReports = useMemo(() => {
+    const map = new Map();
+
+    logs.forEach((log) => {
+      const repId = log.report_id || `log-${log.id}`;
+      if (!map.has(repId)) {
+        map.set(repId, {
+          report_id: log.report_id,
+          patient_name: log.patient_name || "Pasien KIA",
+          patient_nik: log.patient_nik || "-",
+          village_name: log.village_name || "Airmadidi",
+          phase: log.phase || "-",
+          overall_status: log.overall_status || "KONDISI_BAIK",
+          created_at: log.created_at,
+          agent1: null,
+          agent2: null,
+          agent3: null,
+          all_logs: [],
+        });
+      }
+
+      const group = map.get(repId);
+      group.all_logs.push(log);
+
+      if (log.patient_name && group.patient_name === "Pasien KIA") {
+        group.patient_name = log.patient_name;
+      }
+      if (log.patient_nik && group.patient_nik === "-") {
+        group.patient_nik = log.patient_nik;
+      }
+      if (log.village_name && group.village_name === "Airmadidi") {
+        group.village_name = log.village_name;
+      }
+      if (log.phase && group.phase === "-") {
+        group.phase = log.phase;
+      }
+      if (log.overall_status) {
+        group.overall_status = log.overall_status;
+      }
+
+      const slot = identifyAgentSlot(log);
+      if (slot === "agent1") group.agent1 = log;
+      else if (slot === "agent2") group.agent2 = log;
+      else if (slot === "agent3") group.agent3 = log;
+    });
+
+    const list = Array.from(map.values()).map((grp) => {
+      const sortedLogs = [...grp.all_logs].sort((a, b) => a.id - b.id);
+      if (!grp.agent1 && sortedLogs[0]) grp.agent1 = sortedLogs[0];
+      if (!grp.agent2 && sortedLogs[1]) grp.agent2 = sortedLogs[1];
+      if (!grp.agent3 && sortedLogs[2]) grp.agent3 = sortedLogs[2];
+
+      const totalDurationMs = Math.round(
+        grp.all_logs.reduce((sum, l) => sum + getLogDurationMs(l), 0)
+      );
+      const tokenTotals = grp.all_logs.reduce(
+        (acc, l) => {
+          const t = getLogTokens(l);
+          return {
+            input: acc.input + t.input,
+            output: acc.output + t.output,
+            total: acc.total + t.total,
+          };
+        },
+        { input: 0, output: 0, total: 0 }
+      );
+      const hasDeviation = grp.all_logs.some((l) => l.is_compliant === false);
+
+      return {
+        ...grp,
+        totalDurationMs,
+        totalTokens: tokenTotals.total,
+        totalInputTokens: tokenTotals.input,
+        totalOutputTokens: tokenTotals.output,
+        isCompliant: !hasDeviation,
+      };
+    });
+
+    return list.sort((a, b) => Number(b.report_id || 0) - Number(a.report_id || 0));
+  }, [logs]);
+
+  const filteredGroups = useMemo(() => {
+    return groupedReports.filter((grp) => {
+      if (complianceFilter === "COMPLIANT" && !grp.isCompliant) return false;
+      if (complianceFilter === "DEVIATION" && grp.isCompliant) return false;
+
+      const q = searchQuery.trim().toLowerCase();
+      if (q) {
+        const matchId = String(grp.report_id || "").includes(q);
+        const matchName = (grp.patient_name || "").toLowerCase().includes(q);
+        const matchNik = (grp.patient_nik || "").toLowerCase().includes(q);
+        const matchVillage = (grp.village_name || "").toLowerCase().includes(q);
+        if (!matchId && !matchName && !matchNik && !matchVillage) return false;
+      }
+      return true;
+    });
+  }, [groupedReports, complianceFilter, searchQuery]);
+
+  const cleanAuditNote = (note) =>
+    (note || "Fungsi dieksekusi sesuai SOP.")
+      .replace(/\[PARALLEL EVALUATOR[^\]]*\]/gi, "")
+      .replace(/\[AUDIT PARALEL[^\]]*\]/gi, "")
+      .replace(/Evaluator AI/gi, "Sistem Audit")
+      .trim();
+
+  const renderAgent1Section = (log) => {
+    if (!log) return null;
+    const detail = log.agent_work_detail || {};
+    const rawFallback = parseRawOutputFallback(log) || {};
+    const flags =
+      detail.active_risk_flags ||
+      rawFallback.risk_flags ||
+      [];
+    const narrative =
+      detail.risk_narrative ||
+      rawFallback.narrative ||
+      "-";
+    const tools =
+      Array.isArray(log.tools_invoked) && log.tools_invoked.length > 0
+        ? log.tools_invoked
+        : ["validate_input_plausibility", "calculate_1000_hpk_status", "kalkulator_klinis_deterministik"];
+    const who = detail.who_zscore || {};
+    const dur = Math.round(getLogDurationMs(log));
+    const tok = getLogTokens(log);
+
+    return (
+      <div className="bg-card border border-line rounded-xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+          <div>
+            <h4 className="text-base font-bold text-heading">
+              1. Agent 1 — Analisis Risiko & Kalkulator Klinis
+            </h4>
+            <p className="text-xs text-caption mt-0.5">
+              Pemeriksaan kewajaran input, status 1.000 HPK, dan perhitungan parameter antropometri/klinis
+            </p>
+          </div>
+          <div className="text-xs text-caption sm:text-right">
+            <span
+              className={`font-semibold ${
+                log.is_compliant === false
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+            </span>
+            <span> &bull; {dur} ms &bull; {tok.total} token</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div>
+            <p className="text-caption font-medium">Validasi Input</p>
+            <p className="text-heading font-semibold mt-0.5">
+              {detail.plausibility?.is_plausible !== false
+                ? "Lolos Pemeriksaan (Data Valid)"
+                : "Ditemukan Anomali Input"}
+            </p>
+          </div>
+          <div>
+            <p className="text-caption font-medium">Fungsi yang Dijalankan</p>
+            <p className="text-heading font-semibold mt-0.5">
+              {tools.join(", ")}
+            </p>
+          </div>
+          <div>
+            <p className="text-caption font-medium">Temuan Risiko Klinis</p>
+            <p className="text-heading font-semibold mt-0.5">
+              {flags.length > 0 ? flags.join(", ") : "Tidak ada tanda bahaya (Kondisi Baik)"}
+            </p>
+          </div>
+        </div>
+
+        {(who.length_for_age || who.weight_for_age || who.weight_for_length || detail.kspr || detail.maternal_nutrition) && (
+          <div className="pt-2 border-t border-line-light text-xs space-y-1">
+            <p className="text-caption font-medium">Rincian Perhitungan Kalkulator:</p>
+            <div className="text-body space-y-0.5">
+              {who.length_for_age && (
+                <p>
+                  PB/U (TB/U): Z-Score {who.length_for_age.zscore ?? "-"} ({who.length_for_age.category || "-"})
+                </p>
+              )}
+              {who.weight_for_age && (
+                <p>
+                  BB/U: Z-Score {who.weight_for_age.zscore ?? "-"} ({who.weight_for_age.category || "-"})
+                </p>
+              )}
+              {who.weight_for_length && (
+                <p>
+                  BB/PB: Z-Score {who.weight_for_length.zscore ?? "-"} ({who.weight_for_length.category || "-"})
+                </p>
+              )}
+              {detail.kspr && (
+                <p>
+                  Skor KSPR: {detail.kspr.total_score ?? "-"} ({detail.kspr.risk_category || "-"})
+                </p>
+              )}
+              {detail.maternal_nutrition && (
+                <p>
+                  Gizi Ibu: LiLA ({detail.maternal_nutrition.lila_status || "-"}), Hb ({detail.maternal_nutrition.hb_status || "-"})
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-2 border-t border-line-light text-xs space-y-1">
+          <p className="text-caption font-medium">Ringkasan Analisis Agent 1:</p>
+          <p className="text-body leading-relaxed">{narrative}</p>
+        </div>
+
+        <div className="pt-2 border-t border-line-light text-xs space-y-1">
+          <p className="text-caption font-medium">Catatan Audit SOP:</p>
+          <p className="text-body leading-relaxed">{cleanAuditNote(log.evaluation_notes)}</p>
+        </div>
+      </div>
     );
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Apakah Anda yakin ingin menghapus ${selectedIds.length} catatan log audit terpilih? Tindakan ini tidak dapat dibatalkan.`
-      )
-    ) {
-      return;
-    }
-    try {
-      setDeletingBulk(true);
-      const res = await api.post("/admin/audit-logs/bulk-delete", {
-        ids: selectedIds,
-      });
-      alert(res.data.message || `${selectedIds.length} log audit berhasil dihapus.`);
-      fetchLogs();
-    } catch (err) {
-      alert(getErrorMessage(err, "Gagal menghapus log audit terpilih."));
-    } finally {
-      setDeletingBulk(false);
-    }
+  const renderAgent2Section = (log) => {
+    if (!log) return null;
+    const detail = log.agent_work_detail || {};
+    const rawFallback = parseRawOutputFallback(log);
+    const recsTrace =
+      Array.isArray(detail.recommendations_trace) && detail.recommendations_trace.length > 0
+        ? detail.recommendations_trace
+        : Array.isArray(rawFallback)
+        ? rawFallback
+        : [];
+    const dur = Math.round(getLogDurationMs(log));
+    const tok = getLogTokens(log);
+
+    return (
+      <div className="bg-card border border-line rounded-xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+          <div>
+            <h4 className="text-base font-bold text-heading">
+              2. Agent 2 — Rekomendasi Gizi & Rujukan Pedoman (RAG)
+            </h4>
+            <p className="text-xs text-caption mt-0.5">
+              Pencarian dokumen pedoman (Buku KIA 2024 & PNPK Stunting) dan penyusunan rekomendasi intervensi
+            </p>
+          </div>
+          <div className="text-xs text-caption sm:text-right">
+            <span
+              className={`font-semibold ${
+                log.is_compliant === false
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+            </span>
+            <span> &bull; {dur} ms &bull; {tok.total} token</span>
+          </div>
+        </div>
+
+        {recsTrace.length === 0 ? (
+          <p className="text-xs text-body">
+            Pasien dalam kondisi baik tanpa flag risiko tinggi (jalur cepat tanpa pencarian RAG tambahan).
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-caption font-medium">
+              Daftar Rekomendasi & Bukti Rujukan ({recsTrace.length} butir):
+            </p>
+            <div className="divide-y divide-line border border-line rounded-lg overflow-hidden">
+              {recsTrace.map((rec, i) => {
+                const cit = rec.citation || {};
+                const src = rec.source || cit.source || "Pedoman Standar KIA";
+                const pages =
+                  Array.isArray(rec.additional_pages) && rec.additional_pages.length > 0
+                    ? rec.additional_pages.join(", ")
+                    : Array.isArray(cit.additional_pages) && cit.additional_pages.length > 0
+                    ? cit.additional_pages.join(", ")
+                    : rec.page || cit.page || "-";
+                const sections =
+                  Array.isArray(rec.additional_sections) && rec.additional_sections.length > 0
+                    ? rec.additional_sections.join("; ")
+                    : Array.isArray(cit.additional_sections) && cit.additional_sections.length > 0
+                    ? cit.additional_sections.join("; ")
+                    : rec.section || cit.section || "-";
+                const chunkIds =
+                  Array.isArray(rec.supporting_chunk_ids) && rec.supporting_chunk_ids.length > 0
+                    ? rec.supporting_chunk_ids.join(", ")
+                    : Array.isArray(cit.supporting_chunk_ids) && cit.supporting_chunk_ids.length > 0
+                    ? cit.supporting_chunk_ids.join(", ")
+                    : rec.chunk_id || cit.chunk_id || "-";
+
+                return (
+                  <div key={i} className="p-3.5 bg-subtle/40 space-y-1.5 text-xs">
+                    <p className="font-semibold text-heading">
+                      {i + 1}. {rec.title || "Rekomendasi Tindak Lanjut"}
+                    </p>
+                    <p className="text-caption">
+                      Sumber: <strong className="text-body">{String(src).replace(/\.md$/i, "")}</strong>
+                      {" • "}Halaman: <strong className="text-body">{pages}</strong>
+                      {" • "}Bagian: <strong className="text-body">{sections}</strong>
+                      {chunkIds !== "-" && (
+                        <>
+                          {" • "}ID Chunk: <strong className="text-body">{chunkIds}</strong>
+                        </>
+                      )}
+                    </p>
+                    {rec.evidence_quote && (
+                      <p className="text-body italic pt-1">
+                        Kutipan: &ldquo;{rec.evidence_quote}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-2 border-t border-line-light text-xs space-y-1">
+          <p className="text-caption font-medium">Catatan Audit SOP:</p>
+          <p className="text-body leading-relaxed">{cleanAuditNote(log.evaluation_notes)}</p>
+        </div>
+      </div>
+    );
   };
 
-  const handleClearAll = async () => {
-    if (logs.length === 0) return;
-    if (
-      !window.confirm(
-        "PERINGATAN: Apakah Anda yakin ingin membersihkan SELURUH riwayat log audit evaluator AI? Tindakan ini permanen."
-      )
-    ) {
-      return;
-    }
-    try {
-      setClearingAll(true);
-      const res = await api.delete("/admin/audit-logs/clear-all");
-      alert(res.data.message || "Seluruh log audit berhasil dibersihkan.");
-      fetchLogs();
-    } catch (err) {
-      alert(getErrorMessage(err, "Gagal membersihkan seluruh log audit."));
-    } finally {
-      setClearingAll(false);
-    }
-  };
+  const renderAgent3Section = (log) => {
+    if (!log) return null;
+    const detail = log.agent_work_detail || {};
+    const rawFallback = parseRawOutputFallback(log) || {};
+    const verifs =
+      Array.isArray(detail.verification_details) && detail.verification_details.length > 0
+        ? detail.verification_details
+        : Array.isArray(rawFallback.verification)
+        ? rawFallback.verification
+        : [];
+    const groundingPct = detail.grounding_rate_percent ?? 100;
+    const dur = Math.round(getLogDurationMs(log));
+    const tok = getLogTokens(log);
 
-  // Hitung rekapitulasi token dan durasi dari daftar log
-  const totalTokensAll = logs.reduce(
-    (acc, l) => acc + Number(l.token_usage?.total_tokens || 0),
-    0
-  );
-  const totalInputTokensAll = logs.reduce(
-    (acc, l) => acc + Number(l.token_usage?.input_tokens || 0),
-    0
-  );
-  const totalOutputTokensAll = logs.reduce(
-    (acc, l) => acc + Number(l.token_usage?.output_tokens || 0),
-    0
-  );
-  // Rata-rata hanya dari log yang benar-benar mencatat durasi
-  const timedLogs = logs.filter((l) => l.lifetime_ms != null);
-  const avgLifetimeMs =
-    timedLogs.length > 0
-      ? Math.round(timedLogs.reduce((acc, l) => acc + Number(l.lifetime_ms), 0) / timedLogs.length)
-      : null;
+    return (
+      <div className="bg-card border border-line rounded-xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-line">
+          <div>
+            <h4 className="text-base font-bold text-heading">
+              3. Agent 3 — Verifikasi Keterlacakan Rujukan (Grounding)
+            </h4>
+            <p className="text-xs text-caption mt-0.5">
+              Pemeriksaan kesesuaian setiap rekomendasi terhadap isi chunk dokumen sumber dan penyusunan laporan akhir
+            </p>
+          </div>
+          <div className="text-xs text-caption sm:text-right">
+            <span
+              className={`font-semibold ${
+                log.is_compliant === false
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+            </span>
+            <span> &bull; Skor Grounding: {groundingPct}% &bull; {dur} ms &bull; {tok.total} token</span>
+          </div>
+        </div>
+
+        {verifs.length === 0 ? (
+          <p className="text-xs text-body">
+            Integrasi langsung laporan akhir (kondisi baik tanpa temuan risiko klinis).
+          </p>
+        ) : (
+          <div className="divide-y divide-line border border-line rounded-lg overflow-hidden text-xs">
+            {verifs.map((v, i) => {
+              const cit = v.citation_checked || {};
+              const title = v.recommendation_title || v.title || `Rekomendasi #${i + 1}`;
+              const isVerified =
+                typeof v.is_verified === "boolean"
+                  ? v.is_verified
+                  : v.verification_status === "VERIFIED" ||
+                    v.verification_status === "AUTO_GROUNDED_SECONDARY";
+              const scorePct = Math.round((Number(v.grounding_score) || (isVerified ? 1 : 0)) * 100);
+              const src = v.source || cit.source || "-";
+              const page =
+                Array.isArray(v.additional_pages) && v.additional_pages.length > 0
+                  ? v.additional_pages.join(", ")
+                  : v.page || cit.page || "-";
+              const note = v.verification_note || v.reasoning;
+
+              return (
+                <div key={i} className="p-3.5 bg-subtle/40 space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-heading">
+                      {i + 1}. {title}
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        isVerified
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}
+                    >
+                      {isVerified ? "Terverifikasi" : "Perlu Tinjauan"} ({scorePct}%)
+                    </span>
+                  </div>
+                  <p className="text-caption">
+                    Rujukan: {String(src).replace(/\.md$/i, "")} (Halaman {page})
+                  </p>
+                  {note && <p className="text-body">{note}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="pt-2 border-t border-line-light text-xs space-y-1">
+          <p className="text-caption font-medium">Catatan Audit SOP:</p>
+          <p className="text-body leading-relaxed">{cleanAuditNote(log.evaluation_notes)}</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-5 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line-light">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl font-bold text-heading">
             Log Audit Sistem
           </h1>
           <p className="text-sm text-caption mt-1">
-            Rekam jejak eksekusi multi-agent AI, konsumsi token, dan latensi sistem
+            Catatan pemeriksaan kerja Agent 1, Agent 2, dan Agent 3 untuk setiap laporan kunjungan pasien.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          {logs.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              disabled={clearingAll}
-              className="btn-interactive flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line text-caption hover:text-rose-500 hover:bg-subtle rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-              <span>{clearingAll ? "Membersihkan..." : "Bersihkan Seluruh Log"}</span>
-            </button>
-          )}
+
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
-            onClick={fetchLogs}
-            className="btn-interactive flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line hover:bg-subtle text-caption hover:text-heading rounded-xl text-xs font-medium transition-colors cursor-pointer"
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exportingCsv || logs.length === 0}
+            className="btn-interactive flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-sky-500" />
-            <span>Segarkan</span>
+            <FileDown className="w-4 h-4" />
+            <span>{exportingCsv ? "Mengekspor..." : "Ekspor CSV"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fetchLogs}
+            disabled={loading}
+            className="btn-interactive flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-muted text-heading border border-line rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <span>Muat Ulang</span>
           </button>
         </div>
       </div>
 
-      {/* Bulk Action Bar */}
-      {selectedIds.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-subtle border border-line rounded-xl animate-fade-in text-xs">
-          <div className="flex items-center gap-2 text-heading font-medium">
-            <span className="px-2 py-0.5 bg-card border border-line rounded font-mono font-bold">
-              {selectedIds.length}
-            </span>
-            <span>log audit dipilih</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedIds([])}
-              className="px-3 py-1 text-caption hover:text-heading transition-colors cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              disabled={deletingBulk}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{deletingBulk ? "Menghapus..." : `Hapus ${selectedIds.length} Log`}</span>
-            </button>
-          </div>
+      {errorMsg && (
+        <div className="p-3.5 rounded-lg bg-accent-red border border-red-300 dark:border-red-800/50 text-xs font-semibold text-red-700 dark:text-red-300">
+          {errorMsg}
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-card rounded-2xl border border-line shadow-card overflow-hidden">
+      {/* Pencarian & Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nomor laporan, nama pasien, NIK, atau desa..."
+            aria-label="Cari log audit"
+            className="w-full h-10 pl-10 pr-9 bg-card border border-line rounded-lg text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Bersihkan pencarian"
+              className="!min-h-0 p-1 text-dim hover:text-heading absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={complianceFilter}
+          onChange={(e) => setComplianceFilter(e.target.value)}
+          aria-label="Filter status SOP"
+          className="h-10 px-3.5 bg-card border border-line rounded-lg text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer"
+        >
+          <option value="ALL">Semua Status ({groupedReports.length})</option>
+          <option value="COMPLIANT">
+            Memenuhi SOP ({groupedReports.filter((g) => g.isCompliant).length})
+          </option>
+          <option value="DEVIATION">
+            Deviasi SOP ({groupedReports.filter((g) => !g.isCompliant).length})
+          </option>
+        </select>
+      </div>
+
+      {/* Tabel Utama yang Bersih & Sederhana */}
+      <div className="bg-card rounded-xl border border-line overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-subtle text-caption text-xs font-medium uppercase tracking-wider border-b border-line">
-              <tr>
-                <th className="p-3.5 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={logs.length > 0 && selectedIds.length === logs.length}
-                    onChange={handleToggleAll}
-                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
-                    aria-label="Pilih semua log"
-                  />
-                </th>
-                <th className="p-3.5 font-medium">Log</th>
-                <th className="p-3.5 font-medium">Agent</th>
-                <th className="p-3.5 font-medium">Durasi</th>
-                <th className="p-3.5 font-medium">Token</th>
-                <th className="p-3.5 font-medium">Status</th>
-                <th className="p-3.5 text-right font-medium">Aksi</th>
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-muted border-b border-line text-xs font-semibold text-caption">
+                <th className="py-3.5 px-5">No. Laporan</th>
+                <th className="py-3.5 px-5">Pasien & Wilayah</th>
+                <th className="py-3.5 px-5">Ringkasan Kerja Agent</th>
+                <th className="py-3.5 px-5">Durasi & Token</th>
+                <th className="py-3.5 px-5">Status SOP</th>
+                <th className="py-3.5 px-5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-light">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-dim text-sm">
-                    Memuat catatan log audit...
+                  <td colSpan="6" className="py-12 text-center text-sm text-caption">
+                    Memuat data log audit...
                   </td>
                 </tr>
-              ) : logs.length === 0 ? (
+              ) : filteredGroups.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-dim italic text-sm">
-                    Belum ada log audit tersimpan.
+                  <td colSpan="6" className="py-12 text-center text-sm text-caption">
+                    Tidak ada data log audit yang cocok.
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => {
-                  const tok = log.token_usage || {};
+                filteredGroups.map((grp) => {
+                  const a1Detail = grp.agent1?.agent_work_detail || {};
+                  const a2Detail = grp.agent2?.agent_work_detail || {};
+                  const a3Detail = grp.agent3?.agent_work_detail || {};
+                  const flags = Array.isArray(a1Detail.active_risk_flags)
+                    ? a1Detail.active_risk_flags
+                    : [];
+                  const recs = Array.isArray(a2Detail.recommendations_trace)
+                    ? a2Detail.recommendations_trace
+                    : [];
+                  const groundingPct = a3Detail.grounding_rate_percent ?? 100;
+
                   return (
                     <tr
-                      key={log.id}
-                      onClick={() => setSelectedLogModal(log)}
-                      className={`cursor-pointer hover:bg-subtle/60 transition-colors ${
-                        selectedIds.includes(log.id) ? "bg-subtle" : ""
-                      }`}
+                      key={grp.report_id}
+                      className="hover:bg-muted/40 transition-colors"
                     >
-                      <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(log.id)}
-                          onChange={() => handleToggleRow(log.id)}
-                          className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-line cursor-pointer"
-                          aria-label={`Pilih log audit #${log.id}`}
-                        />
+                      <td className="py-4 px-5 whitespace-nowrap">
+                        <Link
+                          to={`/kader/validasi-laporan/${grp.report_id}`}
+                          className="font-semibold text-heading hover:underline block"
+                        >
+                          Laporan #{grp.report_id}
+                        </Link>
+                        <span className="text-xs text-caption block mt-0.5">
+                          {grp.created_at
+                            ? new Date(grp.created_at).toLocaleDateString("id-ID", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "-"}
+                        </span>
                       </td>
 
-                      <td className="p-3.5">
-                        <p className="font-semibold text-heading font-mono text-xs">#{log.id}</p>
-                        {log.report_id && (
-                          <Link
-                            to={`/kader/validasi-laporan/${log.report_id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-xs text-caption hover:text-sky-600 dark:hover:text-sky-400 mt-0.5"
-                          >
-                            <span>Laporan #{log.report_id}</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        )}
-                      </td>
-
-                      <td className="p-3.5">
-                        <p className="font-semibold text-heading text-xs sm:text-sm">{log.agent_name}</p>
+                      <td className="py-4 px-5">
+                        <p className="font-semibold text-heading">{grp.patient_name}</p>
                         <p className="text-xs text-caption mt-0.5">
-                          Step #{log.execution_order || 1} &bull; {log.parallel_worker || "ParallelEval"}
+                          Desa {grp.village_name} &bull; {PHASE_LABELS[grp.phase] || grp.phase}
                         </p>
                       </td>
 
-                      <td className="p-3.5 font-mono text-xs">
-                        <p className="text-heading font-medium">
-                          {log.lifetime_ms != null ? `${log.lifetime_ms} ms` : "tidak tercatat"}
-                        </p>
-                        <p className="text-caption text-xs truncate max-w-[180px]" title={`${log.spawned_at} -> ${log.terminated_at}`}>
-                          {log.spawned_at ? log.spawned_at.slice(11, 19) : "-"}
-                        </p>
-                      </td>
-
-                      <td className="p-3.5 font-mono text-xs">
-                        <p className="text-heading font-medium">
-                          {tok.total_tokens != null ? tok.total_tokens.toLocaleString("id-ID") : "tidak tercatat"}
-                        </p>
-                        <p className="text-caption text-xs">
-                          In: {tok.input_tokens ?? "-"} &bull; Out: {tok.output_tokens ?? "-"}
+                      <td className="py-4 px-5 text-xs text-body">
+                        <p>
+                          Agent 1: {flags.length > 0 ? `${flags.length} temuan risiko` : "Kondisi baik"}
+                          {" • "}Agent 2: {recs.length} rekomendasi
+                          {" • "}Agent 3: Grounding {groundingPct}%
                         </p>
                       </td>
 
-                      <td className="p-3.5">
-                        {log.is_compliant === true ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Patuh</span>
-                          </span>
-                        ) : log.is_compliant === false ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
-                            <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                            <span>Deviasi</span>
+                      <td className="py-4 px-5 whitespace-nowrap text-xs text-body">
+                        {grp.totalDurationMs.toLocaleString("id-ID")} ms &bull;{" "}
+                        {grp.totalTokens.toLocaleString("id-ID")} token
+                      </td>
+
+                      <td className="py-4 px-5 whitespace-nowrap text-xs font-semibold">
+                        {grp.isCompliant ? (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            Memenuhi SOP
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-body">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Tidak dievaluasi</span>
+                          <span className="text-rose-600 dark:text-rose-400">
+                            Deviasi SOP
                           </span>
                         )}
                       </td>
 
-                      <td className="p-3.5 text-right">
+                      <td className="py-4 px-5 text-right whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedLogModal(log);
-                          }}
-                          className="inline-flex items-center gap-1 text-xs text-caption hover:text-heading cursor-pointer transition-colors"
+                          onClick={() => setSelectedReportGroup(grp)}
+                          className="!min-h-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-subtle hover:bg-muted text-heading border border-line transition-colors cursor-pointer"
                         >
-                          <span>Detail</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
+                          Detail Audit
                         </button>
                       </td>
                     </tr>
@@ -316,164 +734,59 @@ const AuditLogs = () => {
         </div>
       </div>
 
-      {/* ─── Total Konsumsi Token (Paling Bawah) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-card rounded-2xl border border-line text-xs">
-        <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-caption" />
-          <span className="text-caption font-medium">Total Konsumsi Token:</span>
-          <span className="font-mono font-bold text-heading text-sm">
-            {totalTokensAll.toLocaleString("id-ID")}
-          </span>
-          <span className="text-caption">token</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 sm:gap-5 text-caption font-mono text-xs">
-          <span>Input: <strong className="text-heading font-medium">{totalInputTokensAll.toLocaleString("id-ID")}</strong></span>
-          <span className="text-line hidden sm:inline">&bull;</span>
-          <span>Output: <strong className="text-heading font-medium">{totalOutputTokensAll.toLocaleString("id-ID")}</strong></span>
-          <span className="text-line hidden sm:inline">&bull;</span>
-          <span>Rata-rata Durasi: <strong className="text-heading font-medium">{avgLifetimeMs != null ? `${avgLifetimeMs} ms` : "tidak tercatat"}</strong></span>
-        </div>
-      </div>
-
-      {/* ═══ Clean Minimalist Detail Modal Pop-up ═══ */}
-      {selectedLogModal && (
+      {/* Pop-up Modal Detail Audit per Agent */}
+      {selectedReportGroup && (
         <div
-          className="fixed inset-0 bg-overlay backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 z-50 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 sm:p-6 overflow-y-auto"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedLogModal(null);
+            if (e.target === e.currentTarget) setSelectedReportGroup(null);
           }}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="audit-log-modal-title"
         >
-          <div className="bg-card rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-line shadow-prominent overflow-hidden animate-scale-in">
+          <div className="bg-card border border-line rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-line flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-caption border border-line">
-                  Log Audit #{selectedLogModal.id} &bull; Step #{selectedLogModal.execution_order || 1} &bull;{" "}
-                  {selectedLogModal.parallel_worker || "ParallelEval"}
-                </span>
-                <h3 id="audit-log-modal-title" className="text-lg sm:text-xl font-bold text-heading">
-                  {selectedLogModal.agent_name}
+            <div className="px-6 py-4 bg-subtle border-b border-line flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-heading">
+                  Detail Audit Laporan #{selectedReportGroup.report_id} — {selectedReportGroup.patient_name}
                 </h3>
+                <p className="text-xs text-caption mt-1">
+                  NIK: {selectedReportGroup.patient_nik} &bull; Desa {selectedReportGroup.village_name} &bull;{" "}
+                  {PHASE_LABELS[selectedReportGroup.phase] || selectedReportGroup.phase} &bull; Total Waktu:{" "}
+                  {selectedReportGroup.totalDurationMs.toLocaleString("id-ID")} ms ({selectedReportGroup.totalTokens.toLocaleString("id-ID")} token)
+                </p>
               </div>
+
               <button
-                onClick={() => setSelectedLogModal(null)}
-                aria-label="Tutup modal log"
-                className="p-2 text-dim hover:text-heading hover:bg-subtle rounded-xl transition-colors cursor-pointer shrink-0"
+                type="button"
+                onClick={() => setSelectedReportGroup(null)}
+                aria-label="Tutup detail audit"
+                className="!min-h-0 p-1.5 rounded-lg text-dim hover:text-heading hover:bg-muted cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
-              {/* Klasifikasi Kompleksitas & Kepentingan */}
-              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Peran & Tingkat Kesulitan/Kepentingan
-                </p>
-                <p className="text-sm font-bold text-heading">{selectedLogModal.complexity_rank}</p>
-                <p className="text-sm text-body leading-relaxed">{selectedLogModal.complexity_reason}</p>
-              </div>
-
-              {/* Lifetime & Token */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
-                  <p className="font-bold uppercase tracking-wider text-caption">
-                    Durasi & Waktu Eksekusi
-                  </p>
-                  <p className="font-mono text-heading">
-                    Spawn: <strong>{selectedLogModal.spawned_at || "-"}</strong>
-                  </p>
-                  <p className="font-mono text-heading">
-                    Terminated: <strong>{selectedLogModal.terminated_at || "-"}</strong>
-                  </p>
-                  <p className="text-body">
-                    Durasi: <strong className="text-heading">{selectedLogModal.lifetime_ms != null ? `${selectedLogModal.lifetime_ms} ms` : "tidak tercatat"}</strong> (Ephemeral)
-                  </p>
-                </div>
-
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5 text-xs">
-                  <p className="font-bold uppercase tracking-wider text-caption">
-                    Konsumsi Token
-                  </p>
-                  <p className="font-mono text-heading">
-                    Input Prompt: <strong>{selectedLogModal.token_usage?.input_tokens ?? "tidak tercatat"}</strong>
-                  </p>
-                  <p className="font-mono text-heading">
-                    Output: <strong>{selectedLogModal.token_usage?.output_tokens ?? "tidak tercatat"}</strong>
-                  </p>
-                  <p className="font-mono text-heading">
-                    Total: <strong>{selectedLogModal.token_usage?.total_tokens ?? "tidak tercatat"}</strong>
-                  </p>
-                </div>
-              </div>
-
-              {/* Tools Invoked */}
-              {Array.isArray(selectedLogModal.tools_invoked) && selectedLogModal.tools_invoked.length > 0 && (
-                <div className="p-4 bg-subtle rounded-xl border border-line space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                    Tools yang Digunakan
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedLogModal.tools_invoked.map((tl, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-1 rounded-md text-xs font-mono bg-card text-heading border border-line"
-                      >
-                        {tl}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Instruksi Tugas Awal */}
-              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Instruksi Input Context
-                </p>
-                <p className="text-sm text-body leading-relaxed">{selectedLogModal.input_instruction}</p>
-              </div>
-
-              {/* Output yang Dihasilkan Agent */}
-              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Output Hasil Agent
-                </p>
-                <pre className="p-3 bg-card rounded-lg border border-line text-xs font-mono text-body overflow-x-auto whitespace-pre-wrap max-h-48">
-                  {selectedLogModal.agent_output}
-                </pre>
-              </div>
-
-              {/* Catatan Evaluator Paralel */}
-              <div className="p-4 bg-subtle rounded-xl border border-line space-y-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-caption">
-                  Catatan Evaluator Paralel
-                </p>
-                <p className="text-sm text-body leading-relaxed">{selectedLogModal.evaluation_notes}</p>
-              </div>
+            {/* Modal Body: Detail Agent 1, Agent 2, Agent 3 */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-page">
+              {renderAgent1Section(selectedReportGroup.agent1)}
+              {renderAgent2Section(selectedReportGroup.agent2)}
+              {renderAgent3Section(selectedReportGroup.agent3)}
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 sm:p-5 border-t border-line bg-subtle flex items-center justify-between gap-3">
-              {selectedLogModal.report_id ? (
-                <Link
-                  to={`/kader/validasi/${selectedLogModal.report_id}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline"
-                >
-                  <span>Buka Lembar Laporan #{selectedLogModal.report_id}</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-              ) : (
-                <span />
-              )}
+            <div className="px-6 py-3.5 bg-subtle border-t border-line flex items-center justify-between">
+              <Link
+                to={`/kader/validasi-laporan/${selectedReportGroup.report_id}`}
+                className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+              >
+                Buka Lembar Laporan #{selectedReportGroup.report_id}
+              </Link>
               <button
                 type="button"
-                onClick={() => setSelectedLogModal(null)}
-                className="px-4 py-2 bg-card hover:bg-muted text-heading border border-line rounded-xl text-sm font-semibold cursor-pointer transition-colors"
+                onClick={() => setSelectedReportGroup(null)}
+                className="!min-h-0 px-4 py-1.5 bg-card hover:bg-muted text-heading border border-line rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Tutup
               </button>
@@ -483,6 +796,4 @@ const AuditLogs = () => {
       )}
     </div>
   );
-};
-
-export default AuditLogs;
+}

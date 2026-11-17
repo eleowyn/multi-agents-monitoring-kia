@@ -158,19 +158,12 @@ const DoctorMonitoring = () => {
       {/* ─── Header & Supervision Controls (Clean & Aligned) ─── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-line">
         <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 border border-sky-200 dark:border-sky-800">
-              <HeartPulse className="w-5 h-5" />
-            </span>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
-                Portal Supervisi Klinis KIA
-              </h1>
-              <p className="text-xs text-caption">
-                Puskesmas Kecamatan Airmadidi &bull; Supervisi Kasus Berisiko & Intervensi Medis
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
+            Portal Supervisi Klinis KIA
+          </h1>
+          <p className="text-sm text-caption">
+            Puskesmas Kecamatan Airmadidi &bull; Supervisi Kasus Berisiko & Intervensi Medis
+          </p>
         </div>
 
         {/* Filter Posyandu & Export Actions Aligned */}
@@ -181,7 +174,7 @@ const DoctorMonitoring = () => {
             onChange={(e) => setSelectedPosyandu(e.target.value)}
             className="h-9 px-3 bg-card border border-line rounded-lg text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer shadow-2xs"
           >
-            <option value="">Semua Posyandu (9 Desa)</option>
+            <option value="">Semua Wilayah Kerja</option>
             {posyanduOptions.map((pos) => (
               <option key={pos} value={pos}>
                 {pos}

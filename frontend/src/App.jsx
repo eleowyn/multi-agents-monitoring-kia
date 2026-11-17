@@ -122,6 +122,14 @@ function App() {
             }
           />
           <Route
+            path="/kader/validasi/:reportId"
+            element={
+              <ProtectedLayout allowedRoles={["KADER", "ADMIN", "DOKTER"]}>
+                <ValidasiLaporan />
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/kader/data-pasien"
             element={
               <ProtectedLayout allowedRole="KADER">

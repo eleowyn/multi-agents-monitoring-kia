@@ -1,396 +1,435 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import api, { getErrorMessage } from "../../services/api";
-import {
-  FileText,
-  Search,
-  BookOpen,
-  Filter,
-  ExternalLink,
-  ChevronRight,
-  Database,
-  Layers,
-  Info,
-  X,
-  FileCheck2,
-} from "lucide-react";
+import api from "../../services/api";
+import { Search, RefreshCw, X } from "lucide-react";
+
+const PHASE_LABELS = {
+  IBU_HAMIL: "Ibu Hamil",
+  BAYI_BARU_LAHIR: "Bayi Baru Lahir",
+  BADUTA: "Baduta (1-24 Bulan)",
+};
 
 const AdminKnowledgeChunks = () => {
-  const [activeTab, setActiveTab] = useState("citations"); // 'citations' | 'library'
-  
-  // Tab 1: Citations in Reports state
-  const [citations, setCitations] = useState([]);
-  const [citationsLoading, setCitationsLoading] = useState(true);
-  const [citationSearch, setCitationSearch] = useState("");
-  const [citationSourceFilter, setCitationSourceFilter] = useState("");
-
-  // Tab 2: Raw Chunks Library state
-  const [chunks, setChunks] = useState([]);
-  const [chunksTotal, setChunksTotal] = useState(0);
-  const [storeStatus, setStoreStatus] = useState(null);
-  const [chunksLoading, setChunksLoading] = useState(false);
-  const [chunkSearch, setChunkSearch] = useState("");
-  const [chunkSource, setChunkSource] = useState("");
-  const [selectedChunk, setSelectedChunk] = useState(null);
-
-  // Error state
-  const [error, setError] = useState("");
+  const [reportGroups, setReportGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [selectedReportModal, setSelectedReportModal] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    fetchCitations();
+    fetchReportChunks();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === "library" && chunks.length === 0) {
-      fetchChunks();
-    }
-  }, [activeTab]);
-
-  const fetchCitations = async () => {
+  const fetchReportChunks = async () => {
+    setLoading(true);
+    setErrorMsg("");
     try {
-      setCitationsLoading(true);
-      setError("");
-      const params = {};
-      if (citationSearch.trim()) params.search = citationSearch.trim();
-      const res = await api.get("/doctor/report-citations", { params });
-      setCitations(res.data?.citations || []);
-    } catch (e) {
-      setError(getErrorMessage(e));
+      const res = await api.get("/doctor/report-citations", {
+        params: { limit: 300 },
+      });
+      const data = res.data || {};
+
+      if (Array.isArray(data.reports_grouped) && data.reports_grouped.length > 0) {
+        setReportGroups(data.reports_grouped);
+      } else if (Array.isArray(data.citations)) {
+        const map = new Map();
+        data.citations.forEach((cit) => {
+          const repId = cit.report_id;
+          if (!repId) return;
+          if (!map.has(repId)) {
+            map.set(repId, {
+              report_id: repId,
+              visit_id: cit.visit_id,
+              patient_id: cit.patient_id,
+              patient_name: cit.patient_name || "Pasien KIA",
+              nik: cit.nik || "-",
+              village_name: cit.village_name || "Airmadidi",
+              posyandu_name: cit.posyandu_name || "Posyandu Airmadidi",
+              visit_date: cit.visit_date || "-",
+              phase: cit.phase || "-",
+              overall_status: cit.overall_status || "KONDISI_BAIK",
+              sources: [],
+              pages: [],
+              chunk_ids: [],
+              items: [],
+            });
+          }
+          const grp = map.get(repId);
+          grp.items.push(cit);
+
+          if (cit.citation_source && !grp.sources.includes(cit.citation_source)) {
+            grp.sources.push(cit.citation_source);
+          }
+          const pagesList =
+            Array.isArray(cit.additional_pages) && cit.additional_pages.length > 0
+              ? cit.additional_pages
+              : cit.citation_page && cit.citation_page !== "-"
+              ? [String(cit.citation_page)]
+              : [];
+          pagesList.forEach((p) => {
+            if (p && !grp.pages.includes(String(p))) grp.pages.push(String(p));
+          });
+
+          const cids =
+            Array.isArray(cit.supporting_chunk_ids) && cit.supporting_chunk_ids.length > 0
+              ? cit.supporting_chunk_ids
+              : cit.chunk_id
+              ? [String(cit.chunk_id)]
+              : [];
+          cids.forEach((cid) => {
+            if (cid && !grp.chunk_ids.includes(String(cid))) grp.chunk_ids.push(String(cid));
+          });
+        });
+
+        const grouped = Array.from(map.values()).map((g) => ({
+          ...g,
+          chunks_count: Math.max(g.chunk_ids.length, g.items.length),
+          recommendations_count: g.items.length,
+        }));
+        setReportGroups(grouped);
+      } else {
+        setReportGroups([]);
+      }
+    } catch {
+      setErrorMsg("Gagal memuat daftar chunk rujukan per laporan.");
     } finally {
-      setCitationsLoading(false);
+      setLoading(false);
     }
   };
 
-  const fetchChunks = async () => {
-    try {
-      setChunksLoading(true);
-      setError("");
-      const params = { limit: 50 };
-      if (chunkSearch.trim()) params.search = chunkSearch.trim();
-      if (chunkSource) params.source = chunkSource;
-      const res = await api.get("/doctor/knowledge-chunks", { params });
-      setChunks(res.data?.chunks || []);
-      setChunksTotal(res.data?.total_chunks || 0);
-      setStoreStatus(res.data?.store_status || null);
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setChunksLoading(false);
-    }
-  };
+  const filteredGroups = useMemo(() => {
+    return reportGroups.filter((grp) => {
+      if (sourceFilter) {
+        const sfLower = sourceFilter.toLowerCase();
+        const hasSource =
+          (grp.sources || []).some((s) => (s || "").toLowerCase().includes(sfLower)) ||
+          (grp.items || []).some((it) =>
+            (it.citation_source || "").toLowerCase().includes(sfLower)
+          );
+        if (!hasSource) return false;
+      }
 
-  // Filter citations client-side by source if selected
-  const filteredCitations = citations.filter((item) => {
-    if (!citationSourceFilter) return true;
-    return (item.citation_source || "").toLowerCase().includes(citationSourceFilter.toLowerCase());
-  });
+      const q = searchQuery.trim().toLowerCase();
+      if (q) {
+        const matchId = String(grp.report_id).includes(q);
+        const matchName = (grp.patient_name || "").toLowerCase().includes(q);
+        const matchNik = (grp.nik || "").toLowerCase().includes(q);
+        const matchPosyandu = (grp.posyandu_name || "").toLowerCase().includes(q);
+        const matchVillage = (grp.village_name || "").toLowerCase().includes(q);
+        const matchItems = (grp.items || []).some(
+          (it) =>
+            (it.recommendation_title || "").toLowerCase().includes(q) ||
+            (it.evidence_quote || "").toLowerCase().includes(q) ||
+            (it.citation_section || "").toLowerCase().includes(q)
+        );
+        if (
+          !matchId &&
+          !matchName &&
+          !matchNik &&
+          !matchPosyandu &&
+          !matchVillage &&
+          !matchItems
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [reportGroups, sourceFilter, searchQuery]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* ─── Page Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-heading">
-              Koleksi Rujukan & Chunks RAG
-            </h1>
-          </div>
-          <p className="text-xs sm:text-sm text-caption">
-            Transparansi rujukan klinis AI: potongan pedoman resmi Buku KIA & PNPK Stunting yang digunakan pada laporan pasien.
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line-light">
+        <div>
+          <h1 className="text-2xl font-bold text-heading">
+            Koleksi Chunk & Rujukan
+          </h1>
+          <p className="text-sm text-caption mt-1">
+            Daftar rujukan pedoman klinis dan potongan teks chunk untuk setiap laporan kunjungan pasien.
           </p>
         </div>
 
-        {/* Tab Switcher: Simple text-underline style, non-slop */}
-        <div className="inline-flex rounded-lg border border-line bg-subtle p-1 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab("citations")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === "citations"
-                ? "bg-card text-heading shadow-2xs font-bold"
-                : "text-dim hover:text-heading"
-            }`}
-          >
-            Kutipan pada Laporan Pasien ({filteredCitations.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("library")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === "library"
-                ? "bg-card text-heading shadow-2xs font-bold"
-                : "text-dim hover:text-heading"
-            }`}
-          >
-            Pustaka Dokumen Pedoman
-          </button>
+        <button
+          type="button"
+          onClick={fetchReportChunks}
+          disabled={loading}
+          className="btn-interactive flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-muted border border-line rounded-lg text-xs font-semibold text-heading transition-colors cursor-pointer self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          <span>Muat Ulang</span>
+        </button>
+      </div>
+
+      {errorMsg && (
+        <div className="p-3.5 rounded-lg bg-accent-red border border-red-300 dark:border-red-800/50 text-xs font-semibold text-red-700 dark:text-red-300">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Pencarian & Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nomor laporan, nama pasien, NIK, atau posyandu..."
+            aria-label="Cari chunk rujukan"
+            className="w-full h-10 pl-10 pr-9 bg-card border border-line rounded-lg text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Bersihkan pencarian"
+              className="!min-h-0 p-1 text-dim hover:text-heading absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          aria-label="Filter dokumen pedoman"
+          className="h-10 px-3.5 bg-card border border-line rounded-lg text-xs sm:text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer"
+        >
+          <option value="">Semua Dokumen ({reportGroups.length} Laporan)</option>
+          <option value="Buku KIA">Buku KIA 2024</option>
+          <option value="Pedoman Nasional">PNPK Stunting 2022</option>
+          <option value="Ringkasan Terkurasi">Ringkasan Terkurasi</option>
+        </select>
+      </div>
+
+      {/* Tabel Utama: 1 Baris per Laporan */}
+      <div className="bg-card rounded-xl border border-line overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr className="bg-muted border-b border-line text-xs font-semibold text-caption">
+                <th className="py-3.5 px-5">No. Laporan</th>
+                <th className="py-3.5 px-5">Pasien & Posyandu</th>
+                <th className="py-3.5 px-5">Dokumen & Halaman Rujukan</th>
+                <th className="py-3.5 px-5">Jumlah Chunk</th>
+                <th className="py-3.5 px-5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line-light">
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-sm text-caption">
+                    Memuat data rujukan chunk...
+                  </td>
+                </tr>
+              ) : filteredGroups.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-sm text-caption">
+                    Tidak ada laporan yang cocok dengan filter pencarian.
+                  </td>
+                </tr>
+              ) : (
+                filteredGroups.map((grp) => {
+                  const cleanSources = Array.from(
+                    new Set(
+                      (grp.sources || [])
+                        .filter(Boolean)
+                        .map((s) => s.replace(/\.md$/i, ""))
+                    )
+                  );
+                  const pagesList = grp.pages || [];
+
+                  return (
+                    <tr
+                      key={grp.report_id}
+                      className="hover:bg-muted/40 transition-colors"
+                    >
+                      <td className="py-4 px-5 whitespace-nowrap">
+                        <Link
+                          to={`/kader/validasi-laporan/${grp.report_id}`}
+                          className="font-semibold text-heading hover:underline block"
+                        >
+                          Laporan #{grp.report_id}
+                        </Link>
+                        <span className="text-xs text-caption block mt-0.5">
+                          {grp.visit_date}
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-5">
+                        <p className="font-semibold text-heading">{grp.patient_name}</p>
+                        <p className="text-xs text-caption mt-0.5">
+                          {grp.posyandu_name} &bull; {PHASE_LABELS[grp.phase] || grp.phase}
+                        </p>
+                      </td>
+
+                      <td className="py-4 px-5 text-xs text-body">
+                        <p className="font-medium text-heading">
+                          {cleanSources.length > 0
+                            ? cleanSources.join(", ")
+                            : "Pedoman Standar KIA"}
+                        </p>
+                        <p className="text-caption mt-0.5">
+                          {pagesList.length > 0
+                            ? `Halaman ${pagesList.join(", ")}`
+                            : "Aturan Baku Sistem"}
+                        </p>
+                      </td>
+
+                      <td className="py-4 px-5 whitespace-nowrap text-xs text-body">
+                        {grp.recommendations_count || grp.items.length} rekomendasi &bull;{" "}
+                        {grp.chunks_count || grp.items.length} chunk
+                      </td>
+
+                      <td className="py-4 px-5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReportModal(grp)}
+                          className="!min-h-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-subtle hover:bg-muted text-heading border border-line transition-colors cursor-pointer"
+                        >
+                          Lihat Chunk
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-lg text-xs text-rose-700 dark:text-rose-300">
-          {error}
-        </div>
-      )}
-
-      {/* ════════════ TAB 1: KUTIPAN PADA LAPORAN PASIEN ════════════ */}
-      {activeTab === "citations" && (
-        <div className="space-y-4">
-          {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={citationSearch}
-                onChange={(e) => setCitationSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && fetchCitations()}
-                placeholder="Cari nomor laporan, nama pasien, NIK, atau teks rekomendasi..."
-                className="w-full h-9 pl-9 pr-3 bg-card border border-line rounded-lg text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-sky-500"
-              />
-              <Search className="w-4 h-4 text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={citationSourceFilter}
-                onChange={(e) => setCitationSourceFilter(e.target.value)}
-                className="h-9 px-3 bg-card border border-line rounded-lg text-xs font-medium text-heading focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
-              >
-                <option value="">Semua Dokumen Pedoman</option>
-                <option value="Buku_KIA">Buku KIA 2024</option>
-                <option value="PNPK">PNPK Stunting 2022</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={fetchCitations}
-                className="h-9 px-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Cari
-              </button>
-            </div>
-          </div>
-
-          {/* Table of Report Citations */}
-          <div className="bg-card border border-line rounded-xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-line bg-subtle text-caption font-semibold">
-                    <th className="py-2.5 px-3 w-16">No. Lap</th>
-                    <th className="py-2.5 px-3 min-w-[180px]">Pasien & Posyandu</th>
-                    <th className="py-2.5 px-3 min-w-[200px]">Rekomendasi Klinis AI</th>
-                    <th className="py-2.5 px-3 min-w-[160px]">Rujukan Pedoman</th>
-                    <th className="py-2.5 px-3 min-w-[260px]">Potongan Teks Rujukan (Chunk)</th>
-                    <th className="py-2.5 px-3 w-24 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/60">
-                  {citationsLoading ? (
-                    <tr>
-                      <td colSpan="6" className="py-10 text-center text-caption">
-                        Memuat data rujukan laporan...
-                      </td>
-                    </tr>
-                  ) : filteredCitations.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-10 text-center text-caption">
-                        Belum ada kutipan rujukan pada laporan pasien yang cocok.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCitations.map((item, idx) => (
-                      <tr key={`${item.report_id}-${idx}`} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-2.5 px-3 font-mono font-bold text-sky-700 dark:text-sky-400">
-                          #{item.report_id}
-                        </td>
-                        <td className="py-2.5 px-3 space-y-0.5">
-                          <p className="font-semibold text-heading">{item.patient_name}</p>
-                          <p className="text-[11px] text-caption font-mono">NIK: {item.nik}</p>
-                          <p className="text-[11px] text-dim truncate">
-                            {item.posyandu_name} • {item.visit_date}
-                          </p>
-                        </td>
-                        <td className="py-2.5 px-3 space-y-0.5">
-                          <p className="font-medium text-heading leading-snug">{item.recommendation_title}</p>
-                          <span className="text-[10px] text-caption uppercase font-semibold">
-                            {item.category || "EDUKASI"}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 space-y-0.5">
-                          <p className="font-semibold text-heading truncate">
-                            {item.citation_source ? item.citation_source.replace(/\.md$/, "") : "Tanpa sumber dokumen"}
-                          </p>
-                          <p className="text-[11px] text-caption truncate">{item.citation_section}</p>
-                          {item.citation_page && item.citation_page !== "-" && (
-                            <p className="text-[10px] text-dim">Halaman PDF {item.citation_page}</p>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          {item.evidence_quote && item.evidence_status !== "TANPA_KUTIPAN" ? (
-                            <>
-                              <p className="text-[10px] font-semibold text-caption mb-1">
-                                {{
-                                  CHUNK_DOKUMEN: "Kutipan asli dokumen",
-                                  RINGKASAN_TERKURASI: "Ringkasan terkurasi peneliti",
-                                  KUTIPAN_VERSI_LAMA: "Kutipan versi lama (belum cocok dengan chunk)",
-                                }[item.evidence_status] || "Kutipan"}
-                              </p>
-                              <p className="text-[11px] text-body leading-relaxed bg-subtle p-2 rounded border border-line line-clamp-3">
-                                "{item.evidence_quote}"
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-[11px] text-caption">Tanpa kutipan dokumen</p>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <Link
-                            to={`/kader/validasi-laporan/${item.report_id}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded border border-sky-300 dark:border-sky-800 transition-colors"
-                            title="Buka Lembar Verifikasi Laporan"
-                          >
-                            <span>Buka</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════ TAB 2: PUSTAKA SELURUH DOKUMEN RAG ════════════ */}
-      {activeTab === "library" && (
-        <div className="space-y-4">
-          {/* Search & Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={chunkSearch}
-                onChange={(e) => setChunkSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && fetchChunks()}
-                placeholder="Cari kata kunci (stunting, LiLA, tablet tambah darah, MP-ASI, Z-score, F100)..."
-                className="w-full h-9 pl-9 pr-3 bg-card border border-line rounded-lg text-xs text-heading placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-sky-500"
-              />
-              <Search className="w-4 h-4 text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={chunkSource}
-                onChange={(e) => setChunkSource(e.target.value)}
-                className="h-9 px-3 bg-card border border-line rounded-lg text-xs font-medium text-heading focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
-              >
-                <option value="">Semua Dokumen Pedoman</option>
-                <option value="Buku_KIA_2024">Buku KIA 2024 (Kemenkes RI)</option>
-                <option value="PNPK 2022">PNPK Stunting 2022</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={fetchChunks}
-                className="h-9 px-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Cari Chunks
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-caption">
-            <span>Menampilkan {chunks.length} potongan pengetahuan {chunksTotal > 0 && `dari total ${chunksTotal}`}</span>
-          </div>
-          {storeStatus && storeStatus !== "CHROMADB" && (
-            <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              {storeStatus === "CHROMADB_KOSONG"
-                ? "ChromaDB belum berisi chunk. Jalankan: python -m app.multiagent.rag.ingest --rebuild"
-                : "ChromaDB tidak dapat dibaca. Daftar chunk tidak ditampilkan."}
-            </p>
-          )}
-
-          {/* Chunks Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {chunksLoading ? (
-              <div className="col-span-2 py-12 text-center text-caption bg-card rounded-xl border border-line">
-                Memuat potongan pengetahuan medis...
-              </div>
-            ) : chunks.length === 0 ? (
-              <div className="col-span-2 py-12 text-center text-caption bg-card rounded-xl border border-line">
-                Tidak ditemukan potongan pengetahuan dengan kata kunci tersebut.
-              </div>
-            ) : (
-              chunks.map((chunk) => (
-                <div
-                  key={chunk.id}
-                  onClick={() => setSelectedChunk(chunk)}
-                  className="cursor-pointer p-4 bg-card border border-line rounded-xl space-y-2 hover:border-sky-500/50 transition-colors shadow-2xs"
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-[11px] font-bold text-sky-700 dark:text-sky-300">
-                      {chunk.source ? chunk.source.replace(/\.md$/, "") : "Dokumen"}
-                    </span>
-                    <span className="text-[11px] text-dim font-mono">
-                      {chunk.origin === "CURATED_SUMMARY" ? "Ringkasan terkurasi" : chunk.page && chunk.page !== "-" ? `Halaman PDF ${chunk.page}` : "Halaman tidak tercatat"}
-                    </span>
-                  </div>
-
-                  <h3 className="text-xs font-bold text-heading truncate">
-                    {chunk.chapter || "Pedoman Klinis"}
-                  </h3>
-
-                  <p className="text-xs text-body leading-relaxed line-clamp-3 bg-subtle p-2.5 rounded border border-line">
-                    "{chunk.snippet || chunk.text}"
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Modal Baca Chunk Lengkap ─── */}
-      {selectedChunk && (
+      {/* Pop-up Modal Rincian Chunk per Laporan */}
+      {selectedReportModal && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedReportModal(null);
+          }}
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-card border border-line rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-line">
+          <div className="bg-card border border-line rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-subtle border-b border-line flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs text-caption font-semibold">
-                  {selectedChunk.source} •{" "}
-                  {selectedChunk.origin === "CURATED_SUMMARY"
-                    ? `Ringkasan terkurasi peneliti, disusun dari ${selectedChunk.derived_from || "-"} (bukan kutipan langsung)`
-                    : selectedChunk.page && selectedChunk.page !== "-" ? `Halaman PDF ${selectedChunk.page}` : "Halaman tidak tercatat"}
-                </p>
-                <h3 className="text-sm sm:text-base font-bold text-heading">
-                  {selectedChunk.chapter || "Rincian Potongan Dokumen"}
+                <h3 className="text-base font-bold text-heading">
+                  Rincian Chunk & Rujukan Laporan #{selectedReportModal.report_id} — {selectedReportModal.patient_name}
                 </h3>
+                <p className="text-xs text-caption mt-1">
+                  NIK: {selectedReportModal.nik} &bull; {selectedReportModal.posyandu_name} &bull;{" "}
+                  Kunjungan {selectedReportModal.visit_date}
+                </p>
               </div>
+
               <button
                 type="button"
-                onClick={() => setSelectedChunk(null)}
-                className="p-1 rounded-md text-dim hover:text-heading hover:bg-muted"
+                onClick={() => setSelectedReportModal(null)}
+                aria-label="Tutup modal chunk"
+                className="!min-h-0 p-1.5 rounded-lg text-dim hover:text-heading hover:bg-muted cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-3 flex-1 text-xs sm:text-sm text-body leading-relaxed whitespace-pre-wrap font-sans bg-subtle/50">
-              {selectedChunk.text || selectedChunk.snippet}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-page">
+              {(selectedReportModal.items || []).map((item, idx) => {
+                const pagesDisplay =
+                  Array.isArray(item.additional_pages) && item.additional_pages.length > 0
+                    ? item.additional_pages.join(", ")
+                    : item.citation_page || "-";
+                const sectionsDisplay =
+                  Array.isArray(item.additional_sections) && item.additional_sections.length > 0
+                    ? item.additional_sections.join("; ")
+                    : item.citation_section || "-";
+                const chunkIdsList =
+                  Array.isArray(item.supporting_chunk_ids) && item.supporting_chunk_ids.length > 0
+                    ? item.supporting_chunk_ids.join(", ")
+                    : item.chunk_id || "-";
+                const supportingChunks = Array.isArray(item.supporting_chunks)
+                  ? item.supporting_chunks
+                  : [];
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-card border border-line rounded-xl p-5 space-y-3 text-xs"
+                  >
+                    <div className="pb-2.5 border-b border-line">
+                      <h4 className="text-sm font-bold text-heading">
+                        {idx + 1}. {item.recommendation_title}
+                      </h4>
+                      <p className="text-caption mt-1">
+                        Dokumen:{" "}
+                        <strong className="text-body">
+                          {item.citation_source
+                            ? item.citation_source.replace(/\.md$/i, "")
+                            : "Pedoman Standar KIA"}
+                        </strong>
+                        {" • "}Halaman: <strong className="text-body">{pagesDisplay}</strong>
+                        {" • "}Bagian: <strong className="text-body">{sectionsDisplay}</strong>
+                        {chunkIdsList !== "-" && (
+                          <>
+                            {" • "}ID Chunk: <strong className="text-body">{chunkIdsList}</strong>
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    {item.evidence_quote && item.evidence_status !== "TANPA_KUTIPAN" && (
+                      <div className="space-y-1">
+                        <p className="text-caption font-medium">Kutipan Dokumen:</p>
+                        <p className="text-body italic leading-relaxed">
+                          &ldquo;{item.evidence_quote}&rdquo;
+                        </p>
+                      </div>
+                    )}
+
+                    {supportingChunks.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-line-light">
+                        <p className="text-caption font-medium">
+                          Isi Chunk Pendukung ({supportingChunks.length}):
+                        </p>
+                        <div className="divide-y divide-line border border-line rounded-lg overflow-hidden">
+                          {supportingChunks.map((sc, sIdx) => (
+                            <div
+                              key={sIdx}
+                              className="p-3.5 bg-subtle/40 space-y-1"
+                            >
+                              <p className="font-semibold text-heading">
+                                {sc.chunk_id || `Chunk #${sIdx + 1}`} —{" "}
+                                {(sc.doc_name || item.citation_source || "").replace(/\.md$/i, "")} (Hal. {sc.page || "-"}, {sc.section || "-"})
+                              </p>
+                              <p className="text-body leading-relaxed whitespace-pre-wrap">
+                                {sc.full_text || sc.excerpt || "-"}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="p-3 border-t border-line flex justify-end">
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-subtle border-t border-line flex items-center justify-between">
+              <Link
+                to={`/kader/validasi-laporan/${selectedReportModal.report_id}`}
+                className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+              >
+                Buka Lembar Laporan #{selectedReportModal.report_id}
+              </Link>
               <button
                 type="button"
-                onClick={() => setSelectedChunk(null)}
-                className="px-4 py-1.5 bg-subtle border border-line rounded-lg text-xs font-semibold text-heading hover:bg-muted"
+                onClick={() => setSelectedReportModal(null)}
+                className="!min-h-0 px-4 py-1.5 bg-card hover:bg-muted text-heading border border-line rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Tutup
               </button>
@@ -403,4 +442,3 @@ const AdminKnowledgeChunks = () => {
 };
 
 export default AdminKnowledgeChunks;
-

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -6,13 +6,15 @@ from typing import List, Optional, Dict, Any
 
 from app.core.database import get_db
 from app.models.revision import RevisionRequest, RevisionStatus
-from app.models.visit import Visit
-from app.models.patient import Patient
+from app.models.visit import Visit, PhaseEnum
+from app.models.patient import Patient, PatientType
 from app.models.report import Report, ReportStatus
 from app.models.user import User, UserRole
+from app.models.audit_log import AuditLog
 from app.schemas.revision import RevisionCreate, RevisionValidationRequest, RevisionResponse
 from app.api.v1.endpoints.auth import get_current_user
 from app.multiagent.graph import kia_multiagent_app
+from app.services.eval_logger import log_multiagent_parallel_evaluations
 
 router = APIRouter()
 
@@ -39,6 +41,7 @@ def _snapshot_visit_data(visit: Visit, patient: Optional[Patient] = None) -> Dic
         "systolic_bp": visit.systolic_bp,
         "diastolic_bp": visit.diastolic_bp,
         "fundal_height_cm": visit.fundal_height_cm,
+        "ttd_consumption": visit.ttd_consumption,
         "kspr_answers": visit.kspr_answers or [],
         "birth_weight_gram": visit.birth_weight_gram,
         "birth_length_cm": visit.birth_length_cm,
@@ -195,6 +198,7 @@ def get_revision_detail(
 def validate_revision_by_admin(
     revision_id: int,
     val_req: RevisionValidationRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: User = Depends(_require_admin)
 ):
@@ -237,7 +241,7 @@ def validate_revision_by_admin(
             # 2. Penanganan Koreksi / Modifikasi Data Kunjungan
             # Validasi tipe nilai usulan dengan skema kunjungan, lalu cek fase & kewajaran biologis
             from app.schemas.visit import VisitCreate
-            from app.api.v1.endpoints.visits import validate_visit_phase
+            from app.api.v1.endpoints.visits import validate_visit_phase, _months_between
             from app.multiagent.tools.hpk_tracker import check_visit_plausibility
 
             allowed = set(VisitCreate.model_fields) - {"patient_id"}
@@ -255,6 +259,9 @@ def validate_revision_by_admin(
             )
             if phase_error:
                 raise HTTPException(status_code=422, detail=f"Revisi tidak dapat disetujui: {phase_error}")
+            if patient.patient_type == PatientType.CHILD and validated.phase == PhaseEnum.BADUTA and patient.birth_date:
+                validated.age_in_months = _months_between(patient.birth_date, validated.visit_date)
+
             phase_val = validated.phase.value if hasattr(validated.phase, "value") else str(validated.phase)
             plaus = check_visit_plausibility(phase_val, validated.model_dump())
             if not plaus["is_plausible"]:
@@ -267,6 +274,8 @@ def validate_revision_by_admin(
             for field in proposed:
                 if field in allowed:
                     setattr(visit, field, getattr(validated, field))
+            if patient.patient_type == PatientType.CHILD and validated.phase == PhaseEnum.BADUTA and patient.birth_date:
+                visit.age_in_months = validated.age_in_months
 
             visit.updated_at = datetime.utcnow()
 
@@ -308,6 +317,23 @@ def validate_revision_by_admin(
                     report.status = ReportStatus.DRAFT
                     report.validated_at = None
                     report.pdf_path = None
+
+                    db.query(AuditLog).filter(AuditLog.report_id == report.id).delete(synchronize_session=False)
+                    if background_tasks is not None:
+                        background_tasks.add_task(
+                            log_multiagent_parallel_evaluations,
+                            report_id=report.id,
+                            initial_state=initial_state,
+                            final_state=revised_state,
+                            db=None,
+                        )
+                    else:
+                        log_multiagent_parallel_evaluations(
+                            report_id=report.id,
+                            initial_state=initial_state,
+                            final_state=revised_state,
+                            db=db,
+                        )
 
             rev.status = RevisionStatus.APPROVED
 

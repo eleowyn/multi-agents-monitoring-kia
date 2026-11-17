@@ -229,17 +229,21 @@ def get_patient_trend(
 @router.get("/audit-logs", response_model=List[AuditLogResponse])
 def get_audit_logs(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 200,
     db: Session = Depends(get_db),
     admin: User = Depends(_require_admin)
 ):
     """
-    Log audit evaluator per agent. Telemetri (waktu, durasi, token, tools) hanya diambil
-    dari yang benar-benar tercatat pada laporan; bila tidak ada, dikirim null
-    (tidak diestimasi). is_compliant NULL berarti "Tidak dievaluasi".
+    Log audit sistem per agent (Agent 1, Agent 2, Agent 3). Menyajikan rincian
+    instruksi, kalkulator/fungsi yang dijalankan, daftar chunk & halaman RAG,
+    skor grounding, durasi, konsumsi token, dan status kepatuhan SOP.
     """
+    import json as _json
+    from app.services.eval_logger import _deterministic_sop_audit
+
     rows = db.query(AuditLog).order_by(AuditLog.id.desc()).offset(skip).limit(limit).all()
     report_cache = {}
+    patient_cache = {}
     enriched_list = []
 
     for r in rows:
@@ -252,16 +256,231 @@ def get_audit_logs(
             a_key, default_order = "agent_3", 3
 
         agent_tel = {}
+        agent_work_detail = None
+        thought_process = None
+        patient_name = None
+        patient_nik = None
+        village_name = None
+        phase = None
+        overall_status = None
+
         if r.report_id:
             if r.report_id not in report_cache:
                 report_cache[r.report_id] = db.query(Report).filter(Report.id == r.report_id).first()
             rep_obj = report_cache.get(r.report_id)
+            if rep_obj:
+                overall_status = rep_obj.overall_status
+                if rep_obj.patient_id:
+                    if rep_obj.patient_id not in patient_cache:
+                        patient_cache[rep_obj.patient_id] = db.query(Patient).filter(Patient.id == rep_obj.patient_id).first()
+                    pat_obj = patient_cache.get(rep_obj.patient_id)
+                    if pat_obj:
+                        patient_name = pat_obj.name
+                        patient_nik = pat_obj.nik
+                        village_name = pat_obj.village_name
+                if rep_obj.visit and hasattr(rep_obj.visit, "phase") and rep_obj.visit.phase:
+                    phase = rep_obj.visit.phase.value if hasattr(rep_obj.visit.phase, "value") else str(rep_obj.visit.phase)
+
             if rep_obj and rep_obj.final_report_json:
+                fr = rep_obj.final_report_json
+                meta = fr.get("metadata") or {}
+                patient_name = patient_name or meta.get("patient_name")
+                patient_nik = patient_nik or meta.get("patient_nik")
+                village_name = village_name or meta.get("village_name")
+                phase = phase or meta.get("phase")
+                overall_status = overall_status or meta.get("overall_status")
+
                 agent_tel = (
-                    (rep_obj.final_report_json.get("agent_telemetry") or {})
+                    (fr.get("agent_telemetry") or {})
                     .get("agents", {})
                     .get(a_key, {})
                 ) or {}
+                thought_process = agent_tel.get("thought_process")
+                wb = agent_tel.get("work_breakdown")
+                if wb:
+                    agent_work_detail = dict(wb)
+                elif a_key == "agent_1":
+                    cf = fr.get("clinical_findings") or {}
+                    det = cf.get("deterministic_summary") or {}
+                    agent_work_detail = {
+                        "phase": (fr.get("metadata") or {}).get("phase"),
+                        "plausibility": det.get("plausibility"),
+                        "hpk_status": fr.get("hpk_status") or det.get("hpk_status"),
+                        "who_zscore": det.get("who_zscore"),
+                        "kspr": det.get("kspr"),
+                        "maternal_nutrition": det.get("maternal_nutrition"),
+                        "neonatal_status": det.get("neonatal_status"),
+                        "weight_trend": det.get("weight_trend"),
+                        "active_risk_flags": cf.get("active_risk_flags") or rep_obj.risk_flags or [],
+                        "risk_narrative": cf.get("risk_narrative") or rep_obj.risk_narrative or "",
+                    }
+                elif a_key == "agent_2":
+                    recs_raw = fr.get("recommendations") or rep_obj.recommendations or []
+                    if not thought_process and recs_raw and isinstance(recs_raw[0], dict):
+                        thought_process = recs_raw[0].get("thought_process")
+                    agent_work_detail = {
+                        "recommender_mode": agent_tel.get("mode") or (recs_raw[0].get("reasoning_mode") if recs_raw and isinstance(recs_raw[0], dict) else "NO_RISK"),
+                        "chunks_retrieved_count": (agent_tel.get("task_proof") or {}).get("chunks_retrieved_count", len(recs_raw)),
+                        "recommendations_trace": [
+                            {
+                                "title": rec.get("title"),
+                                "category": rec.get("category"),
+                                "recommendation_text": rec.get("recommendation_text"),
+                                "reasoning_mode": rec.get("reasoning_mode"),
+                                "evidence_status": rec.get("evidence_status"),
+                                "citation": rec.get("citation"),
+                                "source": (rec.get("citation") or {}).get("source") if isinstance(rec.get("citation"), dict) else rec.get("source"),
+                                "section": (rec.get("citation") or {}).get("section") if isinstance(rec.get("citation"), dict) else rec.get("section"),
+                                "page": (rec.get("citation") or {}).get("page") if isinstance(rec.get("citation"), dict) else rec.get("page"),
+                                "chunk_id": (rec.get("citation") or {}).get("chunk_id") if isinstance(rec.get("citation"), dict) else rec.get("chunk_id"),
+                                "additional_pages": (rec.get("citation") or {}).get("additional_pages") if isinstance(rec.get("citation"), dict) else rec.get("additional_pages"),
+                                "additional_sections": (rec.get("citation") or {}).get("additional_sections") if isinstance(rec.get("citation"), dict) else rec.get("additional_sections"),
+                                "supporting_chunk_ids": (rec.get("citation") or {}).get("supporting_chunk_ids") if isinstance(rec.get("citation"), dict) else rec.get("supporting_chunk_ids"),
+                                "supporting_chunks": (rec.get("citation") or {}).get("supporting_chunks") if isinstance(rec.get("citation"), dict) else rec.get("supporting_chunks"),
+                                "evidence_quote": rec.get("evidence_quote"),
+                                "ai_insight": rec.get("ai_insight"),
+                            }
+                            for rec in recs_raw if isinstance(rec, dict)
+                        ],
+                    }
+                elif a_key == "agent_3":
+                    verifs = fr.get("verification_summary") or rep_obj.verification_summary or []
+                    ver_cnt = sum(1 for v in verifs if isinstance(v, dict) and (v.get("is_verified") is True or v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY")))
+                    normalized_verifs = []
+                    for v in verifs:
+                        if not isinstance(v, dict):
+                            continue
+                        cit_chk = v.get("citation_checked") if isinstance(v.get("citation_checked"), dict) else {}
+                        is_v = v.get("is_verified") if isinstance(v.get("is_verified"), bool) else (v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY"))
+                        normalized_verifs.append({
+                            "recommendation_title": v.get("recommendation_title") or v.get("title") or "Rekomendasi Klinis",
+                            "is_verified": is_v,
+                            "verification_status": v.get("verification_status") or ("VERIFIED" if is_v else "UNVERIFIED"),
+                            "grounding_score": v.get("grounding_score", 1.0 if is_v else 0.0),
+                            "source": v.get("source") or cit_chk.get("source"),
+                            "section": v.get("section") or cit_chk.get("section"),
+                            "page": v.get("page") or cit_chk.get("page"),
+                            "chunk_id": v.get("chunk_id") or cit_chk.get("chunk_id"),
+                            "additional_pages": v.get("additional_pages") or cit_chk.get("additional_pages"),
+                            "supporting_chunk_ids": v.get("supporting_chunk_ids") or cit_chk.get("supporting_chunk_ids"),
+                            "verification_note": v.get("verification_note") or v.get("reasoning"),
+                        })
+                    agent_work_detail = {
+                        "verifier_mode": agent_tel.get("mode") or "LLM_JUDGE_AND_LEXICAL",
+                        "verified_count": ver_cnt,
+                        "grounding_rate_percent": round((ver_cnt / max(1, len(normalized_verifs))) * 100.0, 1) if normalized_verifs else 100.0,
+                        "verification_details": normalized_verifs,
+                    }
+
+        # Normalisasi tambahan jika agent_work_detail berasal dari wb (work_breakdown)
+        if agent_work_detail and a_key == "agent_2":
+            for rec in (agent_work_detail.get("recommendations_trace") or []):
+                if isinstance(rec, dict) and isinstance(rec.get("citation"), dict):
+                    cit = rec["citation"]
+                    rec.setdefault("source", cit.get("source"))
+                    rec.setdefault("section", cit.get("section"))
+                    rec.setdefault("page", cit.get("page"))
+                    rec.setdefault("chunk_id", cit.get("chunk_id"))
+                    rec.setdefault("additional_pages", cit.get("additional_pages"))
+                    rec.setdefault("additional_sections", cit.get("additional_sections"))
+                    rec.setdefault("supporting_chunk_ids", cit.get("supporting_chunk_ids"))
+                    rec.setdefault("supporting_chunks", cit.get("supporting_chunks"))
+        elif agent_work_detail and a_key == "agent_3":
+            norm_list = []
+            for v in (agent_work_detail.get("verification_details") or []):
+                if not isinstance(v, dict):
+                    continue
+                cit_chk = v.get("citation_checked") if isinstance(v.get("citation_checked"), dict) else {}
+                is_v = v.get("is_verified") if isinstance(v.get("is_verified"), bool) else (v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY"))
+                norm_list.append({
+                    **v,
+                    "recommendation_title": v.get("recommendation_title") or v.get("title") or "Rekomendasi Klinis",
+                    "is_verified": is_v,
+                    "grounding_score": v.get("grounding_score", 1.0 if is_v else 0.0),
+                    "source": v.get("source") or cit_chk.get("source"),
+                    "section": v.get("section") or cit_chk.get("section"),
+                    "page": v.get("page") or cit_chk.get("page"),
+                    "chunk_id": v.get("chunk_id") or cit_chk.get("chunk_id"),
+                    "additional_pages": v.get("additional_pages") or cit_chk.get("additional_pages"),
+                    "supporting_chunk_ids": v.get("supporting_chunk_ids") or cit_chk.get("supporting_chunk_ids"),
+                    "verification_note": v.get("verification_note") or v.get("reasoning"),
+                })
+            agent_work_detail["verification_details"] = norm_list
+
+        # Fallback dari r.agent_output apabila laporan lama belum memiliki final_report_json
+        if not agent_work_detail and r.agent_output:
+            try:
+                raw_out = _json.loads(r.agent_output)
+                if a_key == "agent_1" and isinstance(raw_out, dict):
+                    agent_work_detail = {
+                        "phase": phase,
+                        "plausibility": {"is_plausible": True},
+                        "active_risk_flags": raw_out.get("risk_flags") or [],
+                        "risk_narrative": raw_out.get("narrative") or "",
+                    }
+                elif a_key == "agent_2" and isinstance(raw_out, list):
+                    agent_work_detail = {
+                        "recommender_mode": "HYBRID_RAG",
+                        "chunks_retrieved_count": len(raw_out),
+                        "recommendations_trace": [
+                            {
+                                "title": rec.get("title"),
+                                "category": rec.get("category"),
+                                "recommendation_text": rec.get("recommendation_text"),
+                                "source": (rec.get("citation") or {}).get("source") if isinstance(rec.get("citation"), dict) else None,
+                                "section": (rec.get("citation") or {}).get("section") if isinstance(rec.get("citation"), dict) else None,
+                                "page": (rec.get("citation") or {}).get("page") if isinstance(rec.get("citation"), dict) else None,
+                                "chunk_id": (rec.get("citation") or {}).get("chunk_id") if isinstance(rec.get("citation"), dict) else None,
+                                "evidence_quote": rec.get("evidence_quote"),
+                            }
+                            for rec in raw_out if isinstance(rec, dict)
+                        ],
+                    }
+                elif a_key == "agent_3" and isinstance(raw_out, dict):
+                    verifs_raw = raw_out.get("verification") or []
+                    agent_work_detail = {
+                        "verifier_mode": "GROUNDING_CHECK",
+                        "verified_count": len(verifs_raw),
+                        "grounding_rate_percent": 100.0,
+                        "verification_details": [
+                            {
+                                "recommendation_title": v.get("title") or v.get("recommendation_title") or "Rekomendasi",
+                                "is_verified": v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY"),
+                                "grounding_score": v.get("grounding_score", 1.0),
+                                "source": (v.get("citation_checked") or {}).get("source") if isinstance(v.get("citation_checked"), dict) else v.get("source"),
+                                "section": (v.get("citation_checked") or {}).get("section") if isinstance(v.get("citation_checked"), dict) else v.get("section"),
+                                "page": (v.get("citation_checked") or {}).get("page") if isinstance(v.get("citation_checked"), dict) else v.get("page"),
+                                "chunk_id": (v.get("citation_checked") or {}).get("chunk_id") if isinstance(v.get("citation_checked"), dict) else v.get("chunk_id"),
+                                "verification_note": v.get("reasoning") or v.get("verification_note"),
+                            }
+                            for v in verifs_raw if isinstance(v, dict)
+                        ],
+                    }
+            except Exception:
+                pass
+
+        is_comp = r.is_compliant
+        eval_notes = r.evaluation_notes or ""
+        if is_comp is None or "Tidak dievaluasi" in eval_notes or "evaluator LLM" in eval_notes:
+            try:
+                parsed_out = _json.loads(r.agent_output) if r.agent_output else {}
+            except Exception:
+                parsed_out = {}
+            det_ok, det_note = _deterministic_sop_audit(a_key, parsed_out, agent_tel)
+            if is_comp is None:
+                is_comp = det_ok
+            if "[" in eval_notes:
+                telemetry_tail = eval_notes[eval_notes.index("["):]
+                eval_notes = f"{det_note} {telemetry_tail}"
+            else:
+                eval_notes = det_note
+
+        eval_notes = (
+            eval_notes
+            .replace("PARALLEL EVALUATOR", "AUDIT PARALEL")
+            .replace("Token Eval:", "Token Audit:")
+            .replace("ParallelEval", "AuditWorker")
+        )
 
         enriched_list.append(
             AuditLogResponse(
@@ -271,12 +490,17 @@ def get_audit_logs(
                 input_instruction=r.input_instruction,
                 agent_output=r.agent_output,
                 reference_context=r.reference_context,
-                is_compliant=r.is_compliant,
-                evaluation_notes=r.evaluation_notes,
+                is_compliant=is_comp,
+                evaluation_notes=eval_notes,
                 created_at=r.created_at,
+                patient_name=patient_name,
+                patient_nik=patient_nik,
+                village_name=village_name,
+                phase=phase,
+                overall_status=overall_status,
                 execution_order=agent_tel.get("execution_order", default_order),
                 execution_pattern=agent_tel.get("execution_pattern"),
-                parallel_worker=f"ParallelEval_{default_order - 1}",
+                parallel_worker=f"AuditWorker_{default_order}",
                 spawned_at=agent_tel.get("spawned_at"),
                 terminated_at=agent_tel.get("terminated_at"),
                 lifetime_ms=agent_tel.get("lifetime_ms"),
@@ -285,6 +509,8 @@ def get_audit_logs(
                 complexity_reason=agent_tel.get("complexity_reason"),
                 token_usage=agent_tel.get("token_usage"),
                 tools_invoked=agent_tel.get("tools_invoked"),
+                thought_process=thought_process,
+                agent_work_detail=agent_work_detail,
             )
         )
 

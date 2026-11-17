@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -10,6 +10,18 @@ class CitationModel(BaseModel):
     chunk_id: Optional[str] = Field(default=None, description="ID chunk ChromaDB")
     origin: Optional[str] = Field(default=None, description="MARKDOWN_DOC | PDF | CURATED_SUMMARY")
     derived_from: Optional[str] = Field(default=None, description="Dokumen asal ringkasan terkurasi")
+    additional_pages: Optional[List[Union[int, str]]] = Field(
+        default=None, description="Daftar seluruh halaman relevan yang mendukung rekomendasi"
+    )
+    additional_sections: Optional[List[str]] = Field(
+        default=None, description="Daftar seluruh bagian relevan yang mendukung rekomendasi"
+    )
+    supporting_chunk_ids: Optional[List[str]] = Field(
+        default=None, description="Daftar seluruh ID chunk relevan dari ChromaDB"
+    )
+    supporting_chunks: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Daftar metadata chunk pendukung untuk inspeksi audit"
+    )
 
 
 class RecommendationItem(BaseModel):

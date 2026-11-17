@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { RefreshCw, ExternalLink, ShieldAlert, ArrowRight, Calendar, Clock, MapPin, UserCheck } from "lucide-react";
+import { RefreshCw, ExternalLink, ArrowRight } from "lucide-react";
 import {
   formatScheduleDateIndo,
   parseScheduleDateParts,
@@ -428,9 +428,8 @@ const KaderDashboard = () => {
           <div className="bg-card rounded-xl border border-line p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-line">
-                <h3 className="text-base font-bold text-heading flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span>Kasus Stunting (PB/U &lt; -2 SD)</span>
+                <h3 className="text-base font-bold text-heading">
+                  Kasus Stunting (PB/U &lt; -2 SD)
                 </h3>
                 <span className={`text-xs font-semibold ${
                   stuntingCount > 0
@@ -522,13 +521,13 @@ const KaderDashboard = () => {
                 >
                   {/* Blok Tanggal Kalender Bersih */}
                   <div className="shrink-0 w-14 py-2 px-1 rounded-lg bg-card border border-line flex flex-col items-center justify-center text-center select-none">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-caption">
+                    <span className="text-xs font-bold uppercase tracking-wider text-caption">
                       {dateParts.dayName.slice(0, 3)}
                     </span>
                     <span className="text-xl font-bold text-heading tabular-nums leading-none my-0.5">
                       {dateParts.dayNum}
                     </span>
-                    <span className="text-[10px] font-medium text-caption">
+                    <span className="text-xs font-medium text-caption">
                       {dateParts.monthName}
                     </span>
                   </div>
@@ -545,7 +544,7 @@ const KaderDashboard = () => {
                       {sch.service_agenda}
                     </p>
                     {sch.kader_name && (
-                      <p className="text-[11px] text-caption pt-1 border-t border-line-light">
+                      <p className="text-xs text-caption pt-1 border-t border-line-light">
                         PJ: <span className="text-heading font-medium">{sch.kader_name}</span>
                       </p>
                     )}

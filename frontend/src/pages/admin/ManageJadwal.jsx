@@ -253,11 +253,11 @@ const ManageJadwal = () => {
       {/* Header Halaman */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-line">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-heading tracking-tight">
             Manajemen Jadwal Posyandu
           </h1>
-          <p className="text-[13px] text-caption mt-1 max-w-2xl leading-relaxed">
-            Kelola 14 titik jadwal pelayanan Posyandu di 9 Kelurahan dan Desa Kecamatan Airmadidi. Perubahan langsung disinkronkan ke Landing Page dan Dashboard Kader.
+          <p className="text-sm text-caption mt-1 max-w-2xl leading-relaxed">
+            Kelola jadwal pelayanan Posyandu di seluruh Kelurahan dan Desa wilayah kerja Kecamatan Airmadidi. Perubahan langsung disinkronkan ke halaman publik dan Dashboard Kader.
           </p>
         </div>
 
@@ -266,7 +266,7 @@ const ManageJadwal = () => {
             type="button"
             onClick={fetchAllData}
             disabled={loading}
-            className="!min-h-0 h-9 px-3 rounded-sm border border-line bg-card hover:bg-muted text-[13px] font-medium text-heading inline-flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer"
+            className="!min-h-0 h-9 px-3 rounded-lg border border-line bg-card hover:bg-muted text-xs font-medium text-heading inline-flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-caption ${loading ? "animate-spin" : ""}`} />
             <span>Segarkan</span>
@@ -275,7 +275,7 @@ const ManageJadwal = () => {
           <button
             type="button"
             onClick={openCreateModal}
-            className="btn-interactive !min-h-0 h-9 px-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-sm text-[13px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shadow-xs transition-all cursor-pointer"
+            className="btn-interactive !min-h-0 h-9 px-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Jadwal</span>
@@ -283,41 +283,41 @@ const ManageJadwal = () => {
         </div>
       </div>
 
-      {/* Ringkasan Operasional (Ukuran & Hirarki Huruf Seragam) */}
+      {/* Ringkasan Operasional */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="bg-card p-4 rounded-md border border-line flex flex-col justify-between gap-1.5">
-          <p className="text-[11px] font-semibold text-caption uppercase tracking-wider">
+        <div className="bg-card p-4 rounded-xl border border-line flex flex-col justify-between gap-1.5">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">
             Total Titik Terdaftar
           </p>
-          <p className="text-xl font-bold text-heading tabular-nums">
+          <p className="text-2xl font-bold text-heading tabular-nums">
             {schedules.length} Jadwal
           </p>
           <p className="text-xs text-caption">
-            9 Kelurahan & Desa binaan Puskesmas Airmadidi
+            Seluruh Kelurahan & Desa binaan Puskesmas Airmadidi
           </p>
         </div>
 
-        <div className="bg-card p-4 rounded-md border border-line flex flex-col justify-between gap-1.5">
-          <p className="text-[11px] font-semibold text-caption uppercase tracking-wider">
+        <div className="bg-card p-4 rounded-xl border border-line flex flex-col justify-between gap-1.5">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">
             Jadwal Aktif (Terjadwal)
           </p>
-          <p className="text-xl font-bold text-sky-600 dark:text-sky-400 tabular-nums">
+          <p className="text-2xl font-bold text-sky-600 dark:text-sky-400 tabular-nums">
             {activeCount} Titik
           </p>
           <p className="text-xs text-caption">
-            Tampil otomatis di Landing Page & Dashboard Kader
+            Tampil otomatis di halaman publik & Dashboard Kader
           </p>
         </div>
 
-        <div className="bg-card p-4 rounded-md border border-line flex flex-col justify-between gap-1.5">
-          <p className="text-[11px] font-semibold text-caption uppercase tracking-wider">
+        <div className="bg-card p-4 rounded-xl border border-line flex flex-col justify-between gap-1.5">
+          <p className="text-xs font-semibold text-caption uppercase tracking-wider">
             Persyaratan Wajib Warga
           </p>
           <p className="text-base sm:text-lg font-bold text-heading leading-snug">
             FC Kartu Keluarga & Buku KIA
           </p>
           <p className="text-xs text-caption">
-            Ketentuan standar saat pendaftaran di Langkah 1
+            Ketentuan standar saat pendaftaran di Meja 1 Posyandu
           </p>
         </div>
       </div>
@@ -326,11 +326,11 @@ const ManageJadwal = () => {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           {/* Toggle Tabel vs Kalender */}
-          <div className="inline-flex p-0.5 bg-subtle border border-line rounded-sm">
+          <div className="inline-flex p-1 bg-subtle border border-line rounded-lg gap-1">
             <button
               type="button"
               onClick={() => setViewMode("table")}
-              className={`!min-h-0 h-8 px-3 rounded-[6px] text-[13px] font-medium whitespace-nowrap transition-all cursor-pointer ${
+              className={`!min-h-0 h-8 px-3 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 viewMode === "table"
                   ? "bg-card text-heading shadow-xs border border-line"
                   : "text-caption hover:text-heading border border-transparent"
@@ -341,7 +341,7 @@ const ManageJadwal = () => {
             <button
               type="button"
               onClick={() => setViewMode("calendar")}
-              className={`!min-h-0 h-8 px-3 rounded-[6px] text-[13px] font-medium whitespace-nowrap transition-all cursor-pointer ${
+              className={`!min-h-0 h-8 px-3 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 viewMode === "calendar"
                   ? "bg-card text-heading shadow-xs border border-line"
                   : "text-caption hover:text-heading border border-transparent"
@@ -356,9 +356,9 @@ const ManageJadwal = () => {
             value={villageFilter}
             onChange={(e) => setVillageFilter(e.target.value)}
             aria-label="Filter berdasarkan Kelurahan atau Desa"
-            className="!min-h-0 h-9 pl-3 pr-10 bg-card border border-line rounded-sm !text-[13px] font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/30 cursor-pointer"
+            className="!min-h-0 h-9 pl-3 pr-10 bg-card border border-line rounded-lg text-xs font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/30 cursor-pointer"
           >
-            <option value="ALL">Semua Wilayah (9 Kel./Desa)</option>
+            <option value="ALL">Semua Wilayah Kerja</option>
             {AIRMADIDI_VILLAGES.map((v) => (
               <option key={v} value={v}>
                 {v} ({OFFICIAL_POSYANDU_BY_VILLAGE[v]?.length || 1} Titik)

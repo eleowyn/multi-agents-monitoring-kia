@@ -265,10 +265,13 @@ def get_posyandu_aggregates(
         for p in v_patients:
             if p.patient_type != PatientType.CHILD:
                 continue
-            for v in visits_by_patient.get(p.id, []):
-                if v.phase != PhaseEnum.BADUTA:
-                    continue  # N/T hanya bermakna pada penimbangan baduta
-                trend = str(v.weight_trend_kms or "").upper()
+            baduta_visits = [
+                v for v in visits_by_patient.get(p.id, [])
+                if v.phase == PhaseEnum.BADUTA and str(v.weight_trend_kms or "").upper() in ("NAIK", "N", "TIDAK_NAIK", "T")
+            ]
+            if baduta_visits:
+                latest_bv = max(baduta_visits, key=lambda v: (v.visit_date, v.id))
+                trend = str(latest_bv.weight_trend_kms or "").upper()
                 if trend in ("NAIK", "N"):
                     kms_naik += 1
                 elif trend in ("TIDAK_NAIK", "T"):

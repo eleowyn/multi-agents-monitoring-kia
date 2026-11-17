@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -16,6 +16,7 @@ from app.schemas.report import ReportResponse, ReportValidationRequest, ReportLi
 from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
 from app.services.pdf_service import generate_visit_report_pdf
+from app.services.eval_logger import log_multiagent_parallel_evaluations
 from app.multiagent.graph import kia_multiagent_app
 from app.services.aggregates import in_kader_scope, same_village, scoped_patient_ids
 
@@ -133,6 +134,7 @@ def _extract_visit_data(visit: Optional[Visit], db: Optional[Session] = None, ri
         "maternal_weight_kg": visit.maternal_weight_kg,
         "lila_cm": visit.lila_cm,
         "hb_level": visit.hb_level,
+        "ttd_consumption": visit.ttd_consumption,
         "age_in_months": visit.age_in_months,
         "child_weight_kg": visit.child_weight_kg,
         "child_length_cm": visit.child_length_cm,
@@ -173,6 +175,7 @@ def _extract_visit_data(visit: Optional[Visit], db: Optional[Session] = None, ri
         "systolic_bp": visit.systolic_bp,
         "diastolic_bp": visit.diastolic_bp,
         "fundal_height_cm": visit.fundal_height_cm,
+        "ttd_consumption": visit.ttd_consumption,
         "kspr_answers": visit.kspr_answers,
         "birth_weight_gram": visit.birth_weight_gram,
         "birth_length_cm": visit.birth_length_cm,
@@ -325,6 +328,7 @@ def get_report_by_visit(
 def validate_report_by_kader(
     report_id: int,
     val_req: ReportValidationRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -394,6 +398,15 @@ def validate_report_by_kader(
         report.overall_status = revised_state.get("overall_status", report.overall_status)
         report.final_report_json = revised_state.get("final_report_json", {})
         report.status = ReportStatus.DRAFT
+
+        db.query(AuditLog).filter(AuditLog.report_id == report.id).delete(synchronize_session=False)
+        background_tasks.add_task(
+            log_multiagent_parallel_evaluations,
+            report_id=report.id,
+            initial_state=initial_state,
+            final_state=revised_state,
+            db=None,
+        )
 
     db.commit()
     db.refresh(report)

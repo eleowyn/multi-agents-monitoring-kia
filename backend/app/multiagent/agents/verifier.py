@@ -123,6 +123,51 @@ def _consolidate_pipeline_telemetry(
             },
         }
 
+    # Lengkapi work_breakdown masing-masing agent untuk inspeksi detail pada Log Audit Admin
+    a1.setdefault(
+        "work_breakdown",
+        {
+            "phase": phase,
+            "plausibility": det_results.get("plausibility"),
+            "hpk_status": det_results.get("hpk_status"),
+            "who_zscore": det_results.get("who_zscore"),
+            "kspr": det_results.get("kspr"),
+            "maternal_nutrition": det_results.get("maternal_nutrition"),
+            "neonatal_status": det_results.get("neonatal_status"),
+            "weight_trend": det_results.get("weight_trend"),
+            "active_risk_flags": risk_flags,
+            "risk_narrative": risk_narrative,
+        },
+    )
+    a2.setdefault(
+        "work_breakdown",
+        {
+            "recommender_mode": a2.get("mode"),
+            "chunks_retrieved_count": (a2.get("task_proof") or {}).get("chunks_retrieved_count", len(recommendations)),
+            "recommendations_trace": [
+                {
+                    "title": r.get("title"),
+                    "category": r.get("category"),
+                    "reasoning_mode": r.get("reasoning_mode"),
+                    "evidence_status": r.get("evidence_status"),
+                    "citation": r.get("citation"),
+                    "evidence_quote": r.get("evidence_quote"),
+                    "ai_insight": r.get("ai_insight"),
+                }
+                for r in recommendations
+            ],
+        },
+    )
+    agent3_telemetry.setdefault(
+        "work_breakdown",
+        {
+            "verifier_mode": agent3_telemetry.get("mode"),
+            "verified_count": (agent3_telemetry.get("task_proof") or {}).get("verified_count", 0),
+            "grounding_rate_percent": (agent3_telemetry.get("task_proof") or {}).get("grounding_rate_percent", 100.0),
+            "verification_details": verification_details,
+        },
+    )
+
     agents_list = [a1, a2, agent3_telemetry]
     total_ms = round(sum(float(a.get("lifetime_ms") or 0.0) for a in agents_list), 2)
     total_in_tok = sum(int((a.get("token_usage") or {}).get("input_tokens", 0)) for a in agents_list)
@@ -134,7 +179,7 @@ def _consolidate_pipeline_telemetry(
     return {
         "architecture_pattern": {
             "main_pipeline": "SEQUENTIAL_STATEGRAPH (Agent 1 -> Conditional Router -> Agent 2 -> Agent 3 -> END)",
-            "audit_evaluator": "PARALLEL_BACKGROUND_THREADPOOL (3 Concurrent Evaluator Threads untuk Agent 1, 2, 3)",
+            "audit_evaluator": "PARALLEL_BACKGROUND_THREADPOOL (3 Concurrent Audit Worker Threads untuk Agent 1, 2, 3)",
             "sequential_proof": (
                 f"Agent 1 selesai pada {a1.get('terminated_at')} -> "
                 f"Agent 2 ({a2.get('spawned_at')} s/d {a2.get('terminated_at')}) -> "
@@ -206,15 +251,22 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     det_results = state.get("deterministic_results", {}) or {}
     revision_count = state.get("iteration_count", 0)
 
+    phase_label_map = {
+        "IBU_HAMIL": "Ibu Hamil",
+        "BAYI_BARU_LAHIR": "Bayi Baru Lahir (0-28 Hari)",
+        "BADUTA": "Anak Baduta (1-24 Bulan)",
+    }
+    human_phase_label = phase_label_map.get(str(phase).upper(), str(phase).replace("_", " "))
+
     # ------------------------------------------------------------------------
     # 1. Single-Pass untuk Kondisi Sehat / Tanpa Risiko
     # ------------------------------------------------------------------------
     if not risk_flags:
         overall_status = "KONDISI_BAIK"
         executive_summary = (
-            f"Pemeriksaan kunjungan {phase} menunjukkan kondisi normal/baik tanpa indikasi "
-            f"faktor risiko stunting, KEK, maupun komplikasi. Pasien dianjurkan tetap hadir rutin pada jadwal Posyandu "
-            f"serta menerapkan panduan gizi, ASI/susu, dan stimulasi tumbuh kembang 1.000 HPK."
+            f"Hasil pemantauan pada fase {human_phase_label} menunjukkan kondisi pertumbuhan dan kesehatan yang baik dan normal "
+            f"tanpa tanda risiko stunting, KEK, anemia, maupun komplikasi klinis. Keluarga dianjurkan mempertahankan "
+            f"pola makan bergizi seimbang berbahan pangan lokal, pemberian ASI/suplemen sesuai jadwal, serta rutin hadir setiap bulan di Posyandu."
         )
         t1 = time.perf_counter()
         terminated_at = datetime.now().isoformat(timespec="milliseconds")
@@ -288,10 +340,17 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     has_severe_risk = any(f.get("flag") in SEVERE_RISK_FLAGS for f in risk_flags)
     overall_status = "RISIKO_TINGGI" if has_severe_risk else "PERLU_PERHATIAN"
 
+    flag_details_short = "; ".join(
+        [str(f.get("detail") or f.get("flag") or "").rstrip(".") for f in risk_flags[:3] if isinstance(f, dict)]
+    )
+    action_urgency = (
+        "Pasien memerlukan rujukan dan pemeriksaan segera ke Tenaga Kesehatan / Dokter di Puskesmas Airmadidi disertai perbaikan asupan gizi harian."
+        if has_severe_risk
+        else "Diperlukan pendampingan gizi harian, pemantauan ketat di Posyandu, serta evaluasi oleh Bidan/Petugas Gizi Puskesmas Airmadidi."
+    )
     executive_summary = (
-        f"Terdeteksi {len(risk_flags)} indikator risiko klinis pada pemeriksaan {phase}. "
-        f"Status keseluruhan: {overall_status}. Setiap rekomendasi diperiksa keterhubungannya (grounding) "
-        f"terhadap chunk Buku KIA 2024 dan PNPK Tata Laksana Stunting yang dirujuk."
+        f"Hasil pemeriksaan pada fase {human_phase_label} menemukan {len(risk_flags)} kondisi yang memerlukan perhatian: "
+        f"{flag_details_short}. {action_urgency}"
     )
 
     verification_details = []
@@ -371,6 +430,10 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
             "citation_source": citation.get("source"),
             "citation_section": citation.get("section"),
             "citation_page": citation.get("page"),
+            "additional_pages": citation.get("additional_pages"),
+            "additional_sections": citation.get("additional_sections"),
+            "supporting_chunk_ids": citation.get("supporting_chunk_ids"),
+            "supporting_chunks": citation.get("supporting_chunks"),
             "chunk_id": used_chunk.get("id") if used_chunk else citation.get("chunk_id"),
             "evidence_origin": used_chunk.get("origin") if used_chunk else None,
             "verification_status": status_verif,

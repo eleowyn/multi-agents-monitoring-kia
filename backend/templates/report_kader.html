@@ -492,7 +492,7 @@
       <!-- Judul Dokumen -->
       <div class="doc-header-box">
         <h1 class="doc-title">Lembar Rekomendasi Pemantauan Kesehatan Ibu & Anak</h1>
-        <p class="doc-subtitle">Evaluasi Berbasis Multi-Agent Artificial Intelligence & Standar Pelayanan Posyandu</p>
+        <p class="doc-subtitle">Laporan Pemantauan Pertumbuhan, Gizi & Asuhan 1.000 Hari Pertama Kehidupan (HPK)</p>
       </div>
 
       <!-- I. Identitas Pasien & Informasi Kunjungan -->
@@ -695,12 +695,12 @@
       {% endif %}
       {% endif %}
 
-      <!-- III. Hasil Analisis Klinis & Deteksi Risiko (Agent 1) -->
-      <div class="section-title">{% if visit_data and visit_data.phase %}III.{% else %}II.{% endif %} Hasil Analisis Klinis & Deteksi Indikator Risiko (Agent 1)</div>
+      <!-- III. Hasil Analisis Kondisi Ibu/Anak & Deteksi Risiko -->
+      <div class="section-title">{% if visit_data and visit_data.phase %}III.{% else %}II.{% endif %} Hasil Analisis Kondisi Ibu/Anak &amp; Deteksi Risiko</div>
       <div class="narrative-box">
-        <strong>Ringkasan Eksekutif Analisis:</strong>
+        <strong>Ringkasan Evaluasi Kondisi:</strong>
         <p class="text-justified" style="margin-top: 4px; margin-bottom: 6px;">{{ report_data.executive_summary }}</p>
-        <strong>Temuan Pengukuran Antropometri:</strong>
+        <strong>Temuan Pengukuran Antropometri &amp; Klinis:</strong>
         <p class="text-justified" style="margin-top: 4px; margin-bottom: 0;">{{ report_data.clinical_findings.risk_narrative }}</p>
       </div>
 
@@ -716,7 +716,7 @@
           <tr>
             <th class="text-center">No</th>
             <th>Indikator Parameter</th>
-            <th>Tingkat Risiko Terdeteksi</th>
+            <th>Kondisi Terdeteksi</th>
             <th>Rincian Temuan Klinis</th>
           </tr>
         </thead>
@@ -741,8 +741,8 @@
       </div>
       {% endif %}
 
-      <!-- IV. Rekomendasi Tindakan Klinis Kader & Edukasi (Agent 2) -->
-      <div class="section-title">{% if visit_data and visit_data.phase %}IV.{% else %}III.{% endif %} Rekomendasi Tindakan Kader & Konseling Berbasis Rujukan (Agent 2)</div>
+      <!-- IV. Rekomendasi Asuhan Gizi, Klinis & Tindak Lanjut -->
+      <div class="section-title">{% if visit_data and visit_data.phase %}IV.{% else %}III.{% endif %} Rekomendasi Asuhan Gizi, Klinis &amp; Tindak Lanjut</div>
       {% if report_data.recommendations %}
         {% for rec in report_data.recommendations %}
         <div class="recommendation-box">
@@ -751,7 +751,12 @@
             <span class="badge-category">{{ rec.category }}</span>
           </div>
           <div class="recommendation-text">{{ rec.recommendation_text }}</div>
-          {% if rec.food_guide or rec.milk_and_supplements or rec.activity_and_stimulation %}
+          {% if rec.longitudinal_progress %}
+          <div style="font-size: 8.5pt; color: #334155; margin-bottom: 6px; padding: 4px 8px; background-color: #e0f2fe; border-radius: 4px;">
+            <strong>Perkembangan dari Kunjungan Sebelumnya:</strong> {{ rec.longitudinal_progress }}
+          </div>
+          {% endif %}
+          {% if rec.food_guide or rec.milk_and_supplements or rec.activity_and_stimulation or rec.ai_insight %}
           <div class="rec-detail-grid">
             {% if rec.food_guide %}
             <div class="rec-detail-row">
@@ -768,10 +773,15 @@
               <strong style="color: #0369a1;">Aktivitas Fisik &amp; Stimulasi Harian:</strong> {{ rec.activity_and_stimulation }}
             </div>
             {% endif %}
+            {% if rec.ai_insight %}
+            <div class="rec-detail-row">
+              <strong style="color: #047857;">Catatan &amp; Tips Pendampingan Keluarga:</strong> {{ rec.ai_insight }}
+            </div>
+            {% endif %}
           </div>
           {% endif %}
           {% if rec.action_steps %}
-          <div style="font-weight: 600; font-size: 8.5pt; color: #1e293b; margin-top: 4px;">Langkah Tindakan Kader:</div>
+          <div style="font-weight: 600; font-size: 8.5pt; color: #1e293b; margin-top: 4px;">Langkah Tindakan Kader &amp; Keluarga:</div>
           <ul class="action-steps-list">
             {% for step in rec.action_steps %}
             <li>{{ step }}</li>
@@ -779,16 +789,11 @@
           </ul>
           {% endif %}
           {% if rec.citation and rec.citation.source %}
+          {% set pages_str = (rec.citation.additional_pages | join(', ')) if rec.citation.additional_pages else rec.citation.page %}
+          {% set sections_str = (rec.citation.additional_sections | join('; ')) if rec.citation.additional_sections else rec.citation.section %}
           <div class="citation-tag">
-            &bull; Rujukan: <strong>{{ rec.citation.source | clean_citation }}</strong>{% if rec.citation.section %} &bull; {{ rec.citation.section }}{% endif %}{% if rec.citation.page and rec.citation.page != '-' %} (Halaman PDF {{ rec.citation.page }}){% endif %}
+            &bull; Rujukan Pedoman: <strong>{{ rec.citation.source | clean_citation }}</strong>{% if sections_str %} &bull; Bagian {{ sections_str }}{% endif %}{% if pages_str and pages_str != '-' %} &bull; Halaman {{ pages_str }}{% endif %}
           </div>
-          {% if rec.evidence_quote and rec.evidence_status == 'CHUNK_DOKUMEN' %}
-          <div style="font-size: 8pt; color: #475569; margin-top: 2px;"><strong>Kutipan asli dokumen:</strong> <em>"{{ rec.evidence_quote }}"</em></div>
-          {% elif rec.evidence_status == 'RINGKASAN_TERKURASI' %}
-          <div style="font-size: 8pt; color: #475569; margin-top: 2px;">Rujukan berupa ringkasan terkurasi peneliti, bukan kutipan langsung buku.</div>
-          {% endif %}
-          {% else %}
-          <div class="citation-tag">&bull; Tanpa kutipan dokumen (saran AI / aturan sistem).</div>
           {% endif %}
         </div>
         {% endfor %}
@@ -941,48 +946,7 @@
       {% endif %}
       {% endif %}
 
-      <!-- V. Verifikasi Grounding Sitasi Ilmiah (Agent 3) -->
-      {% if report_data.verification_summary %}
-      <div class="section-title">{% if visit_data and visit_data.phase %}V.{% else %}IV.{% endif %} Verifikasi Grounding Sitasi & Integritas Medis (Agent 3 — ReAct)</div>
-      <table class="data-table">
-        <colgroup>
-          <col style="width: 6%;" />
-          <col style="width: 32%;" />
-          <col style="width: 26%;" />
-          <col style="width: 14%;" />
-          <col style="width: 22%;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="text-center">No</th>
-            <th>Poin Rekomendasi</th>
-            <th>Dokumen Rujukan Resmi</th>
-            <th class="text-center">Status</th>
-            <th>Kutipan / Catatan Grounding</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for v in report_data.verification_summary %}
-          <tr>
-            <td class="text-center font-bold">{{ v.recommendation_index or loop.index }}</td>
-            <td class="font-bold">{{ v.title }}</td>
-            <td>{% if v.citation_source %}{{ v.citation_source | clean_citation }}{% if v.citation_page and v.citation_page != '-' %} (Halaman PDF {{ v.citation_page }}){% endif %}{% else %}-{% endif %}</td>
-            <td class="text-center">
-              <span class="badge {% if v.verification_status == 'UNVERIFIED' %}badge-yellow{% else %}badge-green{% endif %}" style="font-size: 8pt; padding: 2px 6px;">
-                {{ v.verification_status }}
-              </span>
-            </td>
-            <td style="font-size: 8pt; color: #475569;" class="text-justified">
-              {% if v.evidence %}<strong>Kutipan asli dokumen:</strong> <em>"{{ v.evidence }}"</em><br/>{% endif %}
-              {{ v.notes or '-' }}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
-
-      <!-- VI. Lembar Tanda Tangan Resmi Pengesahan -->
+      <!-- V. Lembar Tanda Tangan Resmi Pengesahan -->
       <table class="signature-table">
         <tr>
           <td style="width: 50%; text-align: center;">

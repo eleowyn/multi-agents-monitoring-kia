@@ -366,6 +366,27 @@ const InputKunjungan = () => {
       return;
     }
 
+    // Validasi kelengkapan data pengukuran minimal per fase sebelum pemrosesan
+    if (phase === "IBU_HAMIL") {
+      const hasMeasurement = maternalWeight || maternalHeight || lilaCm || hbLevel || systolicBp || diastolicBp;
+      if (!hasMeasurement) {
+        alert("Data pemeriksaan fisik/antropometri ibu hamil belum diisi sama sekali.\nHarap isi minimal salah satu pengukuran (LiLA, Berat Badan, Hb, atau Tekanan Darah).");
+        return;
+      }
+    } else if (phase === "BAYI_BARU_LAHIR") {
+      const hasMeasurement = birthWeight || birthLength || headCircumference;
+      if (!hasMeasurement) {
+        alert("Data pengukuran fisik bayi baru lahir belum diisi sama sekali.\nHarap isi minimal Berat Lahir atau Panjang Lahir.");
+        return;
+      }
+    } else if (phase === "BADUTA") {
+      const hasMeasurement = childWeight || childLength || childHeadCirc;
+      if (!hasMeasurement) {
+        alert("Data pengukuran antropometri baduta belum diisi sama sekali.\nHarap isi minimal Berat Badan atau Panjang/Tinggi Badan anak.");
+        return;
+      }
+    }
+
     setLoading(true);
     setLoadingStep(1);
     setLoadingProgress(15);
@@ -710,7 +731,16 @@ const InputKunjungan = () => {
             })}
           </div>
 
-          <form onSubmit={handleSubmitVisit} className="space-y-5">
+          <form
+            onSubmit={handleSubmitVisit}
+            onKeyDown={(e) => {
+              // Cegah Enter tidak sengaja mengirim form dari input teks/angka, kecuali di textarea (catatan)
+              if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+                e.preventDefault();
+              }
+            }}
+            className="space-y-5"
+          >
             {/* Visit Date */}
             <FormField id="visit-date" label="Tanggal Kunjungan Posyandu">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">

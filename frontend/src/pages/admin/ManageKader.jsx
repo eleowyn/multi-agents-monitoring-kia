@@ -193,7 +193,7 @@ const ManageKader = () => {
           <button
             type="button"
             onClick={() => setStatusFilter("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`!min-h-0 h-8 px-3 rounded-lg text-xs font-semibold transition-all ${
               statusFilter === "ALL"
                 ? "bg-card text-heading shadow-sm border border-line-light"
                 : "text-dim hover:text-heading"
@@ -204,7 +204,7 @@ const ManageKader = () => {
           <button
             type="button"
             onClick={() => setStatusFilter("ACTIVE")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`!min-h-0 h-8 px-3 rounded-lg text-xs font-semibold transition-all ${
               statusFilter === "ACTIVE"
                 ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800/50"
                 : "text-dim hover:text-heading"
@@ -215,7 +215,7 @@ const ManageKader = () => {
           <button
             type="button"
             onClick={() => setStatusFilter("INACTIVE")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`!min-h-0 h-8 px-3 rounded-lg text-xs font-semibold transition-all ${
               statusFilter === "INACTIVE"
                 ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 shadow-sm border border-amber-200 dark:border-amber-800/50"
                 : "text-dim hover:text-heading"
@@ -482,7 +482,7 @@ const ManageKader = () => {
                 </div>
                 <div>
                   <label className="block font-semibold text-label mb-1">
-                    Nama Posyandu (14 Titik Resmi)
+                    Nama Posyandu
                   </label>
                   <input
                     type="text"

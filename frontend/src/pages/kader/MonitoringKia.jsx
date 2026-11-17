@@ -5,27 +5,13 @@ import { useAuth } from "../../context/AuthContext";
 import HpkTimelineStepper from "../../components/kader/HpkTimelineStepper";
 import KmsDigitalChart from "../../components/kader/KmsDigitalChart";
 import {
-  HeartPulse,
-  Users,
-  User,
   Search,
-  Filter,
   RefreshCw,
-  Baby,
-  Heart,
-  Calendar,
   AlertTriangle,
-  CheckCircle2,
-  FileText,
-  PlusCircle,
-  GraduationCap,
-  ExternalLink,
   ChevronRight,
   ChevronDown,
-  ShieldAlert,
-  TrendingUp,
-  BarChart3,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 const AIRMADIDI_VILLAGES_FALLBACK = [
@@ -62,6 +48,7 @@ const MonitoringKia = () => {
   const [selectedLongitudinal, setSelectedLongitudinal] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState(""); // "" | "MOTHER" | "CHILD"
+  const [personalVillageFilter, setPersonalVillageFilter] = useState("ALL");
 
   // State Loading & Refreshing
   const [loadingPatients, setLoadingPatients] = useState(true);
@@ -148,7 +135,9 @@ const MonitoringKia = () => {
   // Interaktif Drill-Down dari tabel agregat posyandu ke personal pasien
   const handleDrillDownToVillage = (villageName) => {
     setActiveTab("personal");
-    setSearchQuery(villageName);
+    setFilterType("");
+    setSearchQuery("");
+    setPersonalVillageFilter(villageName);
     const targetPatient = patients.find(
       (p) => (p.village_name || "").toLowerCase() === villageName.toLowerCase()
     );
@@ -157,12 +146,33 @@ const MonitoringKia = () => {
     }
   };
 
-  // Filter pencarian nama/NIK/Desa
-  const filteredPatients = patients.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.nik.includes(searchQuery) ||
-    (p.village_name && p.village_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter pencarian nama/NIK/Desa & filter posyandu personal (khusus Supervisor)
+  const filteredPatients = patients.filter((p) => {
+    const matchesVillage =
+      !isSupervisor ||
+      personalVillageFilter === "ALL" ||
+      (p.village_name || "").toLowerCase() === personalVillageFilter.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.nik.includes(searchQuery.trim()) ||
+      (p.village_name && p.village_name.toLowerCase().includes(q)) ||
+      (p.posyandu_name && p.posyandu_name.toLowerCase().includes(q));
+    return matchesVillage && matchesSearch;
+  });
+
+  // Otomatis pilih pasien pertama yang cocok saat mengetik pencarian atau mengubah filter
+  useEffect(() => {
+    if (filteredPatients.length > 0) {
+      const stillInList = filteredPatients.some((p) => String(p.id) === String(selectedPatientId));
+      if (!stillInList || searchQuery.trim().length > 0) {
+        if (String(filteredPatients[0].id) !== String(selectedPatientId)) {
+          setSelectedPatientId(String(filteredPatients[0].id));
+        }
+      }
+    }
+  }, [searchQuery, filterType, personalVillageFilter, patients]);
 
   const selectedPatient = selectedLongitudinal?.patient || patients.find((p) => String(p.id) === String(selectedPatientId));
   const isChild = selectedPatient?.patient_type === "CHILD";
@@ -196,7 +206,7 @@ const MonitoringKia = () => {
             {isKader ? (
               <span>Posyandu {user?.village_name || "Airmadidi Atas"} • Pemantauan tumbuh kembang, grafik KMS digital & 1.000 HPK</span>
             ) : (
-              <span>UPTD Puskesmas Airmadidi • Pemantauan agregat 9 wilayah kerja posyandu & rekam jejak pasien</span>
+              <span>UPTD Puskesmas Airmadidi • Pemantauan agregat wilayah kerja posyandu & rekam jejak pasien</span>
             )}
           </p>
         </div>
@@ -258,7 +268,7 @@ const MonitoringKia = () => {
                   : "text-caption hover:text-heading border-b-2 border-transparent"
               }`}
             >
-              Agregat Posyandu & Wilayah (9 Desa)
+              Agregat Posyandu & Wilayah Kerja
             </button>
 
             <button
@@ -275,7 +285,7 @@ const MonitoringKia = () => {
           </div>
 
           <div className="hidden lg:flex items-center gap-2 text-xs text-caption pb-3 font-medium">
-            <span>UPTD Puskesmas Airmadidi • 9 Desa Binaan</span>
+            <span>UPTD Puskesmas Airmadidi • Wilayah Binaan</span>
           </div>
         </div>
       )}
@@ -298,7 +308,7 @@ const MonitoringKia = () => {
                   onChange={(e) => setSelectedVillageFilter(e.target.value)}
                   className="has-custom-chevron w-full h-9 appearance-none pl-3.5 pr-11 bg-subtle border border-line rounded-lg text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer"
                 >
-                  <option value="ALL">Semua Wilayah Kerja (9 Desa Binaan)</option>
+                  <option value="ALL">Semua Wilayah Kerja</option>
                   {AIRMADIDI_VILLAGES_FALLBACK.map((v) => (
                     <option key={v} value={v}>
                       Posyandu {v}
@@ -318,7 +328,7 @@ const MonitoringKia = () => {
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium bg-subtle border border-line text-caption">
-                  <span>Mode Administrator: <strong className="text-heading font-semibold">9 Desa Binaan Puskesmas Airmadidi</strong></span>
+                  <span>Wilayah Kerja: <strong className="text-heading font-semibold">UPTD Puskesmas Airmadidi</strong></span>
                 </div>
               )}
             </div>
@@ -540,29 +550,66 @@ const MonitoringKia = () => {
       {(isKader || activeTab === "personal") && (
         <div className="space-y-6 animate-slide-up">
           {/* Bilah Pemilih Pasien Cepat (Quick Patient Selector) */}
-          <div className="bg-card rounded-xl border border-line dark:border-slate-800 shadow-card hover:border-line-hover transition-all duration-200 p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="bg-card rounded-xl border border-line dark:border-slate-800 shadow-card p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               {/* Kolom Pencarian */}
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder={isKader ? "Cari nama atau NIK pasien di posyandu..." : "Cari nama, NIK, atau desa pasien..."}
+                  placeholder={
+                    isKader
+                      ? "Ketik nama atau NIK pasien di posyandu untuk memilih cepat..."
+                      : "Ketik nama, NIK, atau wilayah posyandu pasien..."
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 pl-9 pr-4 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg text-xs font-medium text-heading placeholder:text-dim focus:outline-none focus:ring-1 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-200"
+                  className="w-full h-10 pl-9 pr-9 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg text-sm text-heading placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-150"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Hapus kata kunci pencarian"
+                    className="!min-h-0 w-6 h-6 rounded-md flex items-center justify-center text-caption hover:text-heading hover:bg-muted absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
-              {/* Filter Jenis Pasien (Simple, Rapi, Sesuai Standar UI) */}
-              <div className="h-10 inline-flex items-center p-1 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg gap-1 shrink-0">
+              {/* Filter Posyandu (Khusus Supervisor Admin/Dokter) */}
+              {isSupervisor && (
+                <div className="relative min-w-[210px] shrink-0">
+                  <select
+                    aria-label="Filter posyandu pasien"
+                    value={personalVillageFilter}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPersonalVillageFilter(val);
+                    }}
+                    className="has-custom-chevron w-full h-10 appearance-none pl-3.5 pr-10 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg text-xs font-semibold text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 cursor-pointer"
+                  >
+                    <option value="ALL">Semua Wilayah Kerja</option>
+                    {AIRMADIDI_VILLAGES_FALLBACK.map((v) => (
+                      <option key={v} value={v}>
+                        Posyandu {v}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-caption absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              )}
+
+              {/* Filter Jenis Pasien (Rapi di dalam kotak pembungkus, tidak keluar jalur) */}
+              <div className="inline-flex items-center p-1 bg-subtle dark:bg-slate-900/60 border border-line dark:border-slate-700/80 rounded-lg gap-1 shrink-0 self-start lg:self-auto">
                 <button
                   type="button"
                   onClick={() => setFilterType("")}
-                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`!min-h-0 h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === ""
                       ? "bg-card text-heading shadow-xs border border-line"
-                      : "text-caption hover:text-heading"
+                      : "text-caption hover:text-heading border border-transparent"
                   }`}
                 >
                   Semua
@@ -570,10 +617,10 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("CHILD")}
-                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`!min-h-0 h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "CHILD"
                       ? "bg-card text-sky-600 dark:text-sky-400 shadow-xs border border-line"
-                      : "text-caption hover:text-heading"
+                      : "text-caption hover:text-heading border border-transparent"
                   }`}
                 >
                   Baduta (Anak)
@@ -581,10 +628,10 @@ const MonitoringKia = () => {
                 <button
                   type="button"
                   onClick={() => setFilterType("MOTHER")}
-                  className={`h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`!min-h-0 h-8 px-3.5 inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer ${
                     filterType === "MOTHER"
                       ? "bg-card text-pink-600 dark:text-pink-400 shadow-xs border border-line"
-                      : "text-caption hover:text-heading"
+                      : "text-caption hover:text-heading border border-transparent"
                   }`}
                 >
                   Ibu Hamil
@@ -592,20 +639,26 @@ const MonitoringKia = () => {
               </div>
             </div>
 
-            {/* Pemilih Pasien Dropdown: Custom Chevron dengan Padding Kanan Proporsional */}
+            {/* Pemilih Pasien Dropdown: Custom Chevron dengan Info Jumlah Sasaran */}
             <div className="space-y-1.5">
-              <label htmlFor="patient-select-input" className="block text-xs font-medium text-heading">
-                Pilih Pasien untuk Ditampilkan:
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="patient-select-input" className="block text-xs font-semibold text-heading">
+                  Pilih Pasien / Sasaran Pemantauan:
+                </label>
+                <span className="text-xs text-caption">
+                  Menampilkan <strong className="text-heading">{filteredPatients.length}</strong> sasaran
+                  {searchQuery.trim() ? ` untuk "${searchQuery.trim()}"` : ""}
+                </span>
+              </div>
               <div className="relative">
                 <select
                   id="patient-select-input"
                   value={selectedPatientId}
                   onChange={(e) => setSelectedPatientId(e.target.value)}
-                  className="has-custom-chevron w-full h-10 appearance-none pl-3.5 pr-11 bg-card dark:bg-slate-900/80 border border-line dark:border-slate-700 rounded-lg text-xs font-medium text-heading focus:outline-none focus:ring-1 focus:ring-sky-500/50 focus:border-sky-500 transition-all duration-200 cursor-pointer shadow-xs"
+                  className="has-custom-chevron w-full h-10 appearance-none pl-3.5 pr-11 bg-card dark:bg-slate-900/80 border border-line dark:border-slate-700 rounded-lg text-sm font-medium text-heading focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 transition-all duration-150 cursor-pointer shadow-xs"
                 >
                   {filteredPatients.length === 0 ? (
-                    <option value="">Tidak ada pasien yang sesuai filter</option>
+                    <option value="">Tidak ada pasien yang sesuai kata kunci atau filter</option>
                   ) : (
                     filteredPatients.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -619,47 +672,38 @@ const MonitoringKia = () => {
             </div>
           </div>
 
-          {/* Kartu Profil Pasien Terpilih: Kontras Tinggi & Aksen Warna Tegas */}
+          {/* Kartu Profil Pasien Terpilih */}
           {selectedPatient && (
             <div className={`rounded-xl border shadow-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-up border-l-4 transition-all duration-200 ${
               isChild
                 ? "bg-sky-50/40 dark:bg-sky-950/25 border-sky-200 dark:border-sky-800/80 border-l-sky-500"
                 : "bg-pink-50/40 dark:bg-pink-950/25 border-pink-200 dark:border-pink-800/80 border-l-pink-500"
             }`}>
-              <div className="flex items-center gap-3.5">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border shadow-xs ${
-                  isChild
-                    ? "bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700"
-                    : "bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300 border-pink-300 dark:border-pink-700"
-                }`}>
-                  {isChild ? <Baby className="w-5 h-5" /> : <Heart className="w-5 h-5" />}
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-heading">
-                    {selectedPatient.name}
-                  </h2>
-                  <p className="text-xs text-body dark:text-slate-200 mt-1 flex items-center gap-2 flex-wrap font-medium">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                      isChild
-                        ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700"
-                        : "bg-pink-100 dark:bg-pink-900/60 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700"
-                    }`}>
-                      {isChild ? "Baduta (1-24 Bulan)" : "Ibu Hamil"}
-                    </span>
-                    <span>•</span>
-                    <span>NIK: <strong className="font-mono text-heading font-bold">{selectedPatient.nik}</strong></span>
-                    <span>•</span>
-                    <span>Posyandu: <strong className="text-heading font-bold">{selectedPatient.village_name || "Airmadidi"}</strong></span>
-                    <span>•</span>
-                    <span>Total Kunjungan: <strong className="text-sky-600 dark:text-sky-400 font-bold">{visits.length} Kali</strong></span>
-                    {hpkStatus?.is_graduation_milestone && (
-                      <>
-                        <span>•</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Lulus 1.000 HPK</span>
-                      </>
-                    )}
-                  </p>
-                </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-heading">
+                  {selectedPatient.name}
+                </h2>
+                <p className="text-xs text-body dark:text-slate-200 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                    isChild
+                      ? "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border-sky-300 dark:border-sky-700"
+                      : "bg-pink-100 dark:bg-pink-900/60 text-pink-800 dark:text-pink-200 border-pink-300 dark:border-pink-700"
+                  }`}>
+                    {isChild ? "Baduta (1-24 Bulan)" : "Ibu Hamil"}
+                  </span>
+                  <span>•</span>
+                  <span>NIK: <strong className="font-mono text-heading font-bold">{selectedPatient.nik}</strong></span>
+                  <span>•</span>
+                  <span>Posyandu: <strong className="text-heading font-bold">{selectedPatient.village_name || "Airmadidi"}</strong></span>
+                  <span>•</span>
+                  <span>Total Kunjungan: <strong className="text-sky-600 dark:text-sky-400 font-bold">{visits.length} Kali</strong></span>
+                  {hpkStatus?.is_graduation_milestone && (
+                    <>
+                      <span>•</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">Lulus 1.000 HPK</span>
+                    </>
+                  )}
+                </p>
               </div>
 
               <div className="flex items-center gap-2 self-start md:self-auto">
@@ -696,9 +740,8 @@ const MonitoringKia = () => {
           <div className="bg-card rounded-xl border border-line shadow-card p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div>
-                <h3 className="text-base font-bold text-heading flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Riwayat Rekam Kunjungan 1.000 HPK</span>
+                <h3 className="text-base font-bold text-heading">
+                  Riwayat Rekam Kunjungan 1.000 HPK
                 </h3>
                 <p className="text-xs text-caption mt-0.5">
                   Catatan kunjungan berkala Posyandu & Puskesmas ({visits.length} Kunjungan Tercatat)

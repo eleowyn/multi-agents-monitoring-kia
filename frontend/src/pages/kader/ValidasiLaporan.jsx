@@ -985,7 +985,7 @@ const ValidasiLaporan = () => {
             <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="border-l-4 border-sky-600 pl-3.5 py-0.5">
                 <h3 className="text-base sm:text-lg font-bold text-heading">
-                  1. Hasil Pengukuran Fisik & Deteksi Deviasi (KMS)
+                  1. Hasil Analisis Kondisi Ibu/Anak & Deteksi Risiko
                 </h3>
                 <p className="text-xs text-caption mt-0.5">
                   Standar Deviasi WHO Z-Score & Deteksi Dini Tumbuh Kembang Kemenkes RI
@@ -1036,24 +1036,11 @@ const ValidasiLaporan = () => {
             <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="border-l-4 border-emerald-600 pl-3.5 py-0.5">
                 <h3 className="text-base sm:text-lg font-bold text-heading">
-                  2. Rencana Asuhan & Intervensi Gizi Klinis (1.000 HPK)
+                  2. Rekomendasi Asuhan Gizi, Klinis & Tindak Lanjut (1.000 HPK)
                 </h3>
                 <p className="text-xs text-caption mt-0.5">
-                  Protokol edukasi Meja 4 Posyandu berbasis Buku KIA 2024 & Pedoman Kemenkes RI
+                  Panduan edukasi praktis Meja 4 Posyandu untuk kader dan keluarga berdasarkan Buku KIA 2024 & Pedoman Kemenkes RI
                 </p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {(finalJson.recommender_mode === "LLM_REACT" || (recommendations[0] && recommendations[0].reasoning_mode === "LLM_REACT")) ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-                    <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                    Penalaran ReAct AI (Gemini + ChromaDB RAG)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    Mode Darurat Deterministik (Safety Net Standar PNPK)
-                  </span>
-                )}
               </div>
             </div>
 
@@ -1076,7 +1063,7 @@ const ValidasiLaporan = () => {
                       key={idx}
                       className="bg-card border border-line rounded-xl p-5 space-y-3.5 shadow-2xs hover:border-slate-400 transition-colors break-inside-avoid"
                     >
-                      {/* Baris Judul & Kategori (Rapi & Minimalis) */}
+                      {/* Baris Judul & Kategori */}
                       <div className="flex items-center justify-between gap-2 border-b border-line-light pb-2">
                         <div className="flex items-center gap-2.5">
                           <span className="w-6 h-6 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs flex items-center justify-center shrink-0">
@@ -1087,134 +1074,118 @@ const ValidasiLaporan = () => {
                           </h4>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
-                            {rec.category || "Gizi KIA"}
+                          <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
+                            {rec.category || "Gizi & Klinis KIA"}
                           </span>
-                          {(rec.reasoning_mode === "FALLBACK_DETERMINISTIC" || finalJson.recommender_mode === "MODE_FALLBACK") ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                              Safety Net PNPK
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-                              ReAct AI
-                            </span>
-                          )}
                         </div>
                       </div>
 
-                      {/* Inti Instruksi Tindakan */}
+                      {/* Analisis Kondisi & Arahan Klinis */}
                       <p className="text-sm text-heading leading-relaxed">
                         {rec.recommendation_text}
                       </p>
 
-                      {/* Lapis 1: kutipan dokumen rujukan (teks chunk apa adanya) */}
-                      <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg">
-                        <EvidenceQuote rec={rec} />
+                      {/* Evaluasi Perkembangan Antar Kunjungan */}
+                      {rec.longitudinal_progress && (
+                        <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                          <strong className="font-bold text-emerald-800 dark:text-emerald-300">Perkembangan Kunjungan: </strong>
+                          {rec.longitudinal_progress}
+                        </div>
+                      )}
+
+                      {/* Panduan Gizi, Susu & Stimulasi Langsung di Kartu */}
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {rec.food_guide && (
+                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-heading">
+                              <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span>Panduan Makanan, Tekstur & Porsi Lokal:</span>
+                            </div>
+                            <p className="text-body pl-5 leading-relaxed">{rec.food_guide}</p>
+                          </div>
+                        )}
+
+                        {rec.milk_and_supplements && (
+                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-heading">
+                              <Baby className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                              <span>Panduan ASI, Susu & Suplementasi Medis:</span>
+                            </div>
+                            <p className="text-body pl-5 leading-relaxed">{rec.milk_and_supplements}</p>
+                          </div>
+                        )}
+
+                        {rec.activity_and_stimulation && (
+                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-heading">
+                              <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span>Aktivitas Fisik & Stimulasi Harian:</span>
+                            </div>
+                            <p className="text-body pl-5 leading-relaxed">{rec.activity_and_stimulation}</p>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Dua Lapis: 2. Arahan Edukasi & Porsi Pangan Lokal (Sintesis AI) */}
-                      {rec.food_guide && (
-                        <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
-                          <div className="flex items-center gap-1.5 font-bold text-heading">
-                            <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span>Arahan Edukasi & Porsi Pangan Lokal (Penalaran Kontekstual AI):</span>
-                          </div>
-                          <p className="text-body pl-5 leading-relaxed">{rec.food_guide}</p>
+                      {/* Narasi Tambahan Kontekstual Pendampingan Keluarga */}
+                      {rec.ai_insight && (
+                        <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs text-body leading-relaxed">
+                          <strong className="font-bold text-sky-800 dark:text-sky-300">Catatan & Tips Pendampingan Keluarga: </strong>
+                          {rec.ai_insight}
                         </div>
                       )}
 
-                      {/* Accordion Jejak Penalaran ReAct & Token Audit */}
-                      {((rec.thought_process && rec.thought_process.length > 0) || agentTelemetry?.agent_2?.thought_process) && (
-                        <div className="no-print pt-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleThought(idx)}
-                            className="btn-interactive inline-flex items-center gap-1.5 text-xs text-caption hover:text-heading font-medium transition-colors cursor-pointer py-1"
-                          >
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openThoughts[idx] ? "rotate-180" : ""}`} />
-                            <span>{openThoughts[idx] ? "Tutup Jejak Penalaran ReAct & Audit AI" : "Lihat Jejak Penalaran ReAct & Audit AI"}</span>
-                          </button>
-                          {openThoughts[idx] && (
-                            <div className="mt-2 p-3 bg-subtle border border-line rounded-lg text-xs space-y-2 animate-fade-in font-mono">
-                              <div className="flex items-center justify-between text-[11px] text-caption border-b border-line pb-1.5">
-                                <span className="font-semibold text-heading">
-                                  Mode: {rec.reasoning_mode || agentTelemetry?.agent_2?.mode || "LLM_REACT"}
-                                </span>
-                                {agentTelemetry?.agent_2?.token_usage && (
-                                  <span>
-                                    Token: {agentTelemetry.agent_2.token_usage.total_tokens || 0} ({agentTelemetry.agent_2.token_usage.input_tokens || 0} in / {agentTelemetry.agent_2.token_usage.output_tokens || 0} out)
-                                  </span>
-                                )}
-                              </div>
-                              <div className="space-y-1 text-caption text-[11px] font-mono leading-relaxed">
-                                {(rec.thought_process || agentTelemetry?.agent_2?.thought_process || []).map((step, sIdx) => (
-                                  <p key={sIdx} className="flex items-start gap-1.5">
-                                    <span className="text-sky-600 dark:text-sky-400 font-bold shrink-0">&bull;</span>
-                                    <span>{step}</span>
-                                  </p>
-                                ))}
-                              </div>
-                              {agentTelemetry?.agent_2?.tools_invoked && (
-                                <p className="text-[10px] text-dim pt-1 border-t border-line-light">
-                                  Tools yang dipanggil: {agentTelemetry.agent_2.tools_invoked.join(", ")}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                      {/* Langkah Tindakan Praktis */}
+                      {Array.isArray(rec.action_steps) && rec.action_steps.length > 0 && (
+                        <div className="p-3 bg-card rounded-lg border border-line text-xs space-y-1.5">
+                          <strong className="block font-bold text-heading">
+                            Langkah Tindakan Kader & Keluarga:
+                          </strong>
+                          <ol className="list-decimal pl-5 space-y-1 text-body leading-relaxed">
+                            {rec.action_steps.map((st, sIdx) => (
+                              <li key={sIdx}>{st}</li>
+                            ))}
+                          </ol>
                         </div>
                       )}
 
-                      {/* Tombol Interaktif Nyata & Caption Jelas */}
-                      <div className="no-print pt-2 border-t border-line-light flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      {/* Baris Rujukan Ringkas (Hanya Nama Dokumen, Bagian, dan Halaman) & Tombol Tandai Edukasi */}
+                      <div className="pt-2.5 border-t border-line-light flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-start gap-2 text-xs text-caption">
+                          <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                          <span>
+                            <strong className="text-heading">Rujukan Pedoman:</strong>{" "}
+                            {cleanCitation(rec.citation?.source)}
+                            {(rec.citation?.additional_sections?.length
+                              ? ` • Bagian ${rec.citation.additional_sections.join("; ")}`
+                              : rec.citation?.section
+                                ? ` • Bagian ${rec.citation.section}`
+                                : "")}
+                            {(rec.citation?.additional_pages?.length
+                              ? ` • Halaman ${rec.citation.additional_pages.join(", ")}`
+                              : rec.citation?.page && rec.citation.page !== "-"
+                                ? ` • Halaman ${rec.citation.page}`
+                                : "")}
+                          </span>
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => toggleEducationChecked(idx)}
-                          className={`btn-interactive flex items-center gap-2 px-3.5 py-1.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold ${
-                            checkedSteps[`rec-${idx}`]
+                          className={`no-print btn-interactive flex items-center gap-2 px-3.5 py-1.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold shrink-0 ${
+                            isChecked
                               ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                               : "bg-card border-line hover:bg-subtle text-heading"
                           }`}
                         >
                           <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                            checkedSteps[`rec-${idx}`]
+                            isChecked
                               ? "bg-emerald-600 border-emerald-600 text-white"
                               : "border-slate-300 dark:border-slate-600 bg-card"
                           }`}>
-                            {checkedSteps[`rec-${idx}`] && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                            {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                           </span>
-                          <span>{checkedSteps[`rec-${idx}`] ? "Sudah Diedukasikan ke Ibu" : "Tandai Telah Diedukasikan"}</span>
+                          <span>{isChecked ? "Sudah Diedukasikan ke Ibu" : "Tandai Telah Diedukasikan"}</span>
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDetailModal({
-                              type: "recommendation",
-                              title: rec.title,
-                              rec: rec,
-                            })
-                          }
-                          className="btn-interactive px-3.5 py-2 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 active:bg-sky-200 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs group"
-                        >
-                          <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                          <span>Klik untuk Buka Rujukan Buku KIA & Detail Tindakan</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-sky-500 group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-                      </div>
-
-                      {/* Tampilan Otomatis Lengkap Saat Dicetak (@media print) */}
-                      <div className="hidden print:block space-y-2 mt-2 pt-2 border-t border-slate-300 text-xs">
-                        {rec.action_steps && rec.action_steps.length > 0 && (
-                          <div>
-                            <strong className="block text-slate-800 mb-1">Langkah Pelaksanaan Tindakan:</strong>
-                            <ol className="list-decimal pl-4 space-y-0.5 text-slate-700">
-                              {rec.action_steps.map((st, sIdx) => (
-                                <li key={sIdx}>{st}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
-                        <EvidenceQuote rec={rec} className="bg-slate-50 p-2" />
                       </div>
                     </div>
                   );
@@ -1353,60 +1324,74 @@ const ValidasiLaporan = () => {
             )}
           </section>
 
-          {/* ═══ BAGIAN III: BUKTI RUJUKAN RESMI STANDAR KEMENKES RI ═══ */}
+          {/* ═══ BAGIAN III: DAFTAR RUJUKAN PEDOMAN RESMI KEMENKES RI ═══ */}
           {verifications.length > 0 && (
-            <section className="bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
+            <section className="no-print bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
               <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="border-l-4 border-indigo-600 pl-3.5 py-0.5">
                   <h3 className="text-base sm:text-lg font-bold text-heading">
-                    3. Bukti Rujukan Resmi Standar Kemenkes RI
+                    3. Daftar Rujukan Pedoman Resmi Kemenkes RI
                   </h3>
                   <p className="text-xs text-caption mt-0.5">
-                    Verifikasi kesesuaian tindakan terhadap rujukan Buku KIA 2024 & PNPK Kemenkes RI
+                    Ringkasan dokumen, bagian pedoman, dan halaman rujukan Buku KIA 2024 & Pedoman Kemenkes RI
                   </p>
                 </div>
               </div>
 
-              <div className="border border-line rounded-xl overflow-hidden">
+              <div className="border border-line rounded-xl overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-subtle text-caption text-xs font-semibold border-b border-line uppercase tracking-wider">
                     <tr>
                       <th className="p-3 w-12 text-center">No</th>
-                      <th className="p-3 w-1/3">Poin Rekomendasi</th>
-                      <th className="p-3 w-1/4">Dokumen Sitasi</th>
-                      <th className="p-3 text-center">Status Kesesuaian</th>
-                      <th className="p-3">Bukti Kutipan Resmi</th>
+                      <th className="p-3">Topik Rekomendasi</th>
+                      <th className="p-3">Dokumen Rujukan</th>
+                      <th className="p-3">Bagian / Topik</th>
+                      <th className="p-3 text-center">Halaman</th>
+                      <th className="p-3 text-center">Status Rujukan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line-light">
-                    {verifications.map((v, i) => (
-                      <tr key={i} className="hover:bg-subtle transition-colors">
-                        <td className="p-3 text-center font-bold text-dim">
-                          {v.recommendation_index || i + 1}
-                        </td>
-                        <td className="p-3 font-semibold text-heading">
-                          {v.title}
-                        </td>
-                        <td className="p-3 text-caption">
-                          {cleanCitation(v.citation_source)} <br />
-                          <span className="text-xs text-dim">Halaman {v.citation_page}</span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-subtle text-heading border border-line">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                            {v.verification_status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-body max-w-md">
-                          {v.evidence && (
-                            <p className="italic bg-subtle p-2 rounded-lg border border-line mb-1 text-xs text-body">
-                              "{v.evidence}"
-                            </p>
-                          )}
-                          <p className="text-xs text-dim">{v.notes}</p>
-                        </td>
-                      </tr>
-                    ))}
+                    {verifications.map((v, i) => {
+                      const recMatch = recommendations[(v.recommendation_index || i + 1) - 1] || recommendations[i] || {};
+                      const sectionList = v.additional_sections || recMatch?.citation?.additional_sections;
+                      const pageList = v.additional_pages || recMatch?.citation?.additional_pages;
+                      const sectionName = Array.isArray(sectionList) && sectionList.length > 0
+                        ? sectionList.join("; ")
+                        : v.citation_section || recMatch?.citation?.section || "-";
+                      const pageName = Array.isArray(pageList) && pageList.length > 0
+                        ? pageList.join(", ")
+                        : v.citation_page || recMatch?.citation?.page || null;
+                      const isVerified = v.verification_status === "VERIFIED" || v.verification_status === "AUTO_GROUNDED_SECONDARY";
+                      return (
+                        <tr key={i} className="hover:bg-subtle transition-colors">
+                          <td className="p-3 text-center font-bold text-dim">
+                            {v.recommendation_index || i + 1}
+                          </td>
+                          <td className="p-3 font-semibold text-heading">
+                            {v.title}
+                          </td>
+                          <td className="p-3 text-body">
+                            {cleanCitation(v.citation_source)}
+                          </td>
+                          <td className="p-3 text-caption text-xs">
+                            {sectionName}
+                          </td>
+                          <td className="p-3 text-center text-caption font-medium">
+                            {pageName && pageName !== "-" ? `Hal. ${pageName}` : "-"}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border ${
+                              isVerified
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                            }`}>
+                              <CheckCircle2 className={`w-3.5 h-3.5 ${isVerified ? "text-emerald-500" : "text-amber-500"}`} />
+                              {isVerified ? "Sesuai Pedoman" : "Perlu Tinjauan Petugas"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

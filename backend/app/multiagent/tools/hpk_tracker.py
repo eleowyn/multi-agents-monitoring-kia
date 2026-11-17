@@ -254,13 +254,32 @@ def pregnancy_completed_status(child_name: str, child_birth_date: Any) -> Dict[s
 
 def check_visit_plausibility(phase: str, visit_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Memeriksa kewajaran biologis (plausibilitas) nilai input antropometri dan klinis
-    sebelum kalkulasi risiko dijalankan (Sesuai Bab 2.3.4 & Lampiran 1 No. 20).
+    Memeriksa kewajaran biologis (plausibilitas) dan kelengkapan pengukuran minimal
+    sebelum kalkulasi risiko dijalankan (Sesuai Bab 1.5.1 No. 6, Bab 4.2.2 & Lampiran 1 No. 20).
+    Jika data tidak lengkap atau di luar batas wajar biologis, Agent 1 memicu Early Exit.
     """
     warnings: List[str] = []
     norm_phase = str(phase or "BADUTA").upper()
 
     if norm_phase == "IBU_HAMIL":
+        # 1. Pengecekan kelengkapan minimal: harus ada minimal 1 parameter fisik/antropometri terisi
+        has_measurement = any(
+            visit_data.get(k) is not None
+            for k in ["lila_cm", "hb_level", "maternal_weight_kg", "maternal_height_cm", "systolic_bp", "diastolic_bp", "fundal_height_cm"]
+        )
+        if not has_measurement:
+            warnings.append(
+                "Data pemeriksaan klinis ibu hamil belum diisi sama sekali (LiLA, Berat Badan, Tinggi Badan, Hb, atau Tekanan Darah). "
+                "Harap isi minimal salah satu pengukuran fisik sebelum memproses kunjungan."
+            )
+
+        # 2. Pengecekan rentang wajar biologis
+        gest = visit_data.get("gestational_age_weeks")
+        if gest is not None and not (1 <= int(gest) <= 45):
+            warnings.append(f"Usia kehamilan ({gest} minggu) di luar rentang wajar gestasi manusia (1-45 minggu).")
+        trimester = visit_data.get("trimester")
+        if trimester is not None and not (1 <= int(trimester) <= 3):
+            warnings.append(f"Trimester kehamilan ({trimester}) tidak valid (harus 1, 2, atau 3).")
         lila = visit_data.get("lila_cm")
         if lila is not None and not (12.0 <= float(lila) <= 50.0):
             warnings.append(f"Nilai LiLA ({lila} cm) di luar rentang biologis wajar (12-50 cm); periksa ulang pengukuran.")
@@ -270,6 +289,9 @@ def check_visit_plausibility(phase: str, visit_data: Dict[str, Any]) -> Dict[str
         mw = visit_data.get("maternal_weight_kg")
         if mw is not None and not (30.0 <= float(mw) <= 160.0):
             warnings.append(f"Berat badan ibu ({mw} kg) di luar rentang wajar (30-160 kg).")
+        mh = visit_data.get("maternal_height_cm")
+        if mh is not None and not (120.0 <= float(mh) <= 210.0):
+            warnings.append(f"Tinggi badan ibu ({mh} cm) di luar rentang wajar (120-210 cm).")
         sys_bp = visit_data.get("systolic_bp")
         if sys_bp is not None and not (60 <= int(sys_bp) <= 250):
             warnings.append(f"Tekanan darah sistolik ({sys_bp} mmHg) di luar rentang wajar (60-250 mmHg).")
@@ -278,20 +300,53 @@ def check_visit_plausibility(phase: str, visit_data: Dict[str, Any]) -> Dict[str
             warnings.append(f"Tekanan darah diastolik ({dia_bp} mmHg) di luar rentang wajar (40-150 mmHg).")
 
     elif norm_phase == "BAYI_BARU_LAHIR":
+        # 1. Pengecekan kelengkapan minimal
+        has_measurement = any(
+            visit_data.get(k) is not None
+            for k in ["birth_weight_gram", "birth_length_cm", "head_circumference_cm"]
+        )
+        if not has_measurement:
+            warnings.append(
+                "Data pemeriksaan fisik bayi baru lahir belum diisi sama sekali (Berat Lahir, Panjang Lahir, atau Lingkar Kepala). "
+                "Harap isi minimal salah satu pengukuran sebelum memproses kunjungan."
+            )
+
+        # 2. Pengecekan rentang wajar biologis
         bw = visit_data.get("birth_weight_gram")
         if bw is not None and not (500.0 <= float(bw) <= 6000.0):
             warnings.append(f"Berat lahir ({bw} g) di luar rentang wajar neonatus (500-6000 g).")
         bl = visit_data.get("birth_length_cm")
         if bl is not None and not (30.0 <= float(bl) <= 65.0):
             warnings.append(f"Panjang lahir ({bl} cm) di luar rentang wajar neonatus (30-65 cm).")
+        hc = visit_data.get("head_circumference_cm")
+        if hc is not None and not (25.0 <= float(hc) <= 45.0):
+            warnings.append(f"Lingkar kepala lahir ({hc} cm) di luar rentang wajar (25-45 cm).")
+        ga = visit_data.get("gestational_age_at_birth_weeks")
+        if ga is not None and not (20 <= int(ga) <= 45):
+            warnings.append(f"Usia gestasi saat lahir ({ga} minggu) di luar rentang wajar (20-45 minggu).")
 
     elif norm_phase == "BADUTA":
+        # 1. Pengecekan kelengkapan minimal
+        has_measurement = any(
+            visit_data.get(k) is not None
+            for k in ["child_weight_kg", "child_length_cm", "child_head_circumference_cm"]
+        )
+        if not has_measurement:
+            warnings.append(
+                "Data pengukuran antropometri baduta belum diisi sama sekali (Berat Badan atau Panjang/Tinggi Badan). "
+                "Harap isi minimal salah satu pengukuran antropometri sebelum memproses kunjungan."
+            )
+
+        # 2. Pengecekan rentang wajar biologis
         cw = visit_data.get("child_weight_kg")
         if cw is not None and not (1.5 <= float(cw) <= 25.0):
             warnings.append(f"Berat badan baduta ({cw} kg) di luar rentang wajar (1,5-25 kg).")
         cl = visit_data.get("child_length_cm")
         if cl is not None and not (40.0 <= float(cl) <= 110.0):
             warnings.append(f"Panjang/tinggi badan baduta ({cl} cm) di luar rentang wajar (40-110 cm).")
+        chc = visit_data.get("child_head_circumference_cm")
+        if chc is not None and not (30.0 <= float(chc) <= 60.0):
+            warnings.append(f"Lingkar kepala baduta ({chc} cm) di luar rentang wajar (30-60 cm).")
 
     return {
         "is_plausible": len(warnings) == 0,
