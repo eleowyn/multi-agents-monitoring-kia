@@ -97,6 +97,11 @@ def _deterministic_sop_audit(
                     1 for v in verifs
                     if isinstance(v, dict) and v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY")
                 )
+                if verifs and verified_cnt == 0:
+                    return (
+                        False,
+                        f"Deviasi SOP Agent 3: dari {len(verifs)} rekomendasi berisiko, 0 rekomendasi terverifikasi terhadap rujukan.",
+                    )
                 return (
                     True,
                     f"Kepatuhan SOP Agent 3 terverifikasi: {verified_cnt}/{len(verifs)} butir rekomendasi telah "
@@ -128,7 +133,7 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
     notes = ""
     eval_token_usage = extract_token_usage(None, prompt_text=instruction, output_text=output_str, is_llm_call=False)
 
-    llm = get_chat_llm(temperature=0.0, max_tokens=250)
+    llm = get_chat_llm(temperature=0.0, max_tokens=300)
     if llm is not None:
         try:
             from langchain_core.messages import SystemMessage, HumanMessage
@@ -136,8 +141,8 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
             prompt = (
                 f"Audit kepatuhan peran secara independen untuk {agent_name}.\n"
                 f"Instruksi: {instruction}\n"
-                f"Output Agent: {output_str[:1200]}\n"
-                f"Rujukan: {reference[:600]}\n"
+                f"Output Agent:\n{output_str[:6000]}\n\n"
+                f"Rujukan:\n{reference[:6000]}\n\n"
                 'Keluarkan HANYA JSON valid: {"is_compliant": true, "notes": "Alasan singkat 1 kalimat"}'
             )
             res = llm.invoke([
@@ -153,14 +158,22 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
             parsed = parse_llm_json(res.content)
             if isinstance(parsed, dict) and isinstance(parsed.get("is_compliant"), bool):
                 is_compliant = parsed["is_compliant"]
-                notes = str(parsed.get("notes") or "")
-        except Exception:
+                notes = str(parsed.get("notes") or "").strip()
+                if not notes:
+                    notes = (
+                        f"Output {agent_name} sesuai instruksi dan rujukan."
+                        if is_compliant
+                        else f"Terdapat deviasi pada output {agent_name} terhadap instruksi atau rujukan."
+                    )
+            else:
+                is_compliant = None
+                notes = "Tidak dievaluasi: respons LLM evaluator tidak memuat status boolean yang valid."
+        except Exception as e:
             is_compliant = None
-
-    if is_compliant is None or not notes:
-        det_ok, det_notes = _deterministic_sop_audit(agent_key, output_obj, agent_tel)
-        is_compliant = det_ok
-        notes = det_notes
+            notes = f"Tidak dievaluasi: evaluator LLM gagal dieksekusi ({type(e).__name__})."
+    else:
+        is_compliant = None
+        notes = "Tidak dievaluasi: evaluator LLM tidak tersedia."
 
     t1 = time.perf_counter()
     eval_finished_at = datetime.now().isoformat(timespec="milliseconds")
@@ -238,13 +251,55 @@ def log_multiagent_parallel_evaluations(
         )
         agents_tel = pipeline_tel.get("agents") or {}
 
-        sample_query = " ".join([f.get("indicator", "") for f in risk_flags])
-        ref_chunks = (
-            retrieve_kia_guidelines(sample_query or "stunting gizi", n_results=2)
-            if (requires_rag and recommendations)
-            else []
-        )
-        ref_text = "\n".join([c.get("content", "") for c in ref_chunks])
+        from app.multiagent.agents.recommender import flag_search_query
+
+        flag_names = [f.get("flag", "") for f in risk_flags if isinstance(f, dict) and f.get("flag")]
+        retrieved_chunks = final_state.get("retrieved_chunks") or []
+        if not retrieved_chunks and requires_rag and recommendations:
+            for f in risk_flags[:3]:
+                if isinstance(f, dict):
+                    q = flag_search_query(f.get("flag", ""), f.get("detail", ""))
+                    for ch in retrieve_kia_guidelines(q, n_results=2):
+                        if ch.get("id") not in {c.get("id") for c in retrieved_chunks}:
+                            retrieved_chunks.append(ch)
+        ref_text = "\n\n".join([
+            f"[ID: {c.get('id')}] Sumber: {c.get('source')} | Bagian: {c.get('section')} | Hal: {c.get('page')}\n{c.get('content', '')}"
+            for c in retrieved_chunks
+        ])
+
+        compact_recs = [
+            {
+                "title": r.get("title"),
+                "category": r.get("category"),
+                "recommendation_text": r.get("recommendation_text"),
+                "items": r.get("items"),
+                "food_guide": r.get("food_guide"),
+                "milk_and_supplements": r.get("milk_and_supplements"),
+                "activity_and_stimulation": r.get("activity_and_stimulation"),
+                "action_steps": r.get("action_steps"),
+                "evidence_status": r.get("evidence_status"),
+                "evidence_quote": r.get("evidence_quote"),
+                "citation": {
+                    k: (r.get("citation") or {}).get(k)
+                    for k in ("chunk_id", "source", "section", "page")
+                } if isinstance(r.get("citation"), dict) else None,
+            }
+            for r in recommendations if isinstance(r, dict)
+        ]
+
+        compact_verifs = [
+            {
+                "recommendation_index": v.get("recommendation_index"),
+                "title": v.get("title"),
+                "chunk_id": v.get("chunk_id"),
+                "citation_source": v.get("citation_source"),
+                "citation_page": v.get("citation_page"),
+                "verification_status": v.get("verification_status"),
+                "grounding_score": v.get("grounding_score"),
+                "notes": v.get("notes"),
+            }
+            for v in verif_details if isinstance(v, dict)
+        ]
 
         tasks: List[Dict[str, Any]] = [
             {
@@ -259,20 +314,24 @@ def log_multiagent_parallel_evaluations(
                 "agent_key": "agent_2",
                 "name": "Agent 2 (Rekomendasi Klinis RAG)",
                 "instruction": (
-                    f"Sintesis rekomendasi klinis tersitasi berbasis RAG untuk flag: {sample_query}"
+                    f"Sintesis rekomendasi klinis tersitasi berbasis RAG untuk flag: {', '.join(flag_names)}"
                     if (requires_rag and recommendations)
                     else f"Penyusunan Care Plan preventif 1.000 HPK ({phase}) tanpa flag risiko aktif."
                 ),
-                "output": recommendations if recommendations else {"care_plan_status": "PREVENTIVE_1000_HPK_READY"},
+                "output": compact_recs if compact_recs else {"care_plan_status": "PREVENTIVE_1000_HPK_READY"},
                 "reference": ref_text or "Buku KIA 2024 & PNPK Tata Laksana Stunting",
                 "telemetry": agents_tel.get("agent_2") or {},
             },
             {
                 "agent_key": "agent_3",
                 "name": "Agent 3 (Verifikasi & Grounding Laporan)",
-                "instruction": f"Verifikasi konsistensi sitasi dan integrasikan final report JSON (Status: {overall_status}).",
-                "output": {"overall_status": overall_status, "verification": verif_details},
-                "reference": "Validasi Keterhubungan Sitasi & Template Baku Laporan KIA",
+                "instruction": f"Verifikasi keterhubungan sitasi terhadap chunk rujukan, konsistensi flag aktif ({', '.join(flag_names) or 'Kondisi Baik'}), dan integrasikan final report JSON (Status: {overall_status}).",
+                "output": {
+                    "overall_status": overall_status,
+                    "consistency_check": report_json.get("consistency_check"),
+                    "verification": compact_verifs,
+                },
+                "reference": (ref_text + "\n\nAturan Verifikasi Agent 3: Menilai keterhubungan setiap rekomendasi dengan chunk rujukan (VERIFIED / AUTO_GROUNDED_SECONDARY / UNVERIFIED), memastikan setiap flag aktif ditangani, dan menetapkan overall_status laporan.").strip(),
                 "telemetry": agents_tel.get("agent_3") or {},
             },
         ]
@@ -286,9 +345,9 @@ def log_multiagent_parallel_evaluations(
                 AuditLog(
                     report_id=report_id,
                     agent_name=res_item["agent_name"],
-                    input_instruction=res_item["instruction"][:1000],
-                    agent_output=res_item["output_str"][:2000],
-                    reference_context=res_item["reference"][:1000],
+                    input_instruction=res_item["instruction"][:2000],
+                    agent_output=res_item["output_str"][:8000],
+                    reference_context=res_item["reference"][:6000],
                     is_compliant=res_item["is_compliant"],
                     evaluation_notes=res_item["evaluation_notes"],
                 )

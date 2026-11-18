@@ -187,14 +187,20 @@ def is_koboillm() -> bool:
     return False
 
 
+def gemini_embedding_available() -> bool:
+    """True jika GEMINI_API_KEY tersedia untuk memanggil model embedding Gemini (gemini-embedding-001)."""
+    from app.core.config import settings
+    key = settings.GEMINI_API_KEY
+    return bool(key) and len(key) > 10 and not key.startswith("YOUR_")
+
+
 def llm_available() -> bool:
     """True jika API key LLM (Google Gemini atau KoboiLLM) terisi dengan nilai yang valid."""
     from app.core.config import settings
     if is_koboillm():
         key = settings.KOBOILLM_API_KEY or settings.GEMINI_API_KEY
         return bool(key) and len(key) > 5 and not key.startswith("YOUR_")
-    key = settings.GEMINI_API_KEY
-    return bool(key) and len(key) > 10 and not key.startswith("YOUR_")
+    return gemini_embedding_available()
 
 
 def get_chat_llm(temperature: float = 0.2, max_tokens: int = None):

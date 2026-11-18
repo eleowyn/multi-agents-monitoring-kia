@@ -328,7 +328,7 @@ def get_report_by_visit(
 def validate_report_by_kader(
     report_id: int,
     val_req: ReportValidationRequest,
-    background_tasks: BackgroundTasks,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

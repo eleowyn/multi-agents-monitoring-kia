@@ -519,7 +519,7 @@ def ingest_knowledge_base(rebuild: bool = False) -> int:
     - Chunk yang tidak lagi dihasilkan dari dokumen dihapus (tidak ada chunk usang).
     - rebuild=True menghapus kedua koleksi terlebih dahulu.
     """
-    from app.multiagent.llm_utils import llm_available
+    from app.multiagent.llm_utils import gemini_embedding_available
     from app.multiagent.rag.vectorstore import get_chroma_client
 
     client = get_chroma_client()
@@ -539,7 +539,7 @@ def ingest_knowledge_base(rebuild: bool = False) -> int:
     _sync_collection(legacy, documents, metadatas, ids)
 
     collection = get_or_create_collection()
-    if not llm_available():
+    if not gemini_embedding_available():
         print("[RAG INGEST] GEMINI_API_KEY tidak tersedia; koleksi utama (embedding Gemini) dilewati.")
         return collection.count()
 

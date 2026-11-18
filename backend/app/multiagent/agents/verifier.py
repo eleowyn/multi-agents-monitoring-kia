@@ -41,29 +41,27 @@ def _consolidate_pipeline_telemetry(
     - Mencatat klasifikasi tingkat kepentingan/kesulitan agen sesuai catatan pembimbing.
     """
     st_tel = dict(state_telemetry or {})
-    now_dt = datetime.now()
 
     a1 = st_tel.get("agent_1") or det_results.get("_agent1_telemetry")
     if not a1:
-        t1_start = (now_dt - timedelta(milliseconds=420)).isoformat(timespec="milliseconds")
-        t1_end = (now_dt - timedelta(milliseconds=260)).isoformat(timespec="milliseconds")
         a1 = {
             "agent_id": "agent_1",
             "agent_name": "Agent 1: Deteksi Risiko Deterministik & ReAct",
             "execution_order": 1,
             "execution_pattern": "SEQUENTIAL_STEP_1 (Entry Point)",
-            "lifecycle_state": "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)",
-            "spawned_at": t1_start,
-            "terminated_at": t1_end,
-            "lifetime_ms": 160.0,
-            "mode": "MODE_FALLBACK",
+            "lifecycle_state": "NOT_RECORDED (Node tidak dieksekusi dalam sesi ini)",
+            "spawned_at": None,
+            "terminated_at": None,
+            "lifetime_ms": None,
+            "available": False,
+            "mode": "NOT_RECORDED",
             "complexity_rank": "Paling Penting (Keselamatan Jiwa / Clinical Safety Gatekeeper)",
             "complexity_reason": (
                 "Gerbang skrining keselamatan awal ibu & anak (Stunting Berat, Gizi Buruk, BBLR, KEK, Anemia, KSPR Risiko Tinggi). "
                 "Stage 1 dikunci 100% deterministik baku WHO/Permenkes agar bebas false-negative."
             ),
-            "tools_invoked": ["calculate_1000_hpk_status", "check_visit_plausibility", "run_clinical_calculators"],
-            "token_usage": extract_token_usage(None, prompt_text=risk_narrative, output_text=risk_narrative, is_llm_call=False),
+            "tools_invoked": [],
+            "token_usage": extract_token_usage(None, is_llm_call=False),
             "task_proof": {
                 "input_summary": f"Fase {phase}",
                 "output_summary": f"{len(risk_flags)} Flag Risiko Aktif, requires_rag={len(risk_flags) > 0}",
@@ -74,8 +72,6 @@ def _consolidate_pipeline_telemetry(
     a2 = st_tel.get("agent_2") or det_results.get("_agent2_telemetry")
     if not a2:
         has_risk = len(risk_flags) > 0
-        t2_start = a1.get("terminated_at") or (now_dt - timedelta(milliseconds=255)).isoformat(timespec="milliseconds")
-        t2_end = agent3_telemetry.get("spawned_at") or (now_dt - timedelta(milliseconds=90)).isoformat(timespec="milliseconds")
         a2 = {
             "agent_id": "agent_2",
             "agent_name": "Agent 2: Rekomendasi Klinis RAG & Care Plan",
@@ -86,39 +82,39 @@ def _consolidate_pipeline_telemetry(
                 else "SKIPPED_BY_CONDITIONAL_ROUTER (requires_rag=False -> Langsung ke Agent 3)"
             ),
             "lifecycle_state": (
-                "TERMINATED (Selesai Tugas, Selesai Hidup / Ephemeral)"
+                "NOT_RECORDED (Node tidak dieksekusi dalam sesi ini)"
                 if has_risk
                 else "BYPASSED_IDLE (Tidak Di-spawn karena Pasien Sehat / 0 Flag Risiko)"
             ),
-            "spawned_at": t2_start,
-            "terminated_at": t2_end,
-            "lifetime_ms": 165.0 if has_risk else 0.0,
-            "mode": "MODE_FALLBACK" if has_risk else "NO_RISK",
+            "spawned_at": None,
+            "terminated_at": None,
+            "lifetime_ms": None if has_risk else 0.0,
+            "available": not has_risk,
+            "mode": "NOT_RECORDED" if has_risk else "NO_RISK",
             "complexity_rank": "Paling Sulit (Multi-Hop ReAct, RAG ChromaDB & Sintesis Klinis Kontekstual)",
             "complexity_reason": (
                 "Menjalankan siklus ReAct otonom, menarik vektor Buku KIA/PNPK dari ChromaDB, serta merumuskan menu "
                 "pangan lokal Minahasa, panduan ASI/susu/TTD, dan aktivitas harian ke JSON tersitasi."
             ),
             "tools_invoked": (
-                ["build_comprehensive_care_plan", "retrieve_clinical_guidelines (ChromaDB)"]
+                []
                 if has_risk
                 else ["conditional_router_bypass (requires_rag=False)"]
             ),
             "thought_process": (
-                ["Menarik pedoman Buku KIA/PNPK dan menyusun rekomendasi klinis terstruktur."]
+                []
                 if has_risk
                 else ["Kondisi sehat (0 flag risiko): LangGraph Conditional Edge langsung meneruskan state dari Agent 1 ke Agent 3."]
             ),
-            "token_usage": extract_token_usage(
-                None,
-                prompt_text=json.dumps(risk_flags, ensure_ascii=False),
-                output_text=json.dumps(recommendations, ensure_ascii=False),
-                is_llm_call=False,
-            ),
+            "token_usage": extract_token_usage(None, is_llm_call=False),
             "task_proof": {
                 "input_summary": f"Fase {phase}, {len(risk_flags)} Flag Risiko",
-                "output_summary": f"{len(recommendations)} Rekomendasi Tersitasi + Care Plan 1.000 HPK",
-                "chunks_retrieved_count": len(recommendations),
+                "output_summary": (
+                    f"{len(recommendations)} Rekomendasi"
+                    if has_risk
+                    else "Dilewati Conditional Router (0 Flag Risiko)"
+                ),
+                "chunks_retrieved_count": 0,
                 "recommendations_count": len(recommendations),
             },
         }
@@ -153,6 +149,7 @@ def _consolidate_pipeline_telemetry(
                     "citation": r.get("citation"),
                     "evidence_quote": r.get("evidence_quote"),
                     "ai_insight": r.get("ai_insight"),
+                    "ai_insight_details": r.get("ai_insight_details"),
                 }
                 for r in recommendations
             ],
@@ -340,8 +337,8 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     has_severe_risk = any(f.get("flag") in SEVERE_RISK_FLAGS for f in risk_flags)
     overall_status = "RISIKO_TINGGI" if has_severe_risk else "PERLU_PERHATIAN"
 
-    flag_details_short = "; ".join(
-        [str(f.get("detail") or f.get("flag") or "").rstrip(".") for f in risk_flags[:3] if isinstance(f, dict)]
+    flag_details_all = "; ".join(
+        [str(f.get("detail") or f.get("flag") or "").rstrip(".") for f in risk_flags if isinstance(f, dict)]
     )
     action_urgency = (
         "Pasien memerlukan rujukan dan pemeriksaan segera ke Tenaga Kesehatan / Dokter di Puskesmas Airmadidi disertai perbaikan asupan gizi harian."
@@ -350,25 +347,32 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
     )
     executive_summary = (
         f"Hasil pemeriksaan pada fase {human_phase_label} menemukan {len(risk_flags)} kondisi yang memerlukan perhatian: "
-        f"{flag_details_short}. {action_urgency}"
+        f"{flag_details_all}. {action_urgency}"
     )
 
     verification_details = []
     verifier_mode = MODE_FALLBACK
-    tools_invoked = ["_build_final_report_json"]
+    tools_invoked = ["_build_final_report_json", "_check_flag_and_structure_consistency"]
     token_usages: List[Dict[str, Any]] = []
     chunks_by_id = {c.get("id"): c for c in retrieved_chunks if c.get("id")}
-    llm = get_chat_llm(temperature=0.0, max_tokens=1000) if recommendations else None
+    llm = get_chat_llm(temperature=0.0, max_tokens=1200) if recommendations else None
 
     # ------------------------------------------------------------------------
     # 3. Langkah 1: LLM-Judge terhadap chunk yang dirujuk masing-masing rekomendasi
+    #    (Rekomendasi ATURAN_SISTEM / KELULUSAN_1000_HPK dikecualikan dari verifikasi chunk RAG)
     # ------------------------------------------------------------------------
     primary_pairs = []
     for idx, rec in enumerate(recommendations):
+        if (
+            rec.get("evidence_status") == "ATURAN_SISTEM"
+            or rec.get("reasoning_mode") == "ATURAN_SISTEM"
+            or rec.get("category") == "KELULUSAN_1000_HPK"
+        ):
+            continue
         chunk_id = (rec.get("citation") or {}).get("chunk_id")
         primary_pairs.append((idx + 1, rec, chunks_by_id.get(chunk_id) if chunk_id else None))
 
-    primary_results, used_llm = _judge_pairs(llm, primary_pairs, token_usages)
+    primary_results, used_llm = _judge_pairs(llm, primary_pairs, token_usages, extra_chunks_by_id=chunks_by_id)
     if used_llm:
         verifier_mode = MODE_LLM_JUDGE
         tools_invoked.insert(0, "llm_judge_grounding_evaluator")
@@ -390,7 +394,7 @@ def verification_and_report_agent(state: AgentState) -> Dict[str, Any]:
             secondary_pairs.append((rec_idx, rec, sec_chunk))
     if secondary_pairs:
         tools_invoked.append("secondary_retrieval_check (ChromaDB)")
-        secondary_results, _ = _judge_pairs(llm if used_llm else None, secondary_pairs, token_usages)
+        secondary_results, _ = _judge_pairs(llm if used_llm else None, secondary_pairs, token_usages, extra_chunks_by_id=chunks_by_id)
     else:
         secondary_results = {}
     secondary_chunk_by_idx = {rec_idx: c for rec_idx, _, c in secondary_pairs}
@@ -537,7 +541,12 @@ SEVERE_RISK_FLAGS = {
 LEXICAL_GROUNDING_THRESHOLD = 0.35
 
 
-def _judge_pairs(llm, pairs, token_usages: List[Dict[str, Any]]):
+def _judge_pairs(
+    llm,
+    pairs,
+    token_usages: List[Dict[str, Any]],
+    extra_chunks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
+):
     """
     Menilai pasangan (index, rekomendasi, chunk) dengan LLM-judge dalam satu panggilan.
     Pasangan tanpa chunk otomatis tidak grounded. Bila LLM tidak tersedia/gagal atau
@@ -551,17 +560,36 @@ def _judge_pairs(llm, pairs, token_usages: List[Dict[str, Any]]):
             results[i] = {"is_grounded": False, "grounding_score": 0.0,
                           "reasoning": "Rekomendasi tidak merujuk chunk yang valid.", "mode": "NO_CHUNK"}
 
+    chunks_map = extra_chunks_by_id or {}
     used_llm = False
     if llm is not None and judgeable:
         try:
             from langchain_core.messages import SystemMessage, HumanMessage
-            payload = [{
-                "recommendation_index": i,
-                "title": r.get("title", ""),
-                "recommendation_text": r.get("recommendation_text", ""),
-                "action_steps": r.get("action_steps", []),
-                "reference_chunk": f"Sumber: {c.get('source', '')}\nBagian: {c.get('section', '')}\nIsi: {c.get('content', '')}",
-            } for i, r, c in judgeable]
+            payload = []
+            for i, r, c in judgeable:
+                ai_det = r.get("ai_insight_details") if isinstance(r.get("ai_insight_details"), dict) else None
+                ai_cid = ai_det.get("chunk_id") if ai_det else None
+                ai_chunk = chunks_map.get(ai_cid) if (ai_cid and ai_cid != c.get("id")) else None
+                entry = {
+                    "recommendation_index": i,
+                    "title": r.get("title", ""),
+                    "recommendation_text": r.get("recommendation_text", ""),
+                    "food_guide": r.get("food_guide"),
+                    "milk_and_supplements": r.get("milk_and_supplements"),
+                    "activity_and_stimulation": r.get("activity_and_stimulation"),
+                    "action_steps": r.get("action_steps", []),
+                    "ai_insight": r.get("ai_insight"),
+                    "ai_insight_basis": r.get("ai_insight_basis"),
+                    "ai_insight_details": ai_det,
+                    "items": r.get("items"),
+                    "reference_chunk": f"Sumber: {c.get('source', '')}\nBagian: {c.get('section', '')}\nIsi: {c.get('content', '')}",
+                }
+                if ai_chunk and ai_chunk.get("content"):
+                    entry["ai_insight_reference_chunk"] = (
+                        f"Sumber: {ai_chunk.get('source', '')}\nBagian: {ai_chunk.get('section', '')}\n"
+                        f"Hal: {ai_chunk.get('page', '')}\nIsi: {ai_chunk.get('content', '')}"
+                    )
+                payload.append(entry)
             user_prompt = (
                 "Berikut pasangan rekomendasi klinis dan potongan teks rujukan resmi:\n"
                 f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
@@ -607,14 +635,86 @@ def _lexical_grounding_check(rec: Dict[str, Any], chunk: Dict[str, Any]) -> tupl
     Cek fallback leksikal bila LLM-judge tidak tersedia: proporsi kata bermakna
     (>= 4 huruf) pada rekomendasi yang juga muncul di isi chunk. Tidak ada bonus
     untuk kecocokan nama sumber/bagian, sehingga hanya isi teks yang dinilai.
+    Memeriksa seluruh bagian rekomendasi (judul, teks utama, panduan gizi/susu/stimulasi, langkah aksi).
     """
     import re as _re
     words = lambda t: {w for w in _re.findall(r"[a-zA-Z]{4,}", (t or "").lower())}
-    rec_words = words(f"{rec.get('title', '')} {rec.get('recommendation_text', '')}")
-    if not rec_words:
+    core_words = words(f"{rec.get('title', '')} {rec.get('recommendation_text', '')}")
+    if not core_words:
         return False, 0.0
-    overlap = len(rec_words & words(chunk.get("content", ""))) / len(rec_words)
-    return overlap >= LEXICAL_GROUNDING_THRESHOLD, round(overlap, 2)
+    chunk_words = words(chunk.get("content", ""))
+    core_overlap = len(core_words & chunk_words) / len(core_words)
+
+    extra_parts = " ".join(
+        str(rec.get(k) or "")
+        for k in ("food_guide", "milk_and_supplements", "activity_and_stimulation")
+        if rec.get(k)
+    )
+    if rec.get("action_steps"):
+        extra_parts += " " + " ".join(str(s) for s in rec.get("action_steps", []))
+    extra_words = words(extra_parts)
+    if extra_words:
+        full_words = core_words | extra_words
+        full_overlap = len(full_words & chunk_words) / len(full_words)
+        score = max(core_overlap, full_overlap)
+    else:
+        score = core_overlap
+    return score >= LEXICAL_GROUNDING_THRESHOLD, round(score, 2)
+
+
+def _check_flag_and_structure_consistency(
+    risk_flags: List[Dict[str, Any]],
+    recommendations: List[Dict[str, Any]],
+    overall_status: str,
+    executive_summary: str,
+) -> Dict[str, Any]:
+    """
+    Memeriksa konsistensi rekomendasi terhadap flag risiko aktif dan kelengkapan
+    struktur laporan (Sesuai Bab 1.5.1 no. 9 dan Bab 2.8 iii).
+    """
+    active_flags = [f.get("flag", "") for f in (risk_flags or []) if isinstance(f, dict) and f.get("flag")]
+    rec_blob = " ".join(
+        f"{r.get('title', '')} {r.get('recommendation_text', '')} {r.get('food_guide', '')} {r.get('milk_and_supplements', '')} {r.get('category', '')}"
+        for r in (recommendations or []) if isinstance(r, dict)
+    ).lower()
+
+    covered_flags: List[str] = []
+    uncovered_flags: List[str] = []
+    for fl in active_flags:
+        fl_up = fl.upper()
+        matched = False
+        if any(k in fl_up for k in ("STUNTING", "UNDERWEIGHT", "GIZI_KURANG", "GIZI_BURUK", "2T")) and any(w in rec_blob for w in ("stunting", "protein", "puskesmas", "mp-asi", "mpasi", "berat", "gizi")):
+            matched = True
+        elif any(k in fl_up for k in ("OVERWEIGHT", "OBESITAS", "GIZI_LEBIH", "BB_LEBIH")) and any(w in rec_blob for w in ("gizi lebih", "obesitas", "lemak", "puskesmas")):
+            matched = True
+        elif "KEK" in fl_up and any(w in rec_blob for w in ("kek", "lila", "pmt", "makanan tambahan", "porsi", "protein")):
+            matched = True
+        elif "ANEMIA" in fl_up and any(w in rec_blob for w in ("anemia", "ttd", "tambah darah", "hb", "zat besi")):
+            matched = True
+        elif any(k in fl_up for k in ("BBLR", "BBLSR", "BBLER", "PREMATUR", "IMD")) and any(w in rec_blob for w in ("kanguru", "bblr", "asi", "suhu", "kehangatan", "imd")):
+            matched = True
+        elif any(k in fl_up for k in ("KSPR", "KRT", "KRST")) and any(w in rec_blob for w in ("risiko", "rujuk", "dokter", "anc", "puskesmas", "kehamilan")):
+            matched = True
+        elif len(recommendations) > 0:
+            matched = True
+
+        if matched:
+            covered_flags.append(fl)
+        else:
+            uncovered_flags.append(fl)
+
+    has_required_sections = bool(
+        overall_status in ("KONDISI_BAIK", "PERLU_PERHATIAN", "RISIKO_TINGGI")
+        and executive_summary
+        and (not active_flags or len(recommendations) > 0)
+    )
+    return {
+        "is_consistent": len(uncovered_flags) == 0 and has_required_sections,
+        "active_flags_count": len(active_flags),
+        "covered_flags": covered_flags,
+        "uncovered_flags": uncovered_flags,
+        "structure_complete": has_required_sections,
+    }
 
 
 def _build_final_report_json(
@@ -688,6 +788,12 @@ def _build_final_report_json(
             "longitudinal_completeness_pct": round(c_long / 30.0 * 100, 1),
         }
     }
+    consistency_check = _check_flag_and_structure_consistency(
+        risk_flags=risk_flags,
+        recommendations=recommendations,
+        overall_status=overall_status,
+        executive_summary=executive_summary,
+    )
     return {
         "metadata": {
             "phase": phase,
@@ -713,6 +819,7 @@ def _build_final_report_json(
         },
         "recommendations": recommendations,
         "verification_summary": verification_summary,
+        "consistency_check": consistency_check,
         "confidence": confidence_dict,
         "agent_telemetry": agent_telemetry or {},
     }

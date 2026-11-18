@@ -339,6 +339,7 @@ def get_audit_logs(
                                 "supporting_chunks": (rec.get("citation") or {}).get("supporting_chunks") if isinstance(rec.get("citation"), dict) else rec.get("supporting_chunks"),
                                 "evidence_quote": rec.get("evidence_quote"),
                                 "ai_insight": rec.get("ai_insight"),
+                                "ai_insight_details": rec.get("ai_insight_details"),
                             }
                             for rec in recs_raw if isinstance(rec, dict)
                         ],
@@ -461,19 +462,6 @@ def get_audit_logs(
 
         is_comp = r.is_compliant
         eval_notes = r.evaluation_notes or ""
-        if is_comp is None or "Tidak dievaluasi" in eval_notes or "evaluator LLM" in eval_notes:
-            try:
-                parsed_out = _json.loads(r.agent_output) if r.agent_output else {}
-            except Exception:
-                parsed_out = {}
-            det_ok, det_note = _deterministic_sop_audit(a_key, parsed_out, agent_tel)
-            if is_comp is None:
-                is_comp = det_ok
-            if "[" in eval_notes:
-                telemetry_tail = eval_notes[eval_notes.index("["):]
-                eval_notes = f"{det_note} {telemetry_tail}"
-            else:
-                eval_notes = det_note
 
         eval_notes = (
             eval_notes

@@ -343,6 +343,7 @@ class TestModule5HumanInTheLoopKader:
         updated_report = validate_report_by_kader(
             report_id=report.id,
             val_req=val_req,
+            background_tasks=BackgroundTasks(),
             db=db_session,
             current_user=kader
         )
@@ -363,6 +364,7 @@ class TestModule5HumanInTheLoopKader:
             validate_report_by_kader(
                 report_id=report.id,
                 val_req=val_req,
+                background_tasks=BackgroundTasks(),
                 db=db_session,
                 current_user=kader
             )
@@ -379,6 +381,7 @@ class TestModule5HumanInTheLoopKader:
         approved_report = validate_report_by_kader(
             report_id=report.id,
             val_req=val_req,
+            background_tasks=BackgroundTasks(),
             db=db_session,
             current_user=kader
         )
@@ -466,6 +469,12 @@ class TestModule7RobustnessAndBoundaries:
         kader = db_session.query(User).filter(User.username == "kader1").first()
         val_req = ReportValidationRequest(status=ReportStatus.APPROVED)
         with pytest.raises(HTTPException) as exc_info:
-            validate_report_by_kader(report_id=999999, val_req=val_req, db=db_session, current_user=kader)
+            validate_report_by_kader(
+                report_id=999999,
+                val_req=val_req,
+                background_tasks=BackgroundTasks(),
+                db=db_session,
+                current_user=kader,
+            )
         assert exc_info.value.status_code == 404
         assert "tidak ditemukan" in exc_info.value.detail.lower()

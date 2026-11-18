@@ -172,3 +172,106 @@ def test_clinical_recommender_agent_full_flow():
         assert rec.get("activity_and_stimulation")
         assert "citation" in rec
         assert "source" in rec["citation"]
+
+
+def test_ai_insight_details_grounded_from_rag_chunk():
+    """Menguji Tambahan Analisis AI terstruktur menempelkan sumber/bagian/halaman asli chunk RAG."""
+    from app.multiagent.agents.recommender import attach_chunk_evidence
+
+    chunks_by_id = {
+        "c_main": {
+            "id": "c_main",
+            "source": "Buku_KIA_2024.md",
+            "section": "MP-ASI 6-24 Bulan",
+            "page": "45",
+            "origin": "MARKDOWN_DOC",
+            "content": "Berikan MP-ASI kaya protein hewani setiap hari sesuai usia anak.",
+        },
+        "c_extra": {
+            "id": "c_extra",
+            "source": "Pedoman_PNPK_Stunting.md",
+            "section": "Tata Laksana GTM & Pemberian Makan",
+            "page": "32",
+            "origin": "MARKDOWN_DOC",
+            "content": "Anak yang sulit makan tetap diberikan makanan porsi kecil tapi sering dengan variasi protein hewani.",
+        },
+    }
+    raw_rec = {
+        "title": "Penguatan MP-ASI Protein Hewani",
+        "category": "GIZI",
+        "recommendation_text": "Berikan protein hewani ganda setiap kali makan.",
+        "citation": {"chunk_id": "c_main", "supporting_sentence": "Berikan MP-ASI kaya protein hewani setiap hari sesuai usia anak."},
+        "ai_insight_details": {
+            "condition_explanation": "Asupan protein hewani membantu mengejar pertumbuhan panjang badan.",
+            "practical_tips": "Bila anak GTM, tawarkan porsi kecil sering dengan ikan tude suwir halus.",
+            "counseling_script": "Ibu, coba berikan ikan tude atau telur porsi kecil dulu tapi sering ya.",
+            "chunk_id": "c_extra",
+            "supporting_sentence": "Anak yang sulit makan tetap diberikan makanan porsi kecil tapi sering dengan variasi protein hewani.",
+        },
+    }
+    attached = attach_chunk_evidence(raw_rec, chunks_by_id)
+    assert attached["citation"]["source"] == "Buku_KIA_2024.md"
+    assert attached["ai_insight_details"]["source"] == "Pedoman_PNPK_Stunting.md"
+    assert attached["ai_insight_details"]["section"] == "Tata Laksana GTM & Pemberian Makan"
+    assert attached["ai_insight_details"]["page"] == "32"
+    assert "sulit makan" in attached["ai_insight_details"]["supporting_sentence"]
+
+    # Jika tidak ada chunk valid sama sekali, ai_insight_details tidak boleh mengarang halaman/sumber
+    ungrounded = attach_chunk_evidence({
+        "title": "Tanpa Chunk",
+        "recommendation_text": "Tes.",
+        "citation": {"chunk_id": "missing"},
+        "ai_insight_details": {
+            "condition_explanation": "Kondisi tes.",
+            "chunk_id": "missing",
+            "source": "Buku Palsu",
+            "page": 999,
+        },
+    }, chunks_by_id)
+    assert ungrounded["ai_insight_details"] is None
+
+
+def test_pdf_html_kader_friendly_labels():
+    """Memastikan PDF pasien tidak mencetak label teknis Butir dari rujukan / Aturan sistem."""
+    from app.services.pdf_service import render_report_html
+
+    report_data = {
+        "metadata": {
+            "patient_name": "Anak Uji",
+            "patient_nik": "7106010101240001",
+            "village_name": "Airmadidi Atas",
+            "overall_status": "PERLU_PERHATIAN",
+            "phase": "BADUTA",
+        },
+        "executive_summary": "Ringkasan kondisi.",
+        "clinical_findings": {"risk_narrative": "Narasi risiko.", "active_risk_flags": []},
+        "recommendations": [
+            {
+                "title": "Penguatan MP-ASI",
+                "category": "GIZI",
+                "recommendation_text": "Berikan makan 3x sehari.",
+                "food_guide": "Nasi tim ikan tude + telur.",
+                "action_steps": ["Berikan protein hewani"],
+                "ai_insight_details": {
+                    "condition_explanation": "Protein hewani mendukung kejar tumbuh.",
+                    "practical_tips": "Beri porsi kecil tapi sering.",
+                    "counseling_script": "Ibu bisa mulai dari porsi kecil dulu ya.",
+                    "source": "Buku_KIA_2024.md",
+                    "section": "MP-ASI",
+                    "page": "45",
+                },
+                "citation": {"source": "Buku_KIA_2024.md", "section": "MP-ASI", "page": "45", "chunk_id": "c1"},
+            }
+        ],
+    }
+    html = render_report_html(
+        report_data=report_data,
+        visit_date="2026-11-17",
+        kader_name="Kader Uji",
+        validated_date="2026-11-17",
+    )
+    assert "Butir dari rujukan" not in html
+    assert "Aturan sistem" not in html
+    assert "Kutipan kalimat rujukan:" not in html
+    assert "Tambahan Penjelasan &amp; Tips Keluarga (Analisis AI)" in html
+    assert "Halaman 45" in html

@@ -24,6 +24,54 @@ class CitationModel(BaseModel):
     )
 
 
+class AiInsightDetailsModel(BaseModel):
+    """Detail terstruktur Tambahan Analisis AI yang berlandaskan chunk Buku KIA / PNPK."""
+    condition_explanation: Optional[str] = Field(
+        default=None,
+        description="Penjelasan klinis mengapa kondisi ibu/anak perlu ditindaklanjuti berdasarkan pedoman",
+    )
+    practical_tips: Optional[str] = Field(
+        default=None,
+        description="Tips mengatasi kendala praktis (GTM/susah makan/mual) dengan bahan pangan lokal",
+    )
+    counseling_script: Optional[str] = Field(
+        default=None,
+        description="Contoh kalimat edukasi empatik siap ucap kader ke ibu/keluarga",
+    )
+    source: Optional[str] = Field(default=None, description="Sumber dokumen resmi dari metadata chunk ChromaDB")
+    section: Optional[str] = Field(default=None, description="Bagian/bab sesuai metadata chunk ChromaDB")
+    page: Optional[Union[int, str]] = Field(default=None, description="Halaman PDF sesuai metadata chunk ChromaDB")
+    chunk_id: Optional[str] = Field(default=None, description="ID chunk ChromaDB yang menjadi dasar")
+    origin: Optional[str] = Field(default=None, description="MARKDOWN_DOC | PDF | CURATED_SUMMARY")
+    supporting_sentence: Optional[str] = Field(
+        default=None,
+        description="Kalimat kutipan verbatim dari chunk ChromaDB yang menjadi dasar tambahan analisis AI",
+    )
+
+
+class RecommendationContentItem(BaseModel):
+    """Satu butir isi rekomendasi dalam daftar gabungan (Rujukan vs Tambahan analisis AI)."""
+    category: str = Field(
+        default="UMUM",
+        description="MAKANAN | SUSU_SUPLEMEN | STIMULASI_AKTIVITAS | LANGKAH_TINDAKAN | ANALISIS_TAMBAHAN",
+    )
+    label: str = Field(default="Panduan", description="Nama sub-bagian panduan")
+    text: str = Field(..., description="Isi butir panduan atau tindakan")
+    source_type: str = Field(
+        default="RUJUKAN",
+        description="RUJUKAN (dari dokumen rujukan) | ANALISIS_AI (Tambahan analisis AI) | ATURAN_SISTEM",
+    )
+    chunk_id: Optional[str] = Field(default=None, description="ID chunk yang menjadi dasar")
+    basis_quote: Optional[str] = Field(
+        default=None,
+        description="Kalimat kutipan verbatim dari chunk atau data pasien yang menjadi dasar",
+    )
+    citation_label: Optional[str] = Field(
+        default=None,
+        description="Label sumber dan halaman (mis. Buku KIA 2024, Halaman PDF 18)",
+    )
+
+
 class RecommendationItem(BaseModel):
     title: str = Field(..., description="Judul ringkas rekomendasi atau intervensi")
     category: str = Field(
@@ -54,11 +102,23 @@ class RecommendationItem(BaseModel):
     )
     ai_insight: Optional[str] = Field(
         default=None,
-        description="Wawasan klinis tambahan dari sintesis LLM (dipisahkan tegas dari pedoman resmi RAG)",
+        description="Wawasan klinis tambahan dari sintesis LLM (berlabel Tambahan analisis AI beserta dasarnya)",
+    )
+    ai_insight_basis: Optional[str] = Field(
+        default=None,
+        description="Dasar dari tambahan analisis AI (kutipan chunk yang dikembangkan atau parameter klinis pasien)",
+    )
+    ai_insight_details: Optional[AiInsightDetailsModel] = Field(
+        default=None,
+        description="Rincian terstruktur Tambahan Analisis AI (kondisi, tips lokal, kalimat edukasi) beserta rujukan Buku KIA/PNPK",
+    )
+    items: Optional[List[RecommendationContentItem]] = Field(
+        default=None,
+        description="Daftar gabungan butir isi rekomendasi beserta keterangan asal (RUJUKAN vs ANALISIS_AI)",
     )
     evidence_quote: Optional[str] = Field(
         default=None,
-        description="Isi chunk asli yang dirujuk (diisi sistem, verbatim dari ChromaDB)",
+        description="Kalimat kutipan asli dari chunk yang mendukung rekomendasi (verbatim dari ChromaDB)",
     )
     evidence_status: Optional[str] = Field(
         default=None,

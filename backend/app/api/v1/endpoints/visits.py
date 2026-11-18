@@ -228,8 +228,12 @@ def get_visit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Mengambil rincian data kunjungan berdasarkan ID."""
+    """Mengambil rincian data kunjungan berdasarkan ID (dengan pemeriksaan wilayah kerja kader)."""
+    from app.services.aggregates import in_kader_scope
+
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Data kunjungan tidak ditemukan.")
+    if visit.patient and not in_kader_scope(visit.patient, current_user):
+        raise HTTPException(status_code=403, detail="Akses ditolak: Data kunjungan ini milik Posyandu desa lain.")
     return visit

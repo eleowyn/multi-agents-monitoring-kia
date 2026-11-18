@@ -92,7 +92,7 @@ def risk_detection_agent(state: AgentState) -> Dict[str, Any]:
     narrative, mode, token_usage, react_tools = _stage2_react_narrative(state, flags, det_results, rule_points)
 
     if state.get("kader_feedback"):
-        narrative = f"{narrative} [CATATAN KADER SEBELUMNYA]: {state['kader_feedback']}"
+        det_results["kader_feedback_applied"] = state["kader_feedback"]
 
     t1 = time.perf_counter()
     terminated_at = datetime.now().isoformat(timespec="milliseconds")

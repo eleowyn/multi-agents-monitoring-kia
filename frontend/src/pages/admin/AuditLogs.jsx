@@ -187,6 +187,7 @@ export default function AuditLogs() {
         { input: 0, output: 0, total: 0 }
       );
       const hasDeviation = grp.all_logs.some((l) => l.is_compliant === false);
+      const hasUnevaluated = grp.all_logs.some((l) => l.is_compliant === null || l.is_compliant === undefined);
 
       return {
         ...grp,
@@ -194,7 +195,9 @@ export default function AuditLogs() {
         totalTokens: tokenTotals.total,
         totalInputTokens: tokenTotals.input,
         totalOutputTokens: tokenTotals.output,
-        isCompliant: !hasDeviation,
+        isCompliant: !hasDeviation && !hasUnevaluated,
+        hasDeviation,
+        hasUnevaluated,
       };
     });
 
@@ -261,10 +264,16 @@ export default function AuditLogs() {
               className={`font-semibold ${
                 log.is_compliant === false
                   ? "text-rose-600 dark:text-rose-400"
-                  : "text-emerald-600 dark:text-emerald-400"
+                  : log.is_compliant === true
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+              {log.is_compliant === false
+                ? "Deviasi SOP"
+                : log.is_compliant === true
+                ? "Memenuhi SOP"
+                : "Tidak dievaluasi"}
             </span>
             <span> &bull; {dur} ms &bull; {tok.total} token</span>
           </div>
@@ -368,10 +377,16 @@ export default function AuditLogs() {
               className={`font-semibold ${
                 log.is_compliant === false
                   ? "text-rose-600 dark:text-rose-400"
-                  : "text-emerald-600 dark:text-emerald-400"
+                  : log.is_compliant === true
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+              {log.is_compliant === false
+                ? "Deviasi SOP"
+                : log.is_compliant === true
+                ? "Memenuhi SOP"
+                : "Tidak dievaluasi"}
             </span>
             <span> &bull; {dur} ms &bull; {tok.total} token</span>
           </div>
@@ -408,26 +423,69 @@ export default function AuditLogs() {
                     : Array.isArray(cit.supporting_chunk_ids) && cit.supporting_chunk_ids.length > 0
                     ? cit.supporting_chunk_ids.join(", ")
                     : rec.chunk_id || cit.chunk_id || "-";
+                const evStatus = rec.evidence_status || (chunkIds !== "-" ? "CHUNK_DOKUMEN" : rec.reasoning_mode === "ATURAN_SISTEM" ? "ATURAN_SISTEM" : "TANPA_KUTIPAN");
+                const evLabel =
+                  evStatus === "ATURAN_SISTEM"
+                    ? "Aturan sistem (ATURAN_SISTEM)"
+                    : evStatus === "CHUNK_DOKUMEN" || evStatus === "RINGKASAN_TERKURASI"
+                    ? `Butir dari rujukan (${evStatus})`
+                    : `Tanpa kutipan (${evStatus})`;
+                const aiDet = rec.ai_insight_details;
 
                 return (
-                  <div key={i} className="p-3.5 bg-subtle/40 space-y-1.5 text-xs">
-                    <p className="font-semibold text-heading">
-                      {i + 1}. {rec.title || "Rekomendasi Tindak Lanjut"}
-                    </p>
+                  <div key={i} className="p-3.5 bg-subtle/40 space-y-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-heading">
+                        {i + 1}. {rec.title || "Rekomendasi Tindak Lanjut"}
+                      </p>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                          evStatus === "ATURAN_SISTEM"
+                            ? "bg-card text-caption border-line"
+                            : chunkIds !== "-"
+                            ? "bg-sky-50 dark:bg-sky-950/30 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                            : "bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                        }`}
+                      >
+                        {evLabel}
+                      </span>
+                    </div>
                     <p className="text-caption">
-                      Sumber: <strong className="text-body">{String(src).replace(/\.md$/i, "")}</strong>
+                      Sumber: <strong className="text-body">{String(src).replace(/\.(pdf|md)$/i, "")}</strong>
                       {" • "}Halaman: <strong className="text-body">{pages}</strong>
                       {" • "}Bagian: <strong className="text-body">{sections}</strong>
                       {chunkIds !== "-" && (
                         <>
-                          {" • "}ID Chunk: <strong className="text-body">{chunkIds}</strong>
+                          {" • "}ID Chunk: <strong className="text-body font-mono">{chunkIds}</strong>
                         </>
                       )}
                     </p>
                     {rec.evidence_quote && (
-                      <p className="text-body italic pt-1">
-                        Kutipan: &ldquo;{rec.evidence_quote}&rdquo;
+                      <p className="text-body italic pt-0.5">
+                        Kutipan rujukan: &ldquo;{rec.evidence_quote}&rdquo;
                       </p>
+                    )}
+                    {(aiDet || rec.ai_insight) && (
+                      <div className="p-2.5 rounded-md bg-card border border-line space-y-1">
+                        <p className="font-semibold text-amber-800 dark:text-amber-300">
+                          Tambahan Analisis AI{aiDet?.chunk_id ? ` • Chunk ${aiDet.chunk_id}` : ""}
+                        </p>
+                        {aiDet?.source && (
+                          <p className="text-caption">
+                            Basis Pedoman AI: <strong className="text-body">{String(aiDet.source).replace(/\.(pdf|md)$/i, "")}</strong>
+                            {aiDet.section ? ` • Bagian ${aiDet.section}` : ""}
+                            {aiDet.page ? ` • Hal. ${aiDet.page}` : ""}
+                          </p>
+                        )}
+                        <p className="text-body">
+                          {aiDet?.condition_explanation || rec.ai_insight}
+                        </p>
+                        {aiDet?.supporting_sentence && (
+                          <p className="text-caption italic">
+                            Kutipan dasar AI: &ldquo;{aiDet.supporting_sentence}&rdquo;
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -474,10 +532,16 @@ export default function AuditLogs() {
               className={`font-semibold ${
                 log.is_compliant === false
                   ? "text-rose-600 dark:text-rose-400"
-                  : "text-emerald-600 dark:text-emerald-400"
+                  : log.is_compliant === true
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              {log.is_compliant === false ? "Deviasi SOP" : "Memenuhi SOP"}
+              {log.is_compliant === false
+                ? "Deviasi SOP"
+                : log.is_compliant === true
+                ? "Memenuhi SOP"
+                : "Tidak dievaluasi"}
             </span>
             <span> &bull; Skor Grounding: {groundingPct}% &bull; {dur} ms &bull; {tok.total} token</span>
           </div>
@@ -705,13 +769,17 @@ export default function AuditLogs() {
                       </td>
 
                       <td className="py-4 px-5 whitespace-nowrap text-xs font-semibold">
-                        {grp.isCompliant ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            Memenuhi SOP
-                          </span>
-                        ) : (
+                        {grp.hasDeviation ? (
                           <span className="text-rose-600 dark:text-rose-400">
                             Deviasi SOP
+                          </span>
+                        ) : grp.hasUnevaluated ? (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            Tidak dievaluasi
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            Memenuhi SOP
                           </span>
                         )}
                       </td>

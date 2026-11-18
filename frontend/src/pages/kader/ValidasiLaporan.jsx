@@ -147,7 +147,7 @@ const humanRisk = (flag) => {
 };
 
 const cleanCitation = (source) => {
-  if (!source) return "Tanpa sumber dokumen";
+  if (!source) return "Panduan Pemantauan 1.000 HPK Posyandu";
   const s = String(source);
   if (s.includes("Buku_KIA") || s.toLowerCase().includes("buku_kia")) {
     return "Buku KIA 2024 (Kemenkes RI)";
@@ -158,10 +158,148 @@ const cleanCitation = (source) => {
   if (s.includes("Posyandu") || s.toLowerCase().includes("posyandu")) {
     return "Petunjuk Teknis Posyandu Integrasi Layanan Primer (ILP)";
   }
-  return s.replace(/\.pdf$/i, "").replace(/[_\(\)]/g, " ").trim();
+  return s.replace(/\.(pdf|md)$/i, "").replace(/[_\(\)]/g, " ").trim();
 };
 
-const pageLabel = (page) => (page && page !== "-" ? `Halaman PDF ${page}` : null);
+const humanCategory = (cat) => {
+  const map = {
+    GIZI: "Gizi & MP-ASI",
+    GIZI_MATERNAL: "Gizi Ibu Hamil",
+    MEDIS: "Tindak Lanjut Medis",
+    NEONATAL: "Perawatan Bayi Baru Lahir",
+    RUJUKAN: "Rujukan Puskesmas",
+    EDUKASI: "Edukasi Keluarga",
+    KELULUSAN_1000_HPK: "Evaluasi 1.000 HPK",
+  };
+  return map[cat] || (cat ? cat.replace(/_/g, " ") : "Gizi & Klinis KIA");
+};
+
+const pageLabel = (page) => (page && page !== "-" ? `Halaman ${page}` : null);
+
+/* Panel interaktif Tambahan Analisis AI berbasis Buku KIA / PNPK */
+const AiCounselingPanel = ({ rec }) => {
+  const details = rec?.ai_insight_details;
+  const hasDetails =
+    details &&
+    (details.condition_explanation || details.practical_tips || details.counseling_script);
+  const hasAnyAi = hasDetails || Boolean(rec?.ai_insight);
+
+  const tabs = [];
+  if (details?.condition_explanation || rec?.ai_insight) {
+    tabs.push({
+      id: "kondisi",
+      label: "Penjelasan Kondisi",
+      content: details?.condition_explanation || rec?.ai_insight,
+    });
+  }
+  if (details?.practical_tips) {
+    tabs.push({
+      id: "tips",
+      label: "Tips Kendala & Pangan Lokal",
+      content: details.practical_tips,
+    });
+  }
+  if (details?.counseling_script) {
+    tabs.push({
+      id: "edukasi",
+      label: "Contoh Ucapan ke Ibu",
+      content: details.counseling_script,
+      isScript: true,
+    });
+  }
+
+  const [activeTab, setActiveTab] = useState(tabs[0]?.id || "kondisi");
+  const [showExcerpt, setShowExcerpt] = useState(false);
+
+  if (!hasAnyAi || tabs.length === 0) return null;
+
+  const currentTab = tabs.find((t) => t.id === activeTab) || tabs[0];
+  const srcRaw = details?.source || (rec?.citation?.chunk_id ? rec?.citation?.source : null);
+  const secRaw = details?.section || (rec?.citation?.chunk_id ? rec?.citation?.section : null);
+  const pgRaw = details?.page || (rec?.citation?.chunk_id ? rec?.citation?.page : null);
+  const excerptRaw = details?.supporting_sentence || rec?.ai_insight_basis || (rec?.citation?.chunk_id ? rec?.evidence_quote : null);
+
+  return (
+    <div className="rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
+          <h5 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
+            Tambahan Analisis AI (Pendampingan Kader)
+          </h5>
+        </div>
+        {srcRaw && (
+          <span className="text-[11px] font-medium text-amber-900/90 dark:text-amber-300">
+            Basis: {cleanCitation(srcRaw)}
+            {pgRaw && pgRaw !== "-" ? ` • Hal. ${pgRaw}` : ""}
+          </span>
+        )}
+      </div>
+
+      {tabs.length > 1 && (
+        <div role="tablist" aria-label="Detail tambahan analisis AI" className="flex flex-wrap gap-1.5 border-b border-amber-200/80 dark:border-amber-800/60 pb-2">
+          {tabs.map((tab) => {
+            const isActive = currentTab.id === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`no-print cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  isActive
+                    ? "bg-amber-700 text-white dark:bg-amber-600 dark:text-slate-950"
+                    : "bg-card text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100/70 dark:hover:bg-amber-900/30"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="text-xs sm:text-sm text-heading leading-relaxed">
+        {currentTab.isScript ? (
+          <blockquote className="pl-3 border-l-2 border-amber-600 italic text-body">
+            &ldquo;{currentTab.content}&rdquo;
+          </blockquote>
+        ) : (
+          <p>{currentTab.content}</p>
+        )}
+      </div>
+
+      {(srcRaw || excerptRaw) && (
+        <div className="pt-2 border-t border-amber-200/70 dark:border-amber-800/50 space-y-1.5 text-[11px] text-amber-950/85 dark:text-amber-200/90">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              <strong>Sumber Pedoman:</strong>{" "}
+              {srcRaw ? cleanCitation(srcRaw) : "Parameter klinis pasien"}
+              {secRaw && secRaw !== "-" ? ` • Bagian ${secRaw}` : ""}
+              {pgRaw && pgRaw !== "-" ? ` • Halaman ${pgRaw}` : ""}
+            </span>
+            {excerptRaw && (
+              <button
+                type="button"
+                onClick={() => setShowExcerpt((v) => !v)}
+                aria-expanded={showExcerpt}
+                className="no-print cursor-pointer font-semibold underline hover:text-amber-700 dark:hover:text-amber-100"
+              >
+                {showExcerpt ? "Sembunyikan kutipan" : "Lihat kutipan pedoman"}
+              </button>
+            )}
+          </div>
+          {showExcerpt && excerptRaw && (
+            <p className="p-2.5 rounded-lg bg-card border border-amber-200 dark:border-amber-800/60 italic text-body leading-relaxed">
+              &ldquo;{excerptRaw}&rdquo;
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Kutipan dokumen dipisahkan dari teks AI. Hanya CHUNK_DOKUMEN yang ditampilkan sebagai kutipan asli buku.
 const EVIDENCE_LABELS = {
@@ -206,6 +344,7 @@ const ValidasiLaporan = () => {
   const [detailModal, setDetailModal] = useState(null);
   const [checkedSteps, setCheckedSteps] = useState({});
   const [expandedReferences, setExpandedReferences] = useState({});
+  const [showRefSummary, setShowRefSummary] = useState(false);
 
   const toggleStep = (recIdx, stepIdx) => {
     setCheckedSteps(prev => ({
@@ -1058,113 +1197,129 @@ const ValidasiLaporan = () => {
               <div className="space-y-4">
                 {recommendations.map((rec, idx) => {
                   const isChecked = !!checkedSteps[`rec-${idx}`];
+                  const pageStr = Array.isArray(rec.citation?.additional_pages) && rec.citation.additional_pages.length > 0
+                    ? `Halaman ${rec.citation.additional_pages.join(", ")}`
+                    : pageLabel(rec.citation?.page);
+                  const secStr = Array.isArray(rec.citation?.additional_sections) && rec.citation.additional_sections.length > 0
+                    ? rec.citation.additional_sections.join("; ")
+                    : rec.citation?.section;
+                  const hasDocCitation = Boolean(rec.citation?.source);
+
                   return (
                     <div
                       key={idx}
-                      className="bg-card border border-line rounded-xl p-5 space-y-3.5 shadow-2xs hover:border-slate-400 transition-colors break-inside-avoid"
+                      className="bg-card border border-line rounded-xl p-5 space-y-4 break-inside-avoid"
                     >
-                      {/* Baris Judul & Kategori */}
-                      <div className="flex items-center justify-between gap-2 border-b border-line-light pb-2">
-                        <div className="flex items-center gap-2.5">
+                      {/* Header Ringkas */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-light pb-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <span className="w-6 h-6 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
-                          <h4 className="text-sm sm:text-base font-bold text-heading">
+                          <h4 className="text-sm sm:text-base font-bold text-heading leading-snug">
                             {rec.title}
                           </h4>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-subtle text-caption border border-line">
-                            {rec.category || "Gizi & Klinis KIA"}
-                          </span>
-                        </div>
+                        <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-subtle text-body border border-line shrink-0">
+                          {humanCategory(rec.category)}
+                        </span>
                       </div>
 
-                      {/* Analisis Kondisi & Arahan Klinis */}
+                      {/* Arahan Utama */}
                       <p className="text-sm text-heading leading-relaxed">
                         {rec.recommendation_text}
                       </p>
 
-                      {/* Evaluasi Perkembangan Antar Kunjungan */}
+                      {/* Evaluasi Perkembangan Kunjungan */}
                       {rec.longitudinal_progress && (
-                        <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                        <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg text-xs text-emerald-950 dark:text-emerald-200 leading-relaxed">
                           <strong className="font-bold text-emerald-800 dark:text-emerald-300">Perkembangan Kunjungan: </strong>
                           {rec.longitudinal_progress}
                         </div>
                       )}
 
-                      {/* Panduan Gizi, Susu & Stimulasi Langsung di Kartu */}
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {rec.food_guide && (
-                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-heading">
-                              <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                              <span>Panduan Makanan, Tekstur & Porsi Lokal:</span>
+                      {/* 3 Panduan Inti Gizi & Perawatan */}
+                      {(rec.food_guide || rec.milk_and_supplements || rec.activity_and_stimulation) && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          {rec.food_guide && (
+                            <div className="p-3.5 rounded-lg bg-subtle/60 border border-line-light space-y-1.5">
+                              <div className="flex items-center gap-1.5 font-bold text-heading">
+                                <Utensils className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                                <span>Makanan &amp; Porsi</span>
+                              </div>
+                              <p className="text-body leading-relaxed">{rec.food_guide}</p>
                             </div>
-                            <p className="text-body pl-5 leading-relaxed">{rec.food_guide}</p>
-                          </div>
-                        )}
-
-                        {rec.milk_and_supplements && (
-                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-heading">
-                              <Baby className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                              <span>Panduan ASI, Susu & Suplementasi Medis:</span>
+                          )}
+                          {rec.milk_and_supplements && (
+                            <div className="p-3.5 rounded-lg bg-subtle/60 border border-line-light space-y-1.5">
+                              <div className="flex items-center gap-1.5 font-bold text-heading">
+                                <Droplets className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" aria-hidden="true" />
+                                <span>ASI, Susu &amp; Suplemen</span>
+                              </div>
+                              <p className="text-body leading-relaxed">{rec.milk_and_supplements}</p>
                             </div>
-                            <p className="text-body pl-5 leading-relaxed">{rec.milk_and_supplements}</p>
-                          </div>
-                        )}
-
-                        {rec.activity_and_stimulation && (
-                          <div className="p-3 bg-subtle rounded-lg border border-line text-xs space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-heading">
-                              <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span>Aktivitas Fisik & Stimulasi Harian:</span>
+                          )}
+                          {rec.activity_and_stimulation && (
+                            <div className="p-3.5 rounded-lg bg-subtle/60 border border-line-light space-y-1.5">
+                              <div className="flex items-center gap-1.5 font-bold text-heading">
+                                <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                                <span>Aktivitas &amp; Stimulasi</span>
+                              </div>
+                              <p className="text-body leading-relaxed">{rec.activity_and_stimulation}</p>
                             </div>
-                            <p className="text-body pl-5 leading-relaxed">{rec.activity_and_stimulation}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Narasi Tambahan Kontekstual Pendampingan Keluarga */}
-                      {rec.ai_insight && (
-                        <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 rounded-lg text-xs text-body leading-relaxed">
-                          <strong className="font-bold text-sky-800 dark:text-sky-300">Catatan & Tips Pendampingan Keluarga: </strong>
-                          {rec.ai_insight}
+                          )}
                         </div>
                       )}
 
-                      {/* Langkah Tindakan Praktis */}
+                      {/* Checklist Langkah Pendampingan Kader & Keluarga */}
                       {Array.isArray(rec.action_steps) && rec.action_steps.length > 0 && (
-                        <div className="p-3 bg-card rounded-lg border border-line text-xs space-y-1.5">
-                          <strong className="block font-bold text-heading">
-                            Langkah Tindakan Kader & Keluarga:
-                          </strong>
-                          <ol className="list-decimal pl-5 space-y-1 text-body leading-relaxed">
-                            {rec.action_steps.map((st, sIdx) => (
-                              <li key={sIdx}>{st}</li>
-                            ))}
-                          </ol>
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-heading flex items-center gap-1.5">
+                            <ClipboardList className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                            <span>Langkah Tindakan Kader &amp; Keluarga</span>
+                          </p>
+                          <div className="divide-y divide-line-light border border-line rounded-lg overflow-hidden bg-card">
+                            {rec.action_steps.map((stepTxt, sIdx) => {
+                              const stepDone = !!checkedSteps[`${idx}-${sIdx}`];
+                              return (
+                                <button
+                                  key={sIdx}
+                                  type="button"
+                                  onClick={() => toggleStep(idx, sIdx)}
+                                  className="w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 text-xs hover:bg-subtle/70 transition-colors cursor-pointer"
+                                >
+                                  <span
+                                    className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                      stepDone
+                                        ? "bg-emerald-600 border-emerald-600 text-white"
+                                        : "border-slate-300 dark:border-slate-600 bg-card"
+                                    }`}
+                                  >
+                                    {stepDone && <CheckCircle2 className="w-3 h-3" />}
+                                  </span>
+                                  <span className={`leading-relaxed ${stepDone ? "line-through text-dim" : "text-body"}`}>
+                                    <strong className="text-heading mr-1">{sIdx + 1}.</strong>
+                                    {stepTxt}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
-                      {/* Baris Rujukan Ringkas (Hanya Nama Dokumen, Bagian, dan Halaman) & Tombol Tandai Edukasi */}
-                      <div className="pt-2.5 border-t border-line-light flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      {/* Panel Interaktif Tambahan Analisis AI */}
+                      <AiCounselingPanel rec={rec} />
+
+                      {/* Footer Ringkas: Rujukan & Tandai Selesai Edukasi */}
+                      <div className="pt-3 border-t border-line-light flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                         <div className="flex items-start gap-2 text-xs text-caption">
-                          <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                          <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" aria-hidden="true" />
                           <span>
-                            <strong className="text-heading">Rujukan Pedoman:</strong>{" "}
-                            {cleanCitation(rec.citation?.source)}
-                            {(rec.citation?.additional_sections?.length
-                              ? ` • Bagian ${rec.citation.additional_sections.join("; ")}`
-                              : rec.citation?.section
-                                ? ` • Bagian ${rec.citation.section}`
-                                : "")}
-                            {(rec.citation?.additional_pages?.length
-                              ? ` • Halaman ${rec.citation.additional_pages.join(", ")}`
-                              : rec.citation?.page && rec.citation.page !== "-"
-                                ? ` • Halaman ${rec.citation.page}`
-                                : "")}
+                            <strong className="text-heading">Rujukan:</strong>{" "}
+                            {hasDocCitation ? cleanCitation(rec.citation.source) : "Panduan Pemantauan 1.000 HPK Posyandu"}
+                            {hasDocCitation && secStr && secStr !== "-" ? ` • Bagian ${secStr}` : ""}
+                            {hasDocCitation && pageStr ? ` • ${pageStr}` : ""}
                           </span>
                         </div>
 
@@ -1193,208 +1348,309 @@ const ValidasiLaporan = () => {
               </div>
             )}
 
-            {/* Sub-Bab: 4 Pilar Tumbuh Kembang (Harian) */}
+            {/* Sub-Bab: Panduan Harian & Rujukan Cepat 1.000 HPK (tidak menduplikasi kartu rekomendasi) */}
             {carePlan && carePlan.food_and_nutrition && (
-              <div className="border-t-2 border-line pt-6 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-line-light pb-2">
-                  <h4 className="text-sm font-bold uppercase tracking-wider text-heading">
-                    Panduan Pola Asuh 4 Pilar (1.000 HPK)
+              <div className="border-t border-line pt-5 space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <h4 className="text-sm font-bold text-heading">
+                    {recommendations.length > 0
+                      ? "Jadwal Menu Harian & Kewaspadaan Tanda Bahaya"
+                      : "Panduan Pola Asuh 4 Pilar (1.000 HPK)"}
                   </h4>
                   <span className="text-xs text-caption">
-                    Disesuaikan untuk: <strong>{carePlan.age_or_trimester_label}</strong>
+                    Untuk fase: <strong>{carePlan.age_or_trimester_label}</strong>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Pilar 1: Gizi & Makanan */}
-                  <div
-                    onClick={() =>
-                      setDetailModal({
-                        type: "care_food",
-                        badge: "Panduan Gizi & Menu Harian",
-                        title: carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title,
-                        data: carePlan.food_and_nutrition,
-                      })
-                    }
-                    className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-xs font-bold text-heading">1. Gizi & Porsi MP-ASI</span>
-                      </div>
-                      <p className="text-xs text-body leading-relaxed">
-                        Tekstur: <strong>{carePlan.food_and_nutrition.texture_and_consistency || carePlan.food_and_nutrition.stage_and_texture || "Padat Bergizi"}</strong> &bull; {carePlan.food_and_nutrition.frequency_and_portion}
-                      </p>
+                {recommendations.length > 0 ? (
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailModal({
+                            type: "care_food",
+                            badge: "Panduan Gizi & Menu Harian",
+                            title: carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title,
+                            data: carePlan.food_and_nutrition,
+                          })
+                        }
+                        className="text-left cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2 hover:border-slate-400 transition-colors"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                            <span className="text-xs font-bold text-heading">Jadwal 5 Waktu Makan &amp; Resep Lokal</span>
+                          </div>
+                          <p className="text-xs text-body leading-relaxed line-clamp-2">
+                            Tekstur: {carePlan.food_and_nutrition.texture_and_consistency || carePlan.food_and_nutrition.stage_and_texture || "Padat Bergizi"} &bull; {carePlan.food_and_nutrition.frequency_and_portion}
+                          </p>
+                        </div>
+                        <span className="no-print text-[11px] font-semibold text-sky-700 dark:text-sky-400 flex items-center justify-between pt-1.5 border-t border-line-light w-full">
+                          <span>Buka contoh jadwal menu harian</span>
+                          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      </button>
+
+                      {Array.isArray(carePlan.danger_signs) && carePlan.danger_signs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDetailModal({
+                              type: "care_danger",
+                              badge: "Protokol Rujukan Puskesmas",
+                              title: "Tanda Bahaya Klinis & Syarat Rujukan Puskesmas Segera",
+                              data: carePlan.danger_signs,
+                            })
+                          }
+                          className="text-left cursor-pointer p-4 bg-card border border-rose-300 dark:border-rose-900/60 rounded-xl flex flex-col justify-between gap-2 hover:border-rose-500 transition-colors"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" aria-hidden="true" />
+                              <span className="text-xs font-bold text-rose-700 dark:text-rose-300">Tanda Bahaya (Segera Rujuk Puskesmas)</span>
+                            </div>
+                            <p className="text-xs text-rose-700 dark:text-rose-300 line-clamp-2">
+                              {carePlan.danger_signs.slice(0, 2).join(" • ")}
+                            </p>
+                          </div>
+                          <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1.5 border-t border-rose-100 dark:border-rose-900/40 w-full">
+                            <span>Lihat {carePlan.danger_signs.length} tanda bahaya</span>
+                            <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                          </span>
+                        </button>
+                      )}
                     </div>
-                    <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
-                      <span>Lihat 5 jadwal makan & resep</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
+
+                    <div className="no-print flex flex-wrap gap-2 text-xs">
+                      {carePlan.milk_and_supplements && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDetailModal({
+                              type: "care_milk",
+                              badge: "Pemberian Susu & Nutrisi Medis",
+                              title: carePlan.milk_and_supplements.title || carePlan.milk_and_supplements.headline,
+                              data: carePlan.milk_and_supplements,
+                            })
+                          }
+                          className="cursor-pointer px-3 py-1.5 rounded-lg bg-subtle hover:bg-muted border border-line text-body font-medium transition-colors"
+                        >
+                          Lihat aturan lengkap ASI/Susu &amp; Suplemen
+                        </button>
+                      )}
+                      {carePlan.activity_and_stimulation && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDetailModal({
+                              type: "care_activity",
+                              badge: "Stimulasi Perkembangan",
+                              title: carePlan.activity_and_stimulation.title || carePlan.activity_and_stimulation.headline,
+                              data: carePlan.activity_and_stimulation,
+                            })
+                          }
+                          className="cursor-pointer px-3 py-1.5 rounded-lg bg-subtle hover:bg-muted border border-line text-body font-medium transition-colors"
+                        >
+                          Lihat panduan stimulasi &amp; tidur sesuai usia
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Pilar 2: ASI & Nutrisi Medis */}
-                  {carePlan.milk_and_supplements && (
-                    <div
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <button
+                      type="button"
                       onClick={() =>
                         setDetailModal({
-                          type: "care_milk",
-                          badge: "Pemberian Susu & Nutrisi Medis",
-                          title: carePlan.milk_and_supplements.title,
-                          data: carePlan.milk_and_supplements,
+                          type: "care_food",
+                          badge: "Panduan Gizi & Menu Harian",
+                          title: carePlan.food_and_nutrition.headline || carePlan.food_and_nutrition.title,
+                          data: carePlan.food_and_nutrition,
                         })
                       }
-                      className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                      className="text-left cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <Baby className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                          <span className="text-xs font-bold text-heading">2. ASI & Nutrisi Medis</span>
+                          <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                          <span className="text-xs font-bold text-heading">1. Gizi &amp; Porsi MP-ASI</span>
                         </div>
                         <p className="text-xs text-body leading-relaxed">
-                          {carePlan.milk_and_supplements.primary_source || carePlan.milk_and_supplements.recommended_type || "ASI Eksklusif / Lanjutan"}
+                          Tekstur: <strong>{carePlan.food_and_nutrition.texture_and_consistency || carePlan.food_and_nutrition.stage_and_texture || "Padat Bergizi"}</strong> &bull; {carePlan.food_and_nutrition.frequency_and_portion}
                         </p>
                       </div>
-                      <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
-                        <span>Lihat aturan suplementasi</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                      <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light w-full">
+                        <span>Lihat 5 jadwal makan &amp; resep</span>
+                        <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                       </span>
-                    </div>
-                  )}
+                    </button>
 
-                  {/* Pilar 3: Stimulasi Motorik */}
-                  {carePlan.activity_and_stimulation && (
-                    <div
-                      onClick={() =>
-                        setDetailModal({
-                          type: "care_activity",
-                          badge: "Stimulasi Perkembangan",
-                          title: carePlan.activity_and_stimulation.title,
-                          data: carePlan.activity_and_stimulation,
-                        })
-                      }
-                      className="group cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          <span className="text-xs font-bold text-heading">3. Stimulasi & Motorik</span>
+                    {carePlan.milk_and_supplements && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailModal({
+                            type: "care_milk",
+                            badge: "Pemberian Susu & Nutrisi Medis",
+                            title: carePlan.milk_and_supplements.title || carePlan.milk_and_supplements.headline,
+                            data: carePlan.milk_and_supplements,
+                          })
+                        }
+                        className="text-left cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Baby className="w-4 h-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                            <span className="text-xs font-bold text-heading">2. ASI &amp; Nutrisi Medis</span>
+                          </div>
+                          <p className="text-xs text-body leading-relaxed">
+                            {carePlan.milk_and_supplements.primary_source || carePlan.milk_and_supplements.recommended_type || "ASI Eksklusif / Lanjutan"}
+                          </p>
                         </div>
-                        <p className="text-xs text-body leading-relaxed">
-                          Target: <strong>{carePlan.activity_and_stimulation.milestones_target || carePlan.activity_and_stimulation.focus_area || "Perkembangan Usia"}</strong>
-                        </p>
-                      </div>
-                      <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light">
-                        <span>Lihat panduan stimulasi</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  )}
+                        <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light w-full">
+                          <span>Lihat aturan suplementasi</span>
+                          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      </button>
+                    )}
 
-                  {/* Pilar 4: Tanda Bahaya Rujukan */}
-                  {Array.isArray(carePlan.danger_signs) && carePlan.danger_signs.length > 0 && (
-                    <div
-                      onClick={() =>
-                        setDetailModal({
-                          type: "care_danger",
-                          badge: "Protokol Rujukan Puskesmas",
-                          title: "Tanda Bahaya Klinis & Syarat Rujukan Puskesmas Segera",
-                          data: carePlan.danger_signs,
-                        })
-                      }
-                      className="group cursor-pointer p-4 bg-card border-2 border-rose-200 dark:border-rose-900/60 rounded-xl flex flex-col justify-between gap-2.5 hover:border-rose-400 transition-colors"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">4. Segera Rujuk Jika:</span>
+                    {carePlan.activity_and_stimulation && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailModal({
+                            type: "care_activity",
+                            badge: "Stimulasi Perkembangan",
+                            title: carePlan.activity_and_stimulation.title || carePlan.activity_and_stimulation.headline,
+                            data: carePlan.activity_and_stimulation,
+                          })
+                        }
+                        className="text-left cursor-pointer p-4 bg-card border border-line rounded-xl flex flex-col justify-between gap-2.5 hover:border-slate-400 transition-colors"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                            <span className="text-xs font-bold text-heading">3. Stimulasi &amp; Motorik</span>
+                          </div>
+                          <p className="text-xs text-body leading-relaxed">
+                            Target: <strong>{carePlan.activity_and_stimulation.milestones_target || carePlan.activity_and_stimulation.focus_area || "Perkembangan Usia"}</strong>
+                          </p>
                         </div>
-                        <p className="text-xs text-rose-700 dark:text-rose-300 font-medium line-clamp-2">
-                          {carePlan.danger_signs.slice(0, 2).join(" • ")}
-                        </p>
-                      </div>
-                      <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1 border-t border-rose-100 dark:border-rose-900/40">
-                        <span>Lihat ({carePlan.danger_signs.length}) tanda bahaya</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  )}
-                </div>
+                        <span className="no-print text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center justify-between pt-1 border-t border-line-light w-full">
+                          <span>Lihat panduan stimulasi</span>
+                          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      </button>
+                    )}
+
+                    {Array.isArray(carePlan.danger_signs) && carePlan.danger_signs.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailModal({
+                            type: "care_danger",
+                            badge: "Protokol Rujukan Puskesmas",
+                            title: "Tanda Bahaya Klinis & Syarat Rujukan Puskesmas Segera",
+                            data: carePlan.danger_signs,
+                          })
+                        }
+                        className="text-left cursor-pointer p-4 bg-card border-2 border-rose-200 dark:border-rose-900/60 rounded-xl flex flex-col justify-between gap-2.5 hover:border-rose-400 transition-colors"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" aria-hidden="true" />
+                            <span className="text-xs font-bold text-rose-700 dark:text-rose-300">4. Segera Rujuk Jika:</span>
+                          </div>
+                          <p className="text-xs text-rose-700 dark:text-rose-300 font-medium line-clamp-2">
+                            {carePlan.danger_signs.slice(0, 2).join(" • ")}
+                          </p>
+                        </div>
+                        <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1 border-t border-rose-100 dark:border-rose-900/40 w-full">
+                          <span>Lihat ({carePlan.danger_signs.length}) tanda bahaya</span>
+                          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </section>
 
-          {/* ═══ BAGIAN III: DAFTAR RUJUKAN PEDOMAN RESMI KEMENKES RI ═══ */}
+          {/* ═══ BAGIAN III: RINGKASAN RUJUKAN BUKU KIA & PNPK (RINGKAS & OPSIONAL) ═══ */}
           {verifications.length > 0 && (
-            <section className="no-print bg-card border border-line rounded-xl p-4 sm:p-5 space-y-4 shadow-xs break-inside-avoid">
-              <div className="border-b border-line pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="border-l-4 border-indigo-600 pl-3.5 py-0.5">
-                  <h3 className="text-base sm:text-lg font-bold text-heading">
-                    3. Daftar Rujukan Pedoman Resmi Kemenkes RI
-                  </h3>
-                  <p className="text-xs text-caption mt-0.5">
-                    Ringkasan dokumen, bagian pedoman, dan halaman rujukan Buku KIA 2024 & Pedoman Kemenkes RI
-                  </p>
+            <section className="no-print bg-card border border-line rounded-xl overflow-hidden break-inside-avoid">
+              <button
+                type="button"
+                onClick={() => setShowRefSummary((v) => !v)}
+                aria-expanded={showRefSummary}
+                className="w-full cursor-pointer px-4 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-subtle/60 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" aria-hidden="true" />
+                  <div>
+                    <h3 className="text-sm font-bold text-heading">
+                      Ringkasan Sumber Buku KIA 2024 &amp; PNPK Kemenkes ({verifications.length} rujukan)
+                    </h3>
+                    <p className="text-xs text-caption">
+                      Klik untuk melihat daftar buku, bagian, dan halaman rujukan dari setiap rekomendasi
+                    </p>
+                  </div>
                 </div>
-              </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-caption shrink-0 transition-transform ${showRefSummary ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
 
-              <div className="border border-line rounded-xl overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-subtle text-caption text-xs font-semibold border-b border-line uppercase tracking-wider">
-                    <tr>
-                      <th className="p-3 w-12 text-center">No</th>
-                      <th className="p-3">Topik Rekomendasi</th>
-                      <th className="p-3">Dokumen Rujukan</th>
-                      <th className="p-3">Bagian / Topik</th>
-                      <th className="p-3 text-center">Halaman</th>
-                      <th className="p-3 text-center">Status Rujukan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line-light">
-                    {verifications.map((v, i) => {
-                      const recMatch = recommendations[(v.recommendation_index || i + 1) - 1] || recommendations[i] || {};
-                      const sectionList = v.additional_sections || recMatch?.citation?.additional_sections;
-                      const pageList = v.additional_pages || recMatch?.citation?.additional_pages;
-                      const sectionName = Array.isArray(sectionList) && sectionList.length > 0
-                        ? sectionList.join("; ")
-                        : v.citation_section || recMatch?.citation?.section || "-";
-                      const pageName = Array.isArray(pageList) && pageList.length > 0
-                        ? pageList.join(", ")
-                        : v.citation_page || recMatch?.citation?.page || null;
-                      const isVerified = v.verification_status === "VERIFIED" || v.verification_status === "AUTO_GROUNDED_SECONDARY";
-                      return (
-                        <tr key={i} className="hover:bg-subtle transition-colors">
-                          <td className="p-3 text-center font-bold text-dim">
-                            {v.recommendation_index || i + 1}
-                          </td>
-                          <td className="p-3 font-semibold text-heading">
-                            {v.title}
-                          </td>
-                          <td className="p-3 text-body">
-                            {cleanCitation(v.citation_source)}
-                          </td>
-                          <td className="p-3 text-caption text-xs">
-                            {sectionName}
-                          </td>
-                          <td className="p-3 text-center text-caption font-medium">
-                            {pageName && pageName !== "-" ? `Hal. ${pageName}` : "-"}
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border ${
-                              isVerified
-                                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                                : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                            }`}>
-                              <CheckCircle2 className={`w-3.5 h-3.5 ${isVerified ? "text-emerald-500" : "text-amber-500"}`} />
-                              {isVerified ? "Sesuai Pedoman" : "Perlu Tinjauan Petugas"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {showRefSummary && (
+                <div className="border-t border-line overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm text-left">
+                    <thead className="bg-subtle text-caption text-xs font-semibold border-b border-line">
+                      <tr>
+                        <th className="p-3 w-10 text-center">No</th>
+                        <th className="p-3">Topik Rekomendasi</th>
+                        <th className="p-3">Dokumen Rujukan</th>
+                        <th className="p-3">Bagian / Topik</th>
+                        <th className="p-3 text-center">Halaman</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line-light">
+                      {verifications.map((v, i) => {
+                        const recMatch = recommendations[(v.recommendation_index || i + 1) - 1] || recommendations[i] || {};
+                        const sectionList = v.additional_sections || recMatch?.citation?.additional_sections;
+                        const pageList = v.additional_pages || recMatch?.citation?.additional_pages;
+                        const sectionName = Array.isArray(sectionList) && sectionList.length > 0
+                          ? sectionList.join("; ")
+                          : v.citation_section || recMatch?.citation?.section || "-";
+                        const pageName = Array.isArray(pageList) && pageList.length > 0
+                          ? pageList.join(", ")
+                          : v.citation_page || recMatch?.citation?.page || null;
+                        return (
+                          <tr key={i} className="hover:bg-subtle/50 transition-colors">
+                            <td className="p-3 text-center font-bold text-dim">
+                              {v.recommendation_index || i + 1}
+                            </td>
+                            <td className="p-3 font-semibold text-heading">
+                              {v.title}
+                            </td>
+                            <td className="p-3 text-body">
+                              {cleanCitation(v.citation_source)}
+                            </td>
+                            <td className="p-3 text-caption text-xs">
+                              {sectionName}
+                            </td>
+                            <td className="p-3 text-center text-caption font-medium">
+                              {pageName && pageName !== "-" ? `Hal. ${pageName}` : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           )}
 

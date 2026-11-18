@@ -756,11 +756,15 @@
             <strong>Perkembangan dari Kunjungan Sebelumnya:</strong> {{ rec.longitudinal_progress }}
           </div>
           {% endif %}
-          {% if rec.food_guide or rec.milk_and_supplements or rec.activity_and_stimulation or rec.ai_insight %}
+          {% set pages_str = (rec.citation.additional_pages | join(', ')) if (rec.citation and rec.citation.additional_pages) else (rec.citation.page if rec.citation else None) %}
+          {% set sections_str = (rec.citation.additional_sections | join('; ')) if (rec.citation and rec.citation.additional_sections) else (rec.citation.section if rec.citation else None) %}
+          {% set ai_det = rec.ai_insight_details if rec.ai_insight_details else none %}
+          {% set has_ai = (ai_det and (ai_det.condition_explanation or ai_det.practical_tips or ai_det.counseling_script)) or rec.ai_insight %}
+          {% if rec.food_guide or rec.milk_and_supplements or rec.activity_and_stimulation or rec.action_steps or has_ai %}
           <div class="rec-detail-grid">
             {% if rec.food_guide %}
             <div class="rec-detail-row">
-              <strong style="color: #0369a1;">Panduan Makanan, Tekstur &amp; Porsi Lokal:</strong> {{ rec.food_guide }}
+              <strong style="color: #0369a1;">Panduan Makanan, Tekstur &amp; Porsi:</strong> {{ rec.food_guide }}
             </div>
             {% endif %}
             {% if rec.milk_and_supplements %}
@@ -773,26 +777,47 @@
               <strong style="color: #0369a1;">Aktivitas Fisik &amp; Stimulasi Harian:</strong> {{ rec.activity_and_stimulation }}
             </div>
             {% endif %}
-            {% if rec.ai_insight %}
+            {% if rec.action_steps %}
             <div class="rec-detail-row">
-              <strong style="color: #047857;">Catatan &amp; Tips Pendampingan Keluarga:</strong> {{ rec.ai_insight }}
+              <strong style="color: #1e293b;">Langkah Praktis di Rumah &amp; Posyandu:</strong>
+              <ul class="action-steps-list" style="margin-top: 2px; margin-bottom: 2px;">
+                {% for step in rec.action_steps %}
+                <li>{{ step }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if has_ai %}
+            {% set ai_src = ai_det.source if (ai_det and ai_det.source) else (rec.citation.source if rec.citation else None) %}
+            {% set ai_sec = ai_det.section if (ai_det and ai_det.section) else sections_str %}
+            {% set ai_pg = ai_det.page if (ai_det and ai_det.page) else pages_str %}
+            <div class="rec-detail-row" style="border-top: 1px dashed #cbd5e1; padding-top: 5px; margin-top: 5px; background-color: #fffbeb; padding: 6px 8px; border-radius: 4px;">
+              <strong style="color: #92400e; display: block; margin-bottom: 3px;">Tambahan Penjelasan &amp; Tips Keluarga (Analisis AI):</strong>
+              {% if ai_det and (ai_det.condition_explanation or ai_det.practical_tips or ai_det.counseling_script) %}
+                {% if ai_det.condition_explanation %}
+                <div style="margin-bottom: 2px;"><strong>Mengapa Ini Penting:</strong> {{ ai_det.condition_explanation }}</div>
+                {% endif %}
+                {% if ai_det.practical_tips %}
+                <div style="margin-bottom: 2px;"><strong>Tips Praktis &amp; Pangan Lokal:</strong> {{ ai_det.practical_tips }}</div>
+                {% endif %}
+                {% if ai_det.counseling_script %}
+                <div style="margin-bottom: 2px;"><strong>Pesan Penguatan Keluarga:</strong> &ldquo;{{ ai_det.counseling_script }}&rdquo;</div>
+                {% endif %}
+              {% else %}
+                <div>{{ rec.ai_insight }}</div>
+              {% endif %}
+              {% if ai_src %}
+              <div style="font-size: 7.5pt; color: #78350f; margin-top: 3px;">
+                Referensi Pedoman: <strong>{{ ai_src | clean_citation }}</strong>{% if ai_sec and ai_sec != '-' %} &bull; Bagian {{ ai_sec }}{% endif %}{% if ai_pg and ai_pg != '-' %} &bull; Halaman {{ ai_pg }}{% endif %}
+              </div>
+              {% endif %}
             </div>
             {% endif %}
           </div>
           {% endif %}
-          {% if rec.action_steps %}
-          <div style="font-weight: 600; font-size: 8.5pt; color: #1e293b; margin-top: 4px;">Langkah Tindakan Kader &amp; Keluarga:</div>
-          <ul class="action-steps-list">
-            {% for step in rec.action_steps %}
-            <li>{{ step }}</li>
-            {% endfor %}
-          </ul>
-          {% endif %}
           {% if rec.citation and rec.citation.source %}
-          {% set pages_str = (rec.citation.additional_pages | join(', ')) if rec.citation.additional_pages else rec.citation.page %}
-          {% set sections_str = (rec.citation.additional_sections | join('; ')) if rec.citation.additional_sections else rec.citation.section %}
           <div class="citation-tag">
-            &bull; Rujukan Pedoman: <strong>{{ rec.citation.source | clean_citation }}</strong>{% if sections_str %} &bull; Bagian {{ sections_str }}{% endif %}{% if pages_str and pages_str != '-' %} &bull; Halaman {{ pages_str }}{% endif %}
+            &bull; Referensi: <strong>{{ rec.citation.source | clean_citation }}</strong>{% if sections_str and sections_str != '-' %} &bull; Bagian {{ sections_str }}{% endif %}{% if pages_str and pages_str != '-' %} &bull; Halaman {{ pages_str }}{% endif %}
           </div>
           {% endif %}
         </div>
@@ -840,13 +865,13 @@
         {% endif %}
       </div>
 
-      <!-- 2. ASI, Susu & Suplementasi Medis -->
-      {% if cp.milk_and_supplements %}
+      <!-- 2. ASI, Susu & Suplementasi Medis (tampil penuh bila tidak ada kartu rekomendasi yang sudah memuatnya) -->
+      {% if not report_data.recommendations and cp.milk_and_supplements %}
       <div class="care-plan-box">
         <div class="care-plan-header">2. {{ cp.milk_and_supplements.headline }}</div>
         {% if cp.milk_and_supplements.compliance_badge %}
         <div style="font-size: 8pt; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 4px 8px; border-radius: 4px; margin-bottom: 5px; font-weight: bold;">
-          🛡️ {{ cp.milk_and_supplements.compliance_badge }}
+          {{ cp.milk_and_supplements.compliance_badge }}
         </div>
         {% endif %}
         <p class="text-justified" style="font-size: 8.5pt; margin: 3px 0;">
@@ -866,7 +891,7 @@
       {% endif %}
 
       <!-- 3. Aktivitas Fisik, Stimulasi & Istirahat -->
-      {% if cp.activity_and_stimulation %}
+      {% if not report_data.recommendations and cp.activity_and_stimulation %}
       <div class="care-plan-box">
         <div class="care-plan-header">3. {{ cp.activity_and_stimulation.headline }}</div>
         <ul class="action-steps-list" style="margin-top: 3px;">
@@ -884,7 +909,7 @@
       {% if cp.danger_signs %}
       <div class="care-plan-box" style="background-color: #fef2f2; border-color: #fecaca;">
         <div class="care-plan-header" style="color: #991b1b; border-color: #fecaca;">
-          4. Kewaspadaan Tanda Bahaya (Segera Rujuk ke Puskesmas Airmadidi Bila Ditemukan)
+          {{ '2.' if report_data.recommendations else '4.' }} Kewaspadaan Tanda Bahaya (Segera Rujuk ke Puskesmas Airmadidi Bila Ditemukan)
         </div>
         <ul class="action-steps-list" style="color: #7f1d1d; margin-bottom: 0;">
           {% for ds in cp.danger_signs %}

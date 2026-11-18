@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     
     # Google Gemini
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_MODEL: str = "gemini-3.1-pro-preview"
     
     # KoboiLLM Gateway (OpenAI-compatible)
     KOBOILLM_API_KEY: Optional[str] = None

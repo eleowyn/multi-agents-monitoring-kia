@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 
 from app.multiagent.rag.vectorstore import get_or_create_collection, get_legacy_collection
-from app.multiagent.llm_utils import llm_available, is_koboillm
+from app.multiagent.llm_utils import gemini_embedding_available
 
 # Mode retrieval yang dicatat di setiap chunk agar transparan di laporan/audit
 RETRIEVAL_GEMINI = "GEMINI_EMBEDDING"
@@ -51,7 +51,7 @@ def retrieve_clinical_guidelines(
     where = {"category": category_filter} if category_filter else None
 
     collection = get_or_create_collection()
-    if not is_koboillm() and llm_available() and collection.count() > 0:
+    if gemini_embedding_available() and collection.count() > 0:
         try:
             from app.multiagent.rag.embeddings import embed_query
             args = {

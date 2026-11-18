@@ -800,18 +800,244 @@ def citation_from_chunk(
     }
 
 
+def _extract_verbatim_supporting_sentence(
+    chunk_content: str,
+    candidate_sentence: Optional[str],
+    rec_context: str = "",
+) -> str:
+    """
+    Mengambil kalimat pendukung APA ADANYA (verbatim substring) dari teks chunk.
+    - Jika chunk pendek (<= 160 karakter), kembalikan isi chunk utuh.
+    - Jika LLM menunjuk supporting_sentence yang benar-benar ada di dalam chunk,
+      ambil substring verbatim tersebut dari chunk.
+    - Jika tidak ada atau tidak cocok, pilih 1-2 kalimat berturut-turut di dalam chunk
+      yang paling relevan secara leksikal dengan isi rekomendasi.
+    """
+    import re as _re
+    raw_doc = (chunk_content or "").strip()
+    if not raw_doc:
+        return ""
+    if len(raw_doc) <= 160:
+        if candidate_sentence and len(candidate_sentence.strip()) >= 15 and candidate_sentence.strip() in raw_doc:
+            return candidate_sentence.strip()
+        return raw_doc
+
+    if candidate_sentence:
+        cand = candidate_sentence.strip().strip('"\'')
+        if len(cand) >= 20:
+            if cand in raw_doc:
+                return cand
+            # Cek kecocokan dengan normalisasi spasi/baris baru namun tetap ambil slice asli dari raw_doc
+            pattern = _re.escape(cand)
+            pattern = _re.sub(r"(\\\s)+", r"\\s+", pattern)
+            m = _re.search(pattern, raw_doc, flags=_re.IGNORECASE)
+            if m:
+                return raw_doc[m.start():m.end()].strip()
+
+    # Pecah chunk menjadi kalimat tanpa mengubah teks aslinya
+    spans = []
+    for m in _re.finditer(r"[^.!?\n]+(?:[.!?]+|\n|$)", raw_doc):
+        seg = m.group(0).strip()
+        if len(seg) >= 20:
+            spans.append((m.start(), m.end(), seg))
+    if not spans:
+        return raw_doc
+
+    words_fn = lambda t: {w for w in _re.findall(r"[a-zA-Z]{4,}", (t or "").lower())}
+    ctx_words = words_fn(rec_context)
+    if not ctx_words:
+        first_end = spans[min(1, len(spans) - 1)][1]
+        return raw_doc[spans[0][0]:first_end].strip()
+
+    best_score = -1.0
+    best_slice = raw_doc[spans[0][0]:spans[min(1, len(spans) - 1)][1]].strip()
+    for i in range(len(spans)):
+        # Uji 1 kalimat atau 2 kalimat berurutan (maks ~320 karakter)
+        for j in (i, min(i + 1, len(spans) - 1)):
+            s_start, s_end = spans[i][0], spans[j][1]
+            sub = raw_doc[s_start:s_end].strip()
+            if len(sub) > 360 and j > i:
+                continue
+            w = words_fn(sub)
+            overlap = len(w & ctx_words) / max(1, len(ctx_words))
+            if overlap > best_score:
+                best_score = overlap
+                best_slice = sub
+    return best_slice
+
+
+def _format_citation_short(cit: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(cit, dict) or not cit.get("source"):
+        return None
+    src = str(cit.get("source") or "").strip()
+    page = cit.get("page")
+    sec = cit.get("section")
+    parts = [src]
+    if sec and str(sec).strip() and str(sec).strip() != "-":
+        parts.append(str(sec).strip())
+    if page and str(page).strip() and str(page).strip() != "-":
+        parts.append(f"Halaman PDF {page}")
+    return ", ".join(parts)
+
+
+def _build_unified_items(
+    item: Dict[str, Any],
+    visit_data: Optional[Dict[str, Any]] = None,
+    risk_flags: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Menggabungkan butir rujukan (makanan, susu/suplemen, stimulasi, langkah tindakan)
+    dan tambahan analisis AI ke dalam satu daftar terstruktur beserta keterangan asalnya.
+    """
+    cit = item.get("citation") if isinstance(item.get("citation"), dict) else {}
+    chunk_id = cit.get("chunk_id")
+    ev_status = item.get("evidence_status") or ("CHUNK_DOKUMEN" if chunk_id else "ATURAN_SISTEM")
+    ref_source_type = "RUJUKAN" if (chunk_id and ev_status in ("CHUNK_DOKUMEN", "RINGKASAN_TERKURASI")) else "ATURAN_SISTEM"
+    quote = item.get("evidence_quote")
+    cit_label = _format_citation_short(cit)
+
+    unified: List[Dict[str, Any]] = []
+    field_defs = [
+        ("MAKANAN", "Panduan Makanan, Tekstur & Porsi", item.get("food_guide")),
+        ("SUSU_SUPLEMEN", "Panduan ASI, Susu & Suplementasi", item.get("milk_and_supplements")),
+        ("STIMULASI_AKTIVITAS", "Aktivitas Fisik & Stimulasi Harian", item.get("activity_and_stimulation")),
+    ]
+    for cat_code, label_str, val in field_defs:
+        if val and str(val).strip():
+            unified.append({
+                "category": cat_code,
+                "label": label_str,
+                "text": str(val).strip(),
+                "source_type": ref_source_type,
+                "chunk_id": chunk_id,
+                "basis_quote": quote,
+                "citation_label": cit_label,
+            })
+
+    for idx_s, step_txt in enumerate(item.get("action_steps") or [], start=1):
+        if step_txt and str(step_txt).strip():
+            unified.append({
+                "category": "LANGKAH_TINDAKAN",
+                "label": f"Langkah Tindakan {idx_s}",
+                "text": str(step_txt).strip(),
+                "source_type": ref_source_type,
+                "chunk_id": chunk_id,
+                "basis_quote": quote,
+                "citation_label": cit_label,
+            })
+
+    ai_text = item.get("ai_insight")
+    ai_details = item.get("ai_insight_details") if isinstance(item.get("ai_insight_details"), dict) else None
+    if (not ai_text or not str(ai_text).strip()) and ai_details:
+        parts = [
+            ai_details.get("condition_explanation"),
+            ai_details.get("practical_tips"),
+            f'Contoh edukasi kader: "{ai_details["counseling_script"]}"' if ai_details.get("counseling_script") else None,
+        ]
+        composed = " ".join(str(p).strip() for p in parts if p and str(p).strip())
+        if composed:
+            ai_text = composed
+            item["ai_insight"] = composed
+
+    if ai_text and str(ai_text).strip():
+        ai_cit_label = _format_citation_short(ai_details) if ai_details and ai_details.get("source") else None
+        basis = (
+            (ai_details.get("supporting_sentence") if ai_details else None)
+            or item.get("ai_insight_basis")
+        )
+        if not basis:
+            if quote:
+                basis = quote
+            elif risk_flags:
+                basis = "; ".join(
+                    str(f.get("detail") or f.get("flag") or "")
+                    for f in risk_flags[:2] if isinstance(f, dict)
+                )
+            elif visit_data:
+                basis = "Data pengukuran klinis kunjungan pasien"
+        item["ai_insight_basis"] = basis
+        unified.append({
+            "category": "ANALISIS_TAMBAHAN",
+            "label": "Tambahan analisis AI",
+            "text": str(ai_text).strip(),
+            "source_type": "ANALISIS_AI",
+            "chunk_id": (ai_details.get("chunk_id") if ai_details else None) or chunk_id,
+            "basis_quote": basis,
+            "citation_label": ai_cit_label or cit_label or "Data pemeriksaan klinis pasien",
+        })
+
+    return unified
+
+
+def _resolve_ai_insight_details(
+    item: Dict[str, Any],
+    primary_chunk: Optional[Dict[str, Any]],
+    chunks_by_id: Dict[str, Dict[str, Any]],
+) -> None:
+    """
+    Menautkan `ai_insight_details` secara deterministik ke metadata chunk Buku KIA / PNPK
+    yang benar-benar di-retrieve dari ChromaDB (sumber, bagian, halaman, kutipan verbatim).
+    """
+    raw_details = item.get("ai_insight_details")
+    if not isinstance(raw_details, dict):
+        item["ai_insight_details"] = None
+        return
+
+    cond = str(raw_details.get("condition_explanation") or "").strip() or None
+    tips = str(raw_details.get("practical_tips") or "").strip() or None
+    script = str(raw_details.get("counseling_script") or "").strip() or None
+    if not (cond or tips or script):
+        item["ai_insight_details"] = None
+        return
+
+    extra_cid = raw_details.get("chunk_id") or item.get("ai_insight_chunk_id")
+    extra_chunk = chunks_by_id.get(extra_cid) if extra_cid else None
+    if extra_chunk is None:
+        extra_chunk = primary_chunk
+
+    if extra_chunk:
+        ai_ctx = " ".join(p for p in (cond, tips, script) if p)
+        verbatim = _extract_verbatim_supporting_sentence(
+            extra_chunk.get("content", ""),
+            candidate_sentence=raw_details.get("supporting_sentence"),
+            rec_context=ai_ctx,
+        )
+        item["ai_insight_details"] = {
+            "condition_explanation": cond,
+            "practical_tips": tips,
+            "counseling_script": script,
+            "source": extra_chunk.get("source"),
+            "section": extra_chunk.get("section"),
+            "page": extra_chunk.get("page"),
+            "chunk_id": extra_chunk.get("id"),
+            "origin": extra_chunk.get("origin"),
+            "supporting_sentence": verbatim or None,
+        }
+        if not item.get("ai_insight_basis") and verbatim:
+            item["ai_insight_basis"] = verbatim
+    else:
+        # Tidak ada chunk RAG yang valid: jangan mengarang nama buku atau halaman.
+        item["ai_insight_details"] = None
+        item["ai_insight"] = None
+        item["ai_insight_basis"] = None
+
+
 def attach_chunk_evidence(item: Dict[str, Any], chunks_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """
     Mengisi kutipan & sitasi rekomendasi dari chunk yang benar-benar di-retrieve.
-    LLM hanya menunjuk `chunk_id`; teks kutipan, sumber, bagian, dan halaman diambil
-    verbatim dari chunk. Kutipan/sumber yang ditulis LLM sendiri dibuang.
-    Bila terdapat beberapa chunk relevan pada halaman berbeda, seluruh halaman dan
-    chunk pendukung ikut dilampirkan untuk laporan dan Log Audit.
+    LLM menunjuk `chunk_id` dan `supporting_sentence`; sistem mengambil kalimat kutipan
+    secara verbatim dari chunk dan memverifikasi keberadaannya di dalam teks chunk.
+    Tidak ada penambahan chunk pendukung otomatis tanpa verifikasi relevansi.
     Bila chunk_id tidak valid, rekomendasi ditandai TANPA_KUTIPAN (tanpa sitasi pengganti).
     """
     cit = item.get("citation")
     chunk_id = cit.get("chunk_id") if isinstance(cit, dict) else None
     chunk_id = chunk_id or item.get("chunk_id")
+    candidate_sentence = (
+        (cit.get("supporting_sentence") if isinstance(cit, dict) else None)
+        or item.get("supporting_sentence")
+        or item.get("evidence_quote")
+    )
     extra_ids = (cit.get("supporting_chunk_ids") if isinstance(cit, dict) else None) or item.get("supporting_chunk_ids") or []
     chunk = chunks_by_id.get(chunk_id) if chunk_id else None
 
@@ -822,27 +1048,26 @@ def attach_chunk_evidence(item: Dict[str, Any], chunks_by_id: Dict[str, Dict[str
             ec = chunks_by_id.get(eid)
             if ec and ec.get("id") not in {c.get("id") for c in supporting_chunks}:
                 supporting_chunks.append(ec)
-        # Jika belum ada extra_ids eksplisit, cari chunk lain yang di-retrieve untuk flag yang sama
-        if len(supporting_chunks) == 1:
-            primary_flags = set(chunk.get("retrieved_for_flags") or ([chunk["retrieved_for_flag"]] if chunk.get("retrieved_for_flag") else []))
-            if primary_flags:
-                for cand in chunks_by_id.values():
-                    if cand.get("id") == chunk.get("id"):
-                        continue
-                    cand_flags = set(cand.get("retrieved_for_flags") or ([cand["retrieved_for_flag"]] if cand.get("retrieved_for_flag") else []))
-                    if primary_flags & cand_flags:
-                        supporting_chunks.append(cand)
 
     item.pop("source", None)
     item.pop("section", None)
     item.pop("page", None)
     item["citation"] = citation_from_chunk(chunk, supporting_chunks=supporting_chunks if chunk else None)
     if chunk:
-        item["evidence_quote"] = chunk.get("content")
+        rec_context = " ".join(
+            str(item.get(k) or "")
+            for k in ("title", "recommendation_text", "food_guide", "milk_and_supplements", "activity_and_stimulation")
+        )
+        item["evidence_quote"] = _extract_verbatim_supporting_sentence(
+            chunk.get("content", ""),
+            candidate_sentence=candidate_sentence,
+            rec_context=rec_context,
+        )
         item["evidence_status"] = EVIDENCE_CURATED if chunk.get("origin") == "CURATED_SUMMARY" else EVIDENCE_CHUNK
     else:
         item["evidence_quote"] = None
         item["evidence_status"] = EVIDENCE_NONE
+    _resolve_ai_insight_details(item, chunk, chunks_by_id)
     return item
 
 
@@ -887,11 +1112,28 @@ def _guard_llm_nutrition(item: Dict[str, Any], phase: str, age_months: Optional[
         if reason:
             item[field] = None
             item.setdefault("nutrition_guard_notes", []).append(f"{field}: saran AI dibuang karena {reason}; diganti panduan aturan Buku KIA.")
+    ai_details = item.get("ai_insight_details")
+    if isinstance(ai_details, dict):
+        for sub_f in ("condition_explanation", "practical_tips", "counseling_script"):
+            reason = nutrition_text_mismatch(ai_details.get(sub_f) or "", phase, age_months, flags)
+            if reason:
+                ai_details[sub_f] = None
+                item.setdefault("nutrition_guard_notes", []).append(
+                    f"ai_insight_details.{sub_f}: dibuang karena {reason}."
+                )
+        if not any(ai_details.get(k) for k in ("condition_explanation", "practical_tips", "counseling_script")):
+            item["ai_insight_details"] = None
+            item["ai_insight"] = None
     return item
 
 
-def _enrich_recommendation_item_fields(item: Dict[str, Any], care_plan: Dict[str, Any]) -> Dict[str, Any]:
-    """Memastikan setiap item rekomendasi Agent 2 memiliki rincian makanan, susu, aktivitas/stimulasi, dan narasi pendampingan."""
+def _enrich_recommendation_item_fields(
+    item: Dict[str, Any],
+    care_plan: Dict[str, Any],
+    visit_data: Optional[Dict[str, Any]] = None,
+    risk_flags: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Memastikan setiap item rekomendasi Agent 2 memiliki rincian makanan, susu, aktivitas/stimulasi, dan daftar butir gabungan berlabel asal."""
     fn = care_plan.get("food_and_nutrition", {})
     ms = care_plan.get("milk_and_supplements", {})
     ac = care_plan.get("activity_and_stimulation", {})
@@ -912,27 +1154,9 @@ def _enrich_recommendation_item_fields(item: Dict[str, Any], care_plan: Dict[str
         acts = ac.get("recommended_activities", [])
         item["activity_and_stimulation"] = " ".join(acts[:2]) if acts else "Pantau aktivitas dan stimulasi harian sesuai Buku KIA."
 
-    if not item.get("ai_insight"):
-        phase_cp = str(care_plan.get("phase") or "BADUTA").upper()
-        if phase_cp == "IBU_HAMIL":
-            item["ai_insight"] = (
-                "Bila ibu merasa mual atau cepat kenyang, bagi porsi makan menjadi porsi kecil tetapi sering (5-6 kali sehari), "
-                "olah ikan tude/cakalang dengan kuah asam segar atau kuning agar tidak amis, dan minum Tablet Tambah Darah (TTD) "
-                "pada malam hari sebelum tidur bersama air putih atau air jeruk manis."
-            )
-        elif phase_cp == "BAYI_BARU_LAHIR":
-            item["ai_insight"] = (
-                "Pastikan pelekatan mulut bayi mencakup sebagian besar areola payudara ibu dan susui hingga payudara terasa kosong "
-                "agar bayi mendapatkan hindmilk (ASI akhir yang kaya lemak penambah berat badan). Ibu menyusui dianjurkan makan ekstra "
-                "lauk ikan laut segar dan sayur daun katuk/kelor."
-            )
-        else:
-            item["ai_insight"] = (
-                "Untuk membantu anak lahap makan (mencegah GTM), suir halus ikan tude/cakalang tanpa duri atau cincang hati ayam dengan "
-                "sedikit santan matang/minyak kelapa agar gurih dan padat kalori. Ciptakan suasana makan yang menyenangkan tanpa paksaan "
-                "dan tanpa layar HP/TV, serta berikan ASI di sela waktu makan agar anak tidak kenyang cairan sebelum makan utama."
-            )
-
+    # Catatan: Tidak ada pengisian teks tetap (hardcoded) untuk ai_insight.
+    # Bila LLM tidak mengisi ai_insight atau saat fallback, ai_insight dibiarkan None.
+    item["items"] = _build_unified_items(item, visit_data=visit_data, risk_flags=risk_flags)
     return item
 
 
@@ -1084,7 +1308,7 @@ def clinical_recommender_agent(state: AgentState) -> Dict[str, Any]:
     # ------------------------------------------------------------------------
     # Eksekusi Siklus ReAct dengan Gemini LLM
     # ------------------------------------------------------------------------
-    llm = get_chat_llm(temperature=0.2, max_tokens=1800)
+    llm = get_chat_llm(temperature=0.2, max_tokens=2600)
     recommendations: List[Dict[str, Any]] = []
     recommender_mode = MODE_FALLBACK
 
@@ -1187,7 +1411,7 @@ Tugas Anda:
                     continue
                 item = attach_chunk_evidence(item, seen_chunks)
                 item = _guard_llm_nutrition(item, phase, _age_for_guard, flag_names)
-                item = _enrich_recommendation_item_fields(item, care_plan)
+                item = _enrich_recommendation_item_fields(item, care_plan, visit_data=visit_data, risk_flags=risk_flags)
                 item["reasoning_mode"] = MODE_LLM_REACT
                 item["thought_process"] = list(thought_process)
                 if not item.get("longitudinal_progress"):
@@ -1283,10 +1507,7 @@ Tugas Anda:
                 "Skrining KPSP 24 Bulan: Latih melompat dengan 2 kaki, menaiki tangga dengan berpegangan, menendang bola, "
                 "menyusun 4-6 balok, bicara kalimat 2 kata, dan mulai toilet training."
             ),
-            "ai_insight": (
-                "Saat memasuki usia 24 bulan, ajak anak makan bersama di meja keluarga dengan piring sendiri untuk melatih kemandirian. "
-                "Kurangi frekuensi menyusu secara bertahap dimulai dari jadwal siang hari dan gantikan dengan pelukan serta dongeng sebelum tidur."
-            ),
+            "ai_insight": None,
             "action_steps": [
                 "Lakukan evaluasi antropometri penutupan 1.000 HPK bersama Tenaga Kesehatan Puskesmas",
                 "Terapkan metode menyapih dengan kasih sayang (Weaning with Love) tanpa paksaan atau trauma",
@@ -1300,6 +1521,7 @@ Tugas Anda:
             "reasoning_mode": "ATURAN_SISTEM",
             "severity": "HIGH" if has_gr else "INFO",
         }
+        grad_rec["items"] = _build_unified_items(grad_rec, visit_data=visit_data, risk_flags=risk_flags)
         recommendations.insert(0, grad_rec)
 
     agent2_telemetry = {
@@ -1338,6 +1560,7 @@ Tugas Anda:
                     "citation": r.get("citation"),
                     "evidence_quote": r.get("evidence_quote"),
                     "ai_insight": r.get("ai_insight"),
+                    "ai_insight_details": r.get("ai_insight_details"),
                 }
                 for r in recommendations
             ],
@@ -1377,15 +1600,13 @@ def _generate_rule_based_recommendations(
 
     for flag in risk_flags:
         f_name = flag.get("flag", "")
-        # Kumpulkan seluruh chunk yang relevan untuk flag ini (bisa lintas halaman/bagian)
         matching_chunks = [
             c for c in chunks
             if c.get("retrieved_for_flag") == f_name or f_name in (c.get("retrieved_for_flags") or [])
         ]
-        matching_chunk = matching_chunks[0] if matching_chunks else None
+        matching_chunk = matching_chunks[0] if matching_chunks else (chunks[0] if chunks else None)
         citation = {
             "chunk_id": matching_chunk["id"] if matching_chunk else None,
-            "supporting_chunk_ids": [c["id"] for c in matching_chunks if c.get("id")],
         }
 
         # Nama flag dicocokkan persis: OVERWEIGHT/GIZI_LEBIH tidak boleh masuk cabang gagal tumbuh
@@ -1416,11 +1637,7 @@ def _generate_rule_based_recommendations(
                     " ".join(ac.get("recommended_activities", [])[:3])
                     or "Pastikan anak tidur cukup 11-13 jam/hari (hormon pertumbuhan aktif saat tidur malam), stimulasi motorik & bicara sesuai usia, dan cuci tangan pakai sabun (PHBS)."
                 ),
-                "ai_insight": (
-                    "Untuk mengejar pertumbuhan panjang dan berat badan anak, utamakan porsi lauk hewani (ikan tude/cakalang kukus suir halus, "
-                    "hati ayam, atau telur) lebih banyak daripada sayur yang berserat tinggi. Bila anak sulit makan, sajikan dalam porsi kecil "
-                    "tetapi sering dan tambahkan 1 sendok teh minyak kelapa atau santan matang agar kalori setiap suapan meningkat."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Rujuk anak ke Puskesmas Airmadidi sesuai alur PNPK untuk konfirmasi dan evaluasi",
                     protein_step,
@@ -1441,10 +1658,7 @@ def _generate_rule_based_recommendations(
                 "food_guide": f"{fn.get('stage_and_texture', '')} Frekuensi: {fn.get('frequency_and_portion', '')} Jangan menambah porsi atau lemak tambahan.",
                 "milk_and_supplements": f"{ms.get('recommended_type', '')}",
                 "activity_and_stimulation": " ".join(ac.get("recommended_activities", [])[:2]),
-                "ai_insight": (
-                    "Tetap berikan protein hewani berkualitas (ikan dan telur rebus/kukus) untuk pertumbuhan tinggi badan anak, namun batasi "
-                    "camilan manis, minuman kemasan, serta gorengan berlebih. Ajak anak bermain fisik aktif di luar ruangan setiap pagi dan sore."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Rujuk ke Puskesmas Airmadidi untuk konfirmasi status gizi lebih",
                     "Jangan menambah porsi makan atau lemak tambahan pada MP-ASI",
@@ -1473,10 +1687,7 @@ def _generate_rule_based_recommendations(
                     "Istirahat cukup (tidur malam 7-8 jam dan tidur siang 1 jam posisi miring kiri), kurangi beban kerja fisik berat, "
                     "jalan pagi santai 20 menit, dan hindari paparan asap rokok."
                 ),
-                "ai_insight": (
-                    "Ibu dengan LiLA di bawah 23,5 cm membutuhkan tambahan energi dan protein harian agar pertumbuhan janin tidak terhambat (mencegah BBLR). "
-                    "Tambahkan 1 porsi makanan utama dan kudapan padat gizi seperti bubur kacang hijau santan, alpukat, atau telur rebus di sela waktu makan."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Konsultasikan PMT ibu hamil ke bidan/Puskesmas dan pantau berat badan serta LiLA setiap bulan",
                     "Edukasi ibu untuk makan porsi kecil tapi sering dengan 2 lauk protein hewani setiap kali makan",
@@ -1506,10 +1717,7 @@ def _generate_rule_based_recommendations(
                     "Batasi aktivitas fisik yang menguras tenaga agar ibu tidak pusing/lemas, istirahat miring kiri yang cukup, "
                     "dan bangun secara perlahan dari posisi tidur/duduk."
                 ),
-                "ai_insight": (
-                    "Untuk mengurangi rasa mual akibat Tablet Tambah Darah (TTD), minumlah TTD pada malam hari tepat sebelum tidur bersama air perasan "
-                    "jeruk manis atau buah pepaya. Vitamin C membantu penyerapan zat besi hingga 2-3 kali lipat, sedangkan teh dan kopi harus dihindari."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Pastikan kepatuhan minum TTD setiap malam sebelum tidur bersama air putih atau sari jeruk manis",
                     "Edukasi larangan minum teh/kopi setelah makan dan beri jeda 2 jam antara minum susu ibu hamil dengan TTD",
@@ -1540,10 +1748,7 @@ def _generate_rule_based_recommendations(
                     "Terapkan kontak kulit-ke-kulit (Perawatan Metode Kanguru) untuk menjaga suhu 36,5-37,5°C, jemur pagi 10 menit, "
                     "dan berikan stimulasi sentuhan/suara lembut serta tidur yang cukup."
                 ),
-                "ai_insight": (
-                    "Bayi BBLR mudah kehilangan panas tubuh sehingga energi untuk tumbuh habis dipakai menjaga suhu badan. Mendekap bayi kulit-ke-kulit "
-                    "di dada ibu atau ayah (Metode Kanguru) menjaga suhu tetap hangat sekaligus menstabilkan detak jantung dan memperlancar refleks menyusu."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Terapkan Perawatan Metode Kanguru (kontak kulit ke kulit di dada ibu/ayah) secara rutin dan jaga kehangatan bayi",
                     "Berikan ASI eksklusif sesering mungkin minimal setiap 2 jam sekali (bangunkan bayi bila tidur >2 jam)",
@@ -1564,10 +1769,7 @@ def _generate_rule_based_recommendations(
                 "food_guide": f"{fn.get('stage_and_texture', '')} Frekuensi: {fn.get('frequency_and_portion', '')}",
                 "milk_and_supplements": f"{ms.get('recommended_type', '')} ({ms.get('frequency_and_portion', '')})",
                 "activity_and_stimulation": " ".join(ac.get("recommended_activities", [])[:2]),
-                "ai_insight": (
-                    "Dampingi keluarga agar konsisten menyajikan protein hewani lokal (ikan tude/cakalang, telur, atau hati ayam) di setiap waktu makan "
-                    "serta memastikan jadwal tidur dan stimulasi anak terpenuhi setiap hari."
-                ),
+                "ai_insight": None,
                 "action_steps": [
                     "Lakukan kunjungan dan penimbangan rutin setiap bulan di Posyandu",
                     "Terapkan jadwal menu makanan tinggi protein hewani dan pemberian ASI/susu sesuai usia/trimester",
@@ -1576,8 +1778,6 @@ def _generate_rule_based_recommendations(
                 "citation": citation,
             })
 
-    # Beberapa flag dapat memicu rekomendasi yang sama (mis. stunting + underweight);
-    # simpan satu rekomendasi namun gabungkan seluruh chunk rujukan yang relevan.
     unique_by_title: Dict[str, Dict[str, Any]] = {}
     for r in recs:
         title_key = r["title"]
@@ -1588,17 +1788,13 @@ def _generate_rule_based_recommendations(
             new_cit = r.get("citation") or {}
             if not existing_cit.get("chunk_id") and new_cit.get("chunk_id"):
                 existing_cit["chunk_id"] = new_cit["chunk_id"]
-            merged_ids = list(existing_cit.get("supporting_chunk_ids") or [])
-            for cid in (new_cit.get("supporting_chunk_ids") or []):
-                if cid and cid not in merged_ids:
-                    merged_ids.append(cid)
-            existing_cit["supporting_chunk_ids"] = merged_ids
             unique_by_title[title_key]["citation"] = existing_cit
     recs = list(unique_by_title.values())
 
     chunks_by_id = {c["id"]: c for c in chunks if c.get("id")}
     for r in recs:
         attach_chunk_evidence(r, chunks_by_id)
+        r["items"] = _build_unified_items(r, risk_flags=risk_flags)
         r["reasoning_mode"] = "FALLBACK_DETERMINISTIC"
         r["thought_process"] = [
             "Mode Darurat Deterministik Aktif: Rekomendasi disusun berdasarkan standar PNPK Kemenkes RI karena API LLM offline / kuota terbatas."

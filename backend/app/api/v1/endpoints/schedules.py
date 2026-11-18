@@ -351,8 +351,7 @@ def _check_schedule_conflict(
 
 @router.get("/public", response_model=PublicScheduleOverview)
 def get_public_schedules(db: Session = Depends(get_db)):
-    """Endpoint publik untuk Landing Page: menampilkan 14 jadwal Posyandu dan pemetaan 9 Desa/Kelurahan."""
-    ensure_default_schedules_seeded(db)
+    """Endpoint publik untuk Landing Page: menampilkan daftar jadwal Posyandu dan pemetaan 9 Desa/Kelurahan."""
     rows = (
         db.query(PosyanduSchedule)
         .order_by(PosyanduSchedule.schedule_date.asc(), PosyanduSchedule.start_time.asc())
@@ -376,7 +375,6 @@ def list_schedules(
     current_user: User = Depends(get_current_user),
 ):
     """Mengambil daftar jadwal Posyandu untuk Admin dan Kader."""
-    ensure_default_schedules_seeded(db)
     query = db.query(PosyanduSchedule)
 
     if village_name and village_name.upper() != "ALL":
@@ -407,7 +405,6 @@ def create_schedule(
     admin: User = Depends(_require_admin),
 ):
     """Menambahkan jadwal Posyandu baru dengan pemeriksaan bentrok jadwal (Bab 4 Tabel 23)."""
-    ensure_default_schedules_seeded(db)
     _check_schedule_conflict(
         db=db,
         schedule_date=payload.schedule_date,

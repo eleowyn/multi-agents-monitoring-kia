@@ -21,8 +21,17 @@ ATURAN STRUKTUR & PEMISAHAN INFORMASI:
 - `milk_and_supplements`: Panduan ASI eksklusif/lanjutan, susu ibu hamil, evaluasi PKMK Puskesmas (bila ada indikasi medis gagal tumbuh), aturan minum TTD, atau kapsul Vitamin A.
 - `activity_and_stimulation`: Aktivitas fisik & istirahat ibu hamil atau stimulasi tumbuh kembang & jam tidur anak sesuai usia.
 - `action_steps`: 3-4 langkah konkret terurut yang mudah dijalankan oleh kader Posyandu dan keluarga di rumah.
-- `ai_insight`: Narasi tambahan yang hangat dan praktis untuk membantu kader mengedukasi ibu/keluarga di rumah (contoh: tips mengatasi anak gerakan tutup mulut/GTM, cara mengolah ikan tude atau daun kelor agar disukai anak, atau tips minum TTD agar tidak mual). Tulis langsung isi sarannya tanpa label teknis AI.
-- `citation`: Objek berisi `chunk_id` saja, yaitu ID chunk pedoman yang menjadi dasar rekomendasi, disalin persis dari penanda `[ID: ...]` pada dokumen yang tersedia atau hasil `search_guidelines`. JANGAN menulis kutipan, nama sumber, atau nomor halaman sendiri; sistem akan mengambil sumber, bagian, dan halaman dari metadata chunk. Jika tidak ada chunk yang mendukung, isi `chunk_id` dengan null.
+- `ai_insight`: Ringkasan 1-2 kalimat Tambahan Analisis AI yang merangkum inti wawasan praktis dari `ai_insight_details` (isi null bila tidak ada chunk pedoman pendukung).
+- `ai_insight_basis`: Wajib diisi bila `ai_insight` diisi. Sebutkan kutipan kalimat dari chunk pedoman Buku KIA/PNPK yang dikembangkan beserta parameter klinis pasien (misal "LiLA 21,5 cm dan Hb 9,5 g/dL").
+- `ai_insight_details`: Objek wajib bila ada tambahan analisis kontekstual yang BERLANDASKAN chunk Buku KIA 2024 atau PNPK Stunting (gunakan tool `search_guidelines` jika perlu chunk tambahan agar rujukannya tepat!). Isi null bila tidak ada chunk yang mendukung:
+  - `condition_explanation`: 2-3 kalimat penjelasan ramah kader & ibu mengenai mengapa kondisi ini terjadi dan apa dampaknya bagi 1.000 HPK sesuai pedoman.
+  - `practical_tips`: 2-3 kalimat solusi praktis kendala sehari-hari (misal anak GTM/susah makan, ibu mual, atau cara minum TTD) memakai pangan lokal Minahasa Utara sesuai prinsip gizi pedoman.
+  - `counseling_script`: 1-2 kalimat contoh ucapan langsung yang hangat dan empatik untuk diucapkan kader kepada ibu/keluarga saat konseling Meja 4.
+  - `chunk_id`: ID chunk pedoman Buku KIA 2024 / PNPK Stunting (`[ID: ...]`) yang menjadi dasar ekstra pengetahuan tersebut (boleh berbeda atau sama dengan `citation.chunk_id`, JANGAN mengarang ID, jangan menebak halaman/judul dokumen).
+  - `supporting_sentence`: Kalimat spesifik dari chunk tersebut yang mendasari analisis tambahan, disalin APA ADANYA (verbatim).
+- `citation`: Objek berisi:
+  - `chunk_id`: ID chunk pedoman yang menjadi dasar rekomendasi utama, disalin persis dari penanda `[ID: ...]` pada dokumen yang tersedia atau hasil `search_guidelines`. Jika tidak ada chunk yang mendukung, isi `chunk_id` dengan null.
+  - `supporting_sentence`: Kalimat spesifik di dalam chunk tersebut yang menjadi dasar rekomendasi utama, disalin APA ADANYA (verbatim) dari teks chunk.
 
 PEDOMAN GAYA PENULISAN:
 - Gunakan Bahasa Indonesia yang santun, jelas, empatik, dan mudah dipahami oleh kader Posyandu maupun ibu/keluarga pasien.
@@ -45,9 +54,18 @@ Keluarkan HANYA array JSON valid (tanpa pembungkus markdown di luar json):
       "Langkah 2",
       "Langkah 3"
     ],
-    "ai_insight": "Tips praktis pendampingan keluarga di rumah.",
+    "ai_insight": "Ringkasan tambahan analisis praktis berbasis pedoman sesuai kondisi pasien.",
+    "ai_insight_basis": "Kalimat kutipan chunk yang dikembangkan dan parameter klinis pasien.",
+    "ai_insight_details": {
+      "condition_explanation": "Penjelasan 2-3 kalimat mengenai kondisi ibu/anak dan dampaknya bagi 1.000 HPK sesuai pedoman.",
+      "practical_tips": "Tips 2-3 kalimat menghadapi kendala makan/mual/TTD dengan bahan pangan lokal Minahasa Utara.",
+      "counseling_script": "Contoh 1-2 kalimat dialog empatik siap ucap kader kepada ibu.",
+      "chunk_id": "md_kia24_0123",
+      "supporting_sentence": "Kalimat asli verbatim dari chunk Buku KIA/PNPK yang mendasari tambahan analisis AI."
+    },
     "citation": {
-      "chunk_id": "md_kia24_0123"
+      "chunk_id": "md_kia24_0123",
+      "supporting_sentence": "Kalimat asli dari dalam chunk yang menjadi dasar rekomendasi."
     }
   }
 ]

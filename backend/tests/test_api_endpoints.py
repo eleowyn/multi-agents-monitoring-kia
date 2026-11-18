@@ -274,7 +274,12 @@ def test_admin_toggle_kader_status_and_deactivated_login():
 
 def test_posyandu_schedules_crud_and_conflict_validation():
     """Menguji Manajemen Jadwal Posyandu (Bab 4 Tabel 23, Gambar 36, dan Gambar 53) serta 14 titik Posyandu."""
-    # 1. Endpoint publik harus mengembalikan minimal 14 jadwal ter-seed di 9 kelurahan/desa
+    from app.api.v1.endpoints.schedules import ensure_default_schedules_seeded
+    db_s = SessionLocal()
+    ensure_default_schedules_seeded(db_s)
+    db_s.close()
+
+    # 1. Endpoint publik harus mengembalikan jadwal ter-seed di 9 kelurahan/desa
     pub_res = client.get("/api/v1/schedules/public")
     assert pub_res.status_code == 200
     pub_data = pub_res.json()

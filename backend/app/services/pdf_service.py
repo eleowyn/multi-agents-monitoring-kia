@@ -90,7 +90,7 @@ def clean_citation(val: Optional[str]) -> str:
         return "Pedoman Tata Laksana Gizi Buruk & Stunting Kemenkes RI"
     if "Posyandu" in s or "posyandu" in s.lower():
         return "Petunjuk Teknis Posyandu Integrasi Layanan Primer (ILP)"
-    cleaned = re.sub(r"\.pdf$", "", s, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\.(pdf|md)$", "", s, flags=re.IGNORECASE)
     cleaned = re.sub(r"[\(_\)]", " ", cleaned).strip()
     return cleaned.title()
 
