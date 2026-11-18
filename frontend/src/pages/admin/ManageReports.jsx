@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getErrorMessage } from "../../services/api";
 import {
-  FileText,
   Search,
   Download,
   ExternalLink,
@@ -16,10 +15,7 @@ import {
   Filter,
   Calendar,
   MapPin,
-  ShieldCheck,
-  Eye,
   X,
-  Printer,
   User,
   Sparkles,
   BookOpen,
@@ -306,7 +302,7 @@ const ManageReports = () => {
         <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">
           <p className="text-xs font-semibold text-caption uppercase tracking-wider">Draf / Menunggu Review</p>
           <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">{totalDraft}</p>
-          <p className="text-xs text-caption">Perlu verifikasi admin</p>
+          <p className="text-xs text-caption">Menunggu validasi kader</p>
         </div>
 
         <div className="bg-card p-5 rounded-2xl border border-line shadow-card space-y-1">

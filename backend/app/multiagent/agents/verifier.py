@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from app.multiagent.state import AgentState
 from app.multiagent.rag.retriever import retrieve_clinical_guidelines
@@ -771,7 +771,7 @@ def _build_final_report_json(
     elif conf_score >= 70.0:
         conf_label = "SEDANG"
     else:
-        conf_label = "BUTUH_KONFIRMASI_DOKTER"
+        conf_label = "PERLU_TINJAUAN_KLINIS"
     # Penjelasan berupa rincian komponen skor, tanpa klaim tambahan
     conf_desc = (
         f"Kewajaran data input {c_input:g}/30, keterhubungan rekomendasi dengan chunk rujukan "

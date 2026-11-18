@@ -703,7 +703,7 @@ def _stage2_react_narrative(
     rule_narrative = " ".join(rule_points) or "Tidak ada parameter klinis yang dapat dievaluasi."
     react_tools_called: List[str] = []
 
-    llm = get_chat_llm(temperature=0.1, max_tokens=500)
+    llm = get_chat_llm(temperature=0.1, max_tokens=2000)
     if llm is None:
         return (
             rule_narrative,

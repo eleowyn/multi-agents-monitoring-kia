@@ -12,7 +12,6 @@ import {
 } from "recharts";
 import { RefreshCw, ExternalLink, ArrowRight } from "lucide-react";
 import {
-  formatScheduleDateIndo,
   parseScheduleDateParts,
 } from "../../constants/posyanduData";
 
@@ -593,7 +592,7 @@ const KaderDashboard = () => {
           <div className="py-10 text-center space-y-1">
             <p className="text-xs font-semibold text-heading">Kondisi Baik & Terkendali</p>
             <p className="text-xs text-caption max-w-sm mx-auto">
-              Tidak ada temuan pasien berisiko tinggi saat ini di wilayah posyandu Anda.
+              Tidak ada temuan pasien berisiko yang membutuhkan tindak lanjut saat ini di wilayah posyandu Anda.
             </p>
           </div>
         ) : (

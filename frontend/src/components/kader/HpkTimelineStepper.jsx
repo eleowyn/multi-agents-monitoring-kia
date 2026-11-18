@@ -1,16 +1,4 @@
 import React, { useState } from "react";
-import {
-  Baby,
-  Heart,
-  Calendar,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  GraduationCap,
-  ChevronRight,
-  Info,
-} from "lucide-react";
 
 /**
  * HpkTimelineStepper: Visual Stepper Horizontal 1.000 HPK

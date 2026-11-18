@@ -115,7 +115,7 @@ def get_kader_dashboard_summary(
         latest = agg.latest_report(p_reps, approved_only=False)
         if latest and latest.overall_status in agg.ATTENTION_STATUSES:
             latest_reports.append(latest)
-    high_risk_count = sum(1 for r in latest_reports if r.overall_status == "RISIKO_TINGGI")
+    high_risk_count = len(latest_reports)
     latest_reports.sort(key=lambda r: ((r.visit.visit_date if r.visit else date.min), r.id), reverse=True)
 
     priority_items = []

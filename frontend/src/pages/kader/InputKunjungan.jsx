@@ -8,7 +8,6 @@ import {
   Search,
   PlusCircle,
   AlertTriangle,
-  Info,
   X,
   Users,
   CheckCircle2,

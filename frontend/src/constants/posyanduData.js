@@ -34,8 +34,6 @@ export const OFFICIAL_POSYANDU_BY_VILLAGE = {
   Sawangan: ["Desa Sawangan"],
 };
 
-export const ALL_OFFICIAL_POSYANDU = Object.values(OFFICIAL_POSYANDU_BY_VILLAGE).flat();
-
 export const DEFAULT_NOVEMBER_2026_SCHEDULES = [
   {
     id: 1,

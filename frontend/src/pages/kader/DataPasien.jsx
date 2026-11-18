@@ -12,7 +12,6 @@ import {
   ReferenceLine,
 } from "recharts";
 import {
-  Users,
   Search,
   GitFork,
   AlertTriangle,
@@ -24,8 +23,6 @@ import {
   HeartPulse,
   Baby,
   TrendingUp,
-  CheckCircle2,
-  Clock,
 } from "lucide-react";
 import RevisionRequestModal from "../../components/kader/RevisionRequestModal";
 

@@ -1,14 +1,14 @@
 import io
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from sqlalchemy.orm import Session
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from app.models.visit import Visit, PhaseEnum
+from app.models.visit import Visit
 from app.models.patient import Patient, PatientType
-from app.models.report import Report, ReportStatus
+from app.models.report import Report
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -58,7 +58,7 @@ class Visit(Base):
     patient = relationship("Patient", back_populates="visits")
     kader = relationship("User")
     reports = relationship("Report", back_populates="visit", cascade="all, delete-orphan")
-    revisions = relationship("RevisionRequest", back_populates="visit", cascade="all, delete-orphan")
+    revisions = relationship("RevisionRequest", back_populates="visit")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

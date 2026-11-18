@@ -14,8 +14,6 @@ import {
   FileSearch,
   FileEdit,
   History,
-  Send,
-  MapPin,
   Calendar,
   ChevronDown,
 } from "lucide-react";

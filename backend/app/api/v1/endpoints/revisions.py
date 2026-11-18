@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -191,6 +190,13 @@ def get_revision_detail(
     if not rev:
         raise HTTPException(status_code=404, detail="Pengajuan revisi tidak ditemukan.")
 
+    if current_user.role == UserRole.KADER and rev.kader_id != current_user.id:
+        from app.services.aggregates import in_kader_scope
+        visit = db.query(Visit).filter(Visit.id == rev.visit_id).first() if rev.visit_id else None
+        patient = db.query(Patient).filter(Patient.id == visit.patient_id).first() if visit else None
+        if not patient or not in_kader_scope(patient, current_user):
+            raise HTTPException(status_code=403, detail="Akses ditolak: Pengajuan revisi di luar wilayah kerja Posyandu Anda.")
+
     return _enrich_revision_response(rev, db)
 
 
@@ -226,15 +232,21 @@ def validate_revision_by_admin(
 
         # 1. Penanganan Pengajuan Hapus Kunjungan (Use Case 8 & 9)
         if proposed.get("_action") == "DELETE":
-            from app.models.audit_log import AuditLog
-
             if rev.report_id:
                 db.query(AuditLog).filter(AuditLog.report_id == rev.report_id).delete(synchronize_session=False)
+                db.query(RevisionRequest).filter(RevisionRequest.report_id == rev.report_id).update(
+                    {"report_id": None}, synchronize_session=False
+                )
                 db.query(Report).filter(Report.id == rev.report_id).delete(synchronize_session=False)
 
-            # Lepaskan foreign key agar riwayat pengajuan revisi tetap tersimpan untuk audit trail
+            # Lepaskan relasi agar Visit terhapus tanpa ikut meng-cascade RevisionRequest
+            db.query(RevisionRequest).filter(RevisionRequest.visit_id == visit.id).update(
+                {"visit_id": None}, synchronize_session=False
+            )
+            rev.visit = None
             rev.visit_id = None
             rev.report_id = None
+            db.flush()
             db.delete(visit)
             rev.status = RevisionStatus.APPROVED
         else:
@@ -315,6 +327,7 @@ def validate_revision_by_admin(
                     report.updated_at = datetime.utcnow()
 
                     report.status = ReportStatus.DRAFT
+                    report.revision_count = max(int(report.revision_count or 0), 1)
                     report.validated_at = None
                     report.pdf_path = None
 
@@ -349,39 +362,3 @@ def validate_revision_by_admin(
     db.refresh(rev)
 
     return _enrich_revision_response(rev, db)
-
-
-class DoctorActionRequest(BaseModel):
-    notes: Optional[str] = None
-
-
-@router.post("/{revision_id}/approve", response_model=RevisionResponse)
-def approve_revision_by_doctor(
-    revision_id: int,
-    action_in: Optional[DoctorActionRequest] = None,
-    db: Session = Depends(get_db),
-    doctor: User = Depends(_require_admin)
-):
-    notes = action_in.notes if action_in else None
-    return validate_revision_by_admin(
-        revision_id=revision_id,
-        val_req=RevisionValidationRequest(status=RevisionStatus.APPROVED, admin_notes=notes),
-        db=db,
-        admin=doctor,
-    )
-
-
-@router.post("/{revision_id}/reject", response_model=RevisionResponse)
-def reject_revision_by_doctor(
-    revision_id: int,
-    action_in: Optional[DoctorActionRequest] = None,
-    db: Session = Depends(get_db),
-    doctor: User = Depends(_require_admin)
-):
-    notes = action_in.notes if action_in else None
-    return validate_revision_by_admin(
-        revision_id=revision_id,
-        val_req=RevisionValidationRequest(status=RevisionStatus.REJECTED, admin_notes=notes),
-        db=db,
-        admin=doctor,
-    )

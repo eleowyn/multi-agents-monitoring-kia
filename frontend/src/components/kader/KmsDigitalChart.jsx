@@ -14,8 +14,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  CheckCircle2,
-  AlertTriangle,
   Info,
 } from "lucide-react";
 

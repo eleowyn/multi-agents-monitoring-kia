@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from app.core.database import get_db
 from app.models.patient import Patient
@@ -239,7 +239,6 @@ def get_audit_logs(
     skor grounding, durasi, konsumsi token, dan status kepatuhan SOP.
     """
     import json as _json
-    from app.services.eval_logger import _deterministic_sop_audit
 
     rows = db.query(AuditLog).order_by(AuditLog.id.desc()).offset(skip).limit(limit).all()
     report_cache = {}
@@ -681,3 +680,30 @@ def clear_all_audit_logs(
     deleted_count = db.query(AuditLog).delete(synchronize_session=False)
     db.commit()
     return {"deleted_count": deleted_count, "message": "Seluruh log audit berhasil dibersihkan."}
+
+
+@router.get("/knowledge-chunks")
+def admin_list_knowledge_chunks(
+    search: Optional[str] = None,
+    source: Optional[str] = None,
+    category: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 500,
+    admin: User = Depends(_require_admin),
+):
+    """Menampilkan koleksi chunk rujukan resmi (Buku KIA 2024 & PNPK Stunting 2022) untuk Admin."""
+    from app.api.v1.endpoints.doctor import list_knowledge_chunks
+    return list_knowledge_chunks(search=search, source=source, category=category, skip=skip, limit=limit, current_user=admin)
+
+
+@router.get("/report-citations")
+def admin_get_report_rag_citations(
+    search: Optional[str] = None,
+    report_id: Optional[int] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_require_admin),
+):
+    """Menampilkan kutipan RAG yang dipakai pada laporan kunjungan untuk halaman Admin."""
+    from app.api.v1.endpoints.doctor import get_report_rag_citations
+    return get_report_rag_citations(search=search, report_id=report_id, limit=limit, db=db, current_user=admin)

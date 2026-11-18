@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api, { getErrorMessage } from "../../services/api";
 import {
-  HeartPulse,
   FileSpreadsheet,
   Printer,
   RefreshCw,

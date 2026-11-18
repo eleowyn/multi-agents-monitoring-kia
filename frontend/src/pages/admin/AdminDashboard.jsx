@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
-import { RefreshCw, Pause, Play } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import OverallTrendChart from "../../components/admin/OverallTrendChart";
 import PatientTrendChart from "../../components/admin/PatientTrendChart";
 

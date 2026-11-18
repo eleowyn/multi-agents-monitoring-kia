@@ -25,7 +25,7 @@ const AdminKnowledgeChunks = () => {
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await api.get("/doctor/report-citations", {
+      const res = await api.get("/admin/report-citations", {
         params: { limit: 300 },
       });
       const data = res.data || {};

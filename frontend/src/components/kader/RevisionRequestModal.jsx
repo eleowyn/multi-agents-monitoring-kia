@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api, { getErrorMessage } from "../../services/api";
-import { X, AlertCircle, Send, CheckCircle2, RefreshCw, FileEdit, Clock, Trash2 } from "lucide-react";
+import { X, AlertCircle, Send, RefreshCw, FileEdit, Clock, Trash2 } from "lucide-react";
 
 const KSPR_OPTIONS = [
   { key: "muda_hamil_1", label: "Terlalu muda, hamil I umur <= 16 tahun (Skor 4)" },

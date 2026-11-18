@@ -11,7 +11,7 @@ from app.models.visit import Visit
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.models.audit_log import AuditLog
-from app.models.revision import RevisionRequest
+from app.models.revision import RevisionRequest, RevisionStatus
 from app.schemas.report import ReportResponse, ReportValidationRequest, ReportListItemResponse
 from app.schemas.admin import BulkDeleteRequest
 from app.api.v1.endpoints.auth import get_current_user
@@ -80,8 +80,11 @@ def list_reports(
         p = r.patient
         v = r.visit
         latest_rev = None
+        has_approved_rev = False
         if v and v.revisions:
             latest_rev = v.revisions[-1].status.value if hasattr(v.revisions[-1].status, "value") else str(v.revisions[-1].status)
+            has_approved_rev = any(rv.status == RevisionStatus.APPROVED for rv in v.revisions)
+        rev_count = max(int(r.revision_count or 0), 1) if has_approved_rev else r.revision_count
         results.append(
             ReportListItemResponse(
                 id=r.id,
@@ -97,7 +100,7 @@ def list_reports(
                 overall_status=r.overall_status,
                 status=r.status,
                 risk_count=len(r.risk_flags) if r.risk_flags else 0,
-                revision_count=r.revision_count,
+                revision_count=rev_count,
                 validated_at=r.validated_at,
                 has_pdf=(r.status == ReportStatus.APPROVED),
                 latest_revision_status=latest_rev
@@ -237,6 +240,23 @@ def _mark_legacy_quotes(recs: list) -> list:
     return out
 
 
+def _sync_approved_revision_lock(report: Report, db: Session) -> None:
+    """Kunci kuota 1x revisi asuhan jika laporan/kunjungan sudah pernah punya revisi data APPROVED."""
+    if (report.revision_count or 0) >= 1:
+        return
+    has_approved_rev = (
+        db.query(RevisionRequest.id)
+        .filter(
+            RevisionRequest.status == RevisionStatus.APPROVED,
+            (RevisionRequest.report_id == report.id) | (RevisionRequest.visit_id == report.visit_id),
+        )
+        .first()
+        is not None
+    )
+    if has_approved_rev:
+        report.revision_count = 1
+
+
 def _enrich_report_telemetry(report: Report, db: Session) -> None:
     """
     Melengkapi tampilan laporan TANPA mengarang data:
@@ -246,6 +266,7 @@ def _enrich_report_telemetry(report: Report, db: Session) -> None:
     - Log evaluator paralel hanya dari tabel audit_logs; is_compliant NULL tetap NULL
       ("Tidak dievaluasi").
     """
+    _sync_approved_revision_lock(report, db)
     fr_json = dict(report.final_report_json or {})
     recs = list(report.recommendations or fr_json.get("recommendations") or [])
     if recs:
@@ -340,6 +361,11 @@ def validate_report_by_kader(
     patient = db.query(Patient).filter(Patient.id == report.patient_id).first()
 
     _check_report_scope(report, current_user)
+    if current_user.role != UserRole.KADER:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya Kader Posyandu yang berwenang mengesahkan atau meminta revisi asuhan laporan.",
+        )
 
     if report.status != ReportStatus.DRAFT:
         raise HTTPException(
@@ -365,6 +391,7 @@ def validate_report_by_kader(
         report.pdf_path = pdf_path
 
     elif val_req.status == ReportStatus.REJECTED:
+        _sync_approved_revision_lock(report, db)
         if report.revision_count >= 1:
             raise HTTPException(
                 status_code=400,

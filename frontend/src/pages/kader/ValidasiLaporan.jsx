@@ -1382,7 +1382,7 @@ const ValidasiLaporan = () => {
                             <Utensils className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                             <span className="text-xs font-bold text-heading">Jadwal 5 Waktu Makan &amp; Resep Lokal</span>
                           </div>
-                          <p className="text-xs text-body leading-relaxed line-clamp-2">
+                          <p className="text-xs text-body leading-relaxed">
                             Tekstur: {carePlan.food_and_nutrition.texture_and_consistency || carePlan.food_and_nutrition.stage_and_texture || "Padat Bergizi"} &bull; {carePlan.food_and_nutrition.frequency_and_portion}
                           </p>
                         </div>
@@ -1410,8 +1410,8 @@ const ValidasiLaporan = () => {
                               <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" aria-hidden="true" />
                               <span className="text-xs font-bold text-rose-700 dark:text-rose-300">Tanda Bahaya (Segera Rujuk Puskesmas)</span>
                             </div>
-                            <p className="text-xs text-rose-700 dark:text-rose-300 line-clamp-2">
-                              {carePlan.danger_signs.slice(0, 2).join(" • ")}
+                            <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
+                              {carePlan.danger_signs.join(" • ")}
                             </p>
                           </div>
                           <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1.5 border-t border-rose-100 dark:border-rose-900/40 w-full">
@@ -1562,8 +1562,8 @@ const ValidasiLaporan = () => {
                             <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" aria-hidden="true" />
                             <span className="text-xs font-bold text-rose-700 dark:text-rose-300">4. Segera Rujuk Jika:</span>
                           </div>
-                          <p className="text-xs text-rose-700 dark:text-rose-300 font-medium line-clamp-2">
-                            {carePlan.danger_signs.slice(0, 2).join(" • ")}
+                          <p className="text-xs text-rose-700 dark:text-rose-300 font-medium leading-relaxed">
+                            {carePlan.danger_signs.join(" • ")}
                           </p>
                         </div>
                         <span className="no-print text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between pt-1 border-t border-rose-100 dark:border-rose-900/40 w-full">
@@ -1701,9 +1701,15 @@ const ValidasiLaporan = () => {
                     })
                   : "-"}
               </span>
+            ) : user?.role === "KADER" ? (
+              <span>
+                {revisionCount >= 1
+                  ? "Batas 1x revisi telah digunakan. Silakan periksa kembali laporan dan sahkan untuk menerbitkan PDF resmi."
+                  : "Pemeriksaan Petugas: Kader berwenang mengesahkan laporan atau mengajukan 1x permohonan revisi asuhan"}
+              </span>
             ) : (
               <span>
-                Pemeriksaan Petugas: Kader berwenang mengesahkan laporan atau mengajukan 1x permohonan revisi asuhan
+                Mode Tinjauan Admin: Pengesahan laporan dan penerbitan PDF resmi dilakukan oleh Kader Posyandu
               </span>
             )}
           </div>
@@ -1717,12 +1723,12 @@ const ValidasiLaporan = () => {
                 <Printer className="w-4 h-4" />
                 <span>Cetak / Unduh Dokumen PDF</span>
               </button>
-            ) : (
+            ) : user?.role === "KADER" ? (
               <>
                 <button
                   onClick={() => setShowRejectModal(true)}
                   disabled={actionLoading || revisionCount >= 1}
-                  title={revisionCount >= 1 ? "Batas maksimal 1x revisi telah digunakan" : "Minta koreksi ke sistem AI"}
+                  title={revisionCount >= 1 ? "Batas maksimal 1x revisi telah digunakan" : "Minta koreksi ke sistem AI (maks. 1x)"}
                   className="btn-interactive flex items-center justify-center gap-1.5 px-4 py-2.5 border border-line bg-card hover:bg-muted text-heading rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <XCircle className="w-4 h-4 text-rose-500" />
@@ -1738,7 +1744,7 @@ const ValidasiLaporan = () => {
                   <span>{actionLoading ? "Mengesahkan..." : "Sahkan & Terbitkan PDF Resmi"}</span>
                 </button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

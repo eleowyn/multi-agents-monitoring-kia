@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, JSON, Text
+from sqlalchemy import Column, Integer, Enum, ForeignKey, DateTime, JSON, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -44,7 +44,3 @@ class RevisionRequest(Base):
     report = relationship("Report")
     kader = relationship("User", foreign_keys=[kader_id])
     admin = relationship("User", foreign_keys=[admin_id])
-
-
-# Alias backward compatibility
-Revision = RevisionRequest

@@ -9,13 +9,9 @@ import {
   Filter,
   RefreshCw,
   AlertTriangle,
-  ChevronRight,
-  ArrowRight,
-  User,
   MapPin,
   Calendar,
   X,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 
@@ -113,7 +109,7 @@ const AdminRevisions = () => {
       !window.confirm(
         `Apakah Anda yakin ingin ${actionText} ini?${
           status === "APPROVED" && !isDelete
-            ? "\n\nSistem AI akan otomatis menjalankan re-analisis LangGraph terhadap data kunjungan baru dan memperbarui dokumen laporan PDF."
+            ? "\n\nData kunjungan akan diperbarui dan laporan dikembalikan ke status draf untuk disahkan ulang oleh Kader."
             : status === "APPROVED" && isDelete
             ? "\n\nPerhatian: Rekam kunjungan dan laporan pemeriksaan ini akan dihapus secara permanen dari basis data."
             : ""
@@ -163,14 +159,24 @@ const AdminRevisions = () => {
 
   const isDeleteRequest = selectedRev?.proposed_data?._action === "DELETE";
 
-  // Compute diff keys for the selected revision
+  // Kunci metadata pasien (tidak dapat direvisi lewat form kunjungan) tidak ikut ditampilkan sebagai diff
+  const HIDDEN_DIFF_KEYS = new Set(["phase", "id", "_action", "patient_name", "patient_nik", "village_name"]);
+
   const diffKeys = selectedRev
-    ? Array.from(
-        new Set([
-          ...Object.keys(selectedRev.previous_data || {}),
-          ...Object.keys(selectedRev.proposed_data || {}),
-        ])
-      ).filter((k) => k !== "phase" && k !== "id" && k !== "_action")
+    ? (() => {
+        const prev = selectedRev.previous_data || {};
+        const prop = selectedRev.proposed_data || {};
+        const keys = Array.from(new Set([...Object.keys(prev), ...Object.keys(prop)])).filter(
+          (k) => !HIDDEN_DIFF_KEYS.has(k)
+        );
+        return keys.sort((a, b) => {
+          const aHas = Object.prototype.hasOwnProperty.call(prop, a);
+          const bHas = Object.prototype.hasOwnProperty.call(prop, b);
+          const aChanged = aHas && JSON.stringify(prev[a]) !== JSON.stringify(prop[a]);
+          const bChanged = bHas && JSON.stringify(prev[b]) !== JSON.stringify(prop[b]);
+          return Number(bChanged) - Number(aChanged);
+        });
+      })()
     : [];
 
   return (
@@ -352,7 +358,7 @@ const AdminRevisions = () => {
                       </td>
 
                       <td className="p-4 max-w-xs">
-                        <p className="text-xs text-body line-clamp-2 leading-relaxed" title={rev.reason}>
+                        <p className="text-xs text-body leading-relaxed" title={rev.reason}>
                           {rev.reason}
                         </p>
                         {rev.admin_notes && (
@@ -516,8 +522,11 @@ const AdminRevisions = () => {
                         <tbody className="divide-y divide-line-light">
                           {diffKeys.map((key) => {
                             const oldVal = selectedRev.previous_data?.[key];
-                            const newVal = selectedRev.proposed_data?.[key];
-                            const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+                            const hasProposed =
+                              selectedRev.proposed_data &&
+                              Object.prototype.hasOwnProperty.call(selectedRev.proposed_data, key);
+                            const newVal = hasProposed ? selectedRev.proposed_data[key] : oldVal;
+                            const isChanged = hasProposed && JSON.stringify(oldVal) !== JSON.stringify(newVal);
 
                             return (
                               <tr
@@ -554,14 +563,6 @@ const AdminRevisions = () => {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-
-                  {/* Notice AI Re-eval */}
-                  <div className="p-3.5 bg-accent-sky border border-sky-200 dark:border-sky-800/50 rounded-xl text-xs text-sky-900 dark:text-sky-200 flex items-start gap-2.5">
-                    <Sparkles className="w-4 h-4 shrink-0 text-sky-600 mt-0.5" />
-                    <p className="leading-relaxed">
-                      Jika Anda menekan tombol <strong>Setujui & Jalankan Re-analisis AI</strong>, sistem backend akan otomatis memicu kembali graf Multi-Agent LangGraph (Agent 1 $\rightarrow$ Agent 2 $\rightarrow$ Agent 3) untuk memperbarui flag risiko, narasi klinis, dan menerbitkan berkas PDF yang telah disinkronkan.
-                    </p>
                   </div>
                 </>
               )}
@@ -634,7 +635,7 @@ const AdminRevisions = () => {
                       ) : (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Setujui & Jalankan Re-analisis AI</span>
+                          <span>Setujui Perubahan Data</span>
                         </>
                       )}
                     </button>

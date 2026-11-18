@@ -668,22 +668,51 @@ def build_comprehensive_care_plan(
 
     graduation_package = None
     if norm_phase == "BADUTA" and (age_months >= 24 or det.get("hpk_status", {}).get("is_graduation_milestone")):
+        if has_growth_risk and has_overweight:
+            grad_status = "PERHATIAN_KHUSUS_STUNTING_DAN_GIZI_LEBIH"
+            grad_badge = "⚠️ Perhatian Khusus: Risiko Pertumbuhan / Stunting & Gizi Lebih"
+            grad_type = "ALERT"
+            exit_msg = (
+                "Hasil Evaluasi Akhir 1.000 HPK: Anak terdeteksi mengalami perlambatan pertumbuhan linier/stunting sekaligus "
+                "kelebihan berat badan atau obesitas (BB/PB tinggi). Diperlukan evaluasi dokter/ahli gizi di Puskesmas Airmadidi "
+                "untuk penataan pola makan padat protein tanpa berlebih kalori/gula."
+            )
+        elif has_growth_risk:
+            grad_status = "PERHATIAN_KHUSUS_STUNTING"
+            grad_badge = "⚠️ Perhatian Khusus: Terdeteksi Risiko Pertumbuhan / Stunting"
+            grad_type = "ALERT"
+            exit_msg = (
+                "Hasil Evaluasi Akhir 1.000 HPK: Anak terdeteksi memiliki risiko perlambatan pertumbuhan/stunting saat mencapai akhir periode emas 1.000 HPK. "
+                "Karena jendela kritis plastisitas otak 80% telah mendekati penutupan di usia 24 bulan, anak memerlukan intervensi terintegrasi Dokter Spesialis Anak (Sp.A) "
+                "di RSUD Maria Walanda Maramis / Puskesmas Airmadidi untuk terapi kejar tumbuh (catch-up growth) terarah."
+            )
+        elif has_overweight:
+            grad_status = "PERHATIAN_KHUSUS_GIZI_LEBIH"
+            grad_badge = "⚠️ Perhatian Khusus: Terdeteksi Gizi Lebih / Obesitas"
+            grad_type = "ALERT"
+            exit_msg = (
+                "Hasil Evaluasi Akhir 1.000 HPK: Tinggi badan anak tidak tergolong stunting, namun rasio berat terhadap panjang badan berada pada kategori "
+                "gizi lebih/obesitas. Diperlukan pengaturan porsi seimbang, pembatasan makanan/minuman manis, serta pemantauan aktivitas fisik oleh petugas gizi Puskesmas."
+            )
+        else:
+            grad_status = "LULUS_OPTIMAL_BEBAS_STUNTING"
+            grad_badge = "🎓 Lulus Optimal: Pertumbuhan Normal Bebas Stunting"
+            grad_type = "OPTIMAL"
+            exit_msg = (
+                "Hasil Evaluasi Akhir 1.000 HPK: Selamat! Anak berhasil menuntaskan seluruh 1.000 Hari Pertama Kehidupan (270 hari masa kandungan + 730 hari masa baduta) "
+                "dengan kurva pertumbuhan dalam batas normal. Pertumbuhan otak 80% telah terbentuk optimal dan anak terlindungi dari risiko stunting kronis."
+            )
+
         graduation_package = {
             "is_graduation": True,
             "milestone_day": 1000,
             "milestone_age_months": age_months,
             "title": "Paket Transisi Kelulusan 1.000 HPK (Milestone Usia 24 Bulan)",
-            "graduation_status": "PERHATIAN_KHUSUS_STUNTING" if has_growth_risk else "LULUS_OPTIMAL_BEBAS_STUNTING",
-            "status_badge": "⚠️ Perhatian Khusus: Terdeteksi Risiko Pertumbuhan / Stunting" if has_growth_risk else "🎓 Lulus Optimal: Pertumbuhan Normal Bebas Stunting",
-            "status_type": "ALERT" if has_growth_risk else "OPTIMAL",
-            "exit_assessment": (
-                "Hasil Evaluasi Akhir 1.000 HPK: Anak terdeteksi memiliki risiko perlambatan pertumbuhan/stunting saat mencapai akhir periode emas 1.000 HPK. "
-                "Karena jendela kritis plastisitas otak 80% telah mendekati penutupan di usia 24 bulan, anak memerlukan intervensi terintegrasi Dokter Spesialis Anak (Sp.A) "
-                "di RSUD Maria Walanda Maramis / Puskesmas Airmadidi untuk terapi kejar tumbuh (catch-up growth) terarah."
-                if has_growth_risk else
-                "Hasil Evaluasi Akhir 1.000 HPK: Selamat! Anak berhasil menuntaskan seluruh 1.000 Hari Pertama Kehidupan (270 hari masa kandungan + 730 hari masa baduta) "
-                "dengan kurva pertumbuhan dalam batas normal. Pertumbuhan otak 80% telah terbentuk optimal dan anak terlindungi dari risiko stunting kronis."
-            ),
+            "graduation_status": grad_status,
+            "status_badge": grad_badge,
+            "status_type": grad_type,
+            "requires_catchup_deficit": has_growth_risk,
+            "exit_assessment": exit_msg,
             "weaning_guidance": {
                 "title": "Panduan Menyapih Penuh Kasih (Weaning with Love)",
                 "principles": [
@@ -1488,9 +1517,16 @@ Tugas Anda:
     # Pastikan butir rekomendasi Kelulusan 1.000 HPK disisipkan bila anak mencapai milestone usia 24 bulan
     grad_pkg = care_plan.get("graduation_package") if care_plan else None
     if grad_pkg and not any(r.get("category") == "KELULUSAN_1000_HPK" for r in recommendations):
-        has_gr = (grad_pkg.get("graduation_status") == "PERHATIAN_KHUSUS_STUNTING")
+        is_alert = grad_pkg.get("status_type") == "ALERT"
+        has_deficit = bool(grad_pkg.get("requires_catchup_deficit"))
+        grad_subtitles = {
+            "PERHATIAN_KHUSUS_STUNTING_DAN_GIZI_LEBIH": "Perhatian Khusus Stunting & Gizi Lebih",
+            "PERHATIAN_KHUSUS_STUNTING": "Perhatian Khusus Stunting",
+            "PERHATIAN_KHUSUS_GIZI_LEBIH": "Perhatian Khusus Gizi Lebih / Obesitas",
+        }
+        grad_subtitle = grad_subtitles.get(grad_pkg.get("graduation_status"), "Lulus Optimal Bebas Stunting")
         grad_rec = {
-            "title": f"Milestone Hari ke-1.000: Evaluasi Kelulusan 1.000 HPK ({'Perhatian Khusus Stunting' if has_gr else 'Lulus Optimal Bebas Stunting'})",
+            "title": f"Milestone Hari ke-1.000: Evaluasi Kelulusan 1.000 HPK ({grad_subtitle})",
             "category": "KELULUSAN_1000_HPK",
             "recommendation_text": grad_pkg.get("exit_assessment", ""),
             "food_guide": (
@@ -1500,7 +1536,7 @@ Tugas Anda:
             "milk_and_supplements": (
                 "Panduan Menyapih Penuh Kasih (Weaning with Love) bertahap tanpa paksaan. "
                 "Susu UHT plain / susu pertumbuhan maksimal 300-400 mL/hari sebagai pelengkap. "
-                + ("Konsultasikan ke Dokter Spesialis Anak Puskesmas/RSUD untuk peresepan Susu PKMK padat kalori karena terdeteksi gagal tumbuh. " if has_gr else "")
+                + ("Konsultasikan ke Dokter Spesialis Anak Puskesmas/RSUD untuk peresepan Susu PKMK padat kalori karena terdeteksi gagal tumbuh. " if has_deficit else "")
                 + "DILARANG KERAS Susu Kental Manis (SKM). Protokol Kemenkes RI: ASI Standar Emas Awal Kehidupan."
             ),
             "activity_and_stimulation": (
@@ -1519,7 +1555,7 @@ Tugas Anda:
             "evidence_quote": None,
             "evidence_status": EVIDENCE_RULE,
             "reasoning_mode": "ATURAN_SISTEM",
-            "severity": "HIGH" if has_gr else "INFO",
+            "severity": "HIGH" if is_alert else "INFO",
         }
         grad_rec["items"] = _build_unified_items(grad_rec, visit_data=visit_data, risk_flags=risk_flags)
         recommendations.insert(0, grad_rec)

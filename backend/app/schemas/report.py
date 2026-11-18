@@ -4,12 +4,6 @@ from datetime import datetime
 from app.models.report import ReportStatus
 
 
-class ReportBase(BaseModel):
-    visit_id: int
-    patient_id: int
-    overall_status: str
-
-
 class ReportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

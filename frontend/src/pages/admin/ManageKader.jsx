@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api, { getErrorMessage } from "../../services/api";
-import { Plus, Search, Shield, X, Trash2 } from "lucide-react";
+import { Plus, Search, X, Trash2 } from "lucide-react";
 import { OFFICIAL_POSYANDU_BY_VILLAGE } from "../../constants/posyanduData";
 
 const ManageKader = () => {

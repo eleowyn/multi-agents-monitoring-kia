@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from "react";
 import api, { getErrorMessage } from "../../services/api";
 import {
-  Users,
   Search,
   Plus,
   Trash2,
   Edit,
   X,
   Save,
-  AlertCircle,
   ChevronDown,
   Heart,
   Baby,
-  Activity,
 } from "lucide-react";
 import { OFFICIAL_POSYANDU_BY_VILLAGE } from "../../constants/posyanduData";
 

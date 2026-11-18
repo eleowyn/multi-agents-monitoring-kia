@@ -17,101 +17,6 @@ from app.multiagent.llm_utils import (
 )
 
 
-def _deterministic_sop_audit(
-    agent_key: str,
-    output_obj: Any,
-    agent_tel: Dict[str, Any],
-) -> tuple[bool, str]:
-    """
-    Verifikasi kepatuhan SOP berbasis aturan deterministik untuk Agent 1, Agent 2, dan Agent 3.
-    Menjamin setiap eksekusi teraudit secara objektif meskipun koneksi API LLM sedang offline.
-    """
-    tools = agent_tel.get("tools_invoked") or []
-    wb = agent_tel.get("work_breakdown") or {}
-
-    if agent_key == "agent_1":
-        if isinstance(output_obj, dict):
-            flags = output_obj.get("risk_flags")
-            narrative = str(output_obj.get("narrative") or "").strip()
-            plaus = (wb.get("plausibility") or {}).get("is_plausible", True)
-            if isinstance(flags, list) and len(narrative) > 5 and plaus:
-                return (
-                    True,
-                    f"Kepatuhan SOP Agent 1 terverifikasi: kalkulator deterministik ({', '.join(tools[:4]) or 'WHO Z-Score/KSPR/1000 HPK'}) "
-                    f"berjalan normal, menghasilkan {len(flags)} flag risiko dan narasi klinis baku.",
-                )
-        return False, "Output Agent 1 tidak memuat struktur risk_flags atau narasi klinis yang lengkap."
-
-    if agent_key == "agent_2":
-        if isinstance(output_obj, dict) and output_obj.get("care_plan_status") == "PREVENTIVE_1000_HPK_READY":
-            return (
-                True,
-                "Kepatuhan SOP Agent 2 terverifikasi: pasien sehat (0 flag risiko), Conditional Router melewati RAG "
-                "dan menyusun Care Plan preventif 1.000 HPK.",
-            )
-        if isinstance(output_obj, list) and len(output_obj) > 0:
-            valid_recs = [
-                r for r in output_obj
-                if isinstance(r, dict)
-                and r.get("title")
-                and r.get("recommendation_text")
-                and r.get("food_guide")
-                and r.get("milk_and_supplements")
-                and r.get("activity_and_stimulation")
-            ]
-            cited_pages = []
-            chunk_ids = []
-            for r in valid_recs:
-                cit = r.get("citation") or {}
-                if cit.get("chunk_id"):
-                    chunk_ids.append(str(cit["chunk_id"]))
-                for sc_id in (cit.get("supporting_chunk_ids") or []):
-                    if str(sc_id) not in chunk_ids:
-                        chunk_ids.append(str(sc_id))
-                pg_list = cit.get("additional_pages") or ([cit.get("page")] if cit.get("page") else [])
-                for pg in pg_list:
-                    if pg and str(pg) not in cited_pages:
-                        cited_pages.append(str(pg))
-            if len(valid_recs) == len(output_obj):
-                page_info = f"Halaman {', '.join(cited_pages)}" if cited_pages else "Aturan Standar KIA"
-                chunk_info = f"{len(chunk_ids)} chunk ({', '.join(chunk_ids[:4])})" if chunk_ids else "Care Plan Baku"
-                return (
-                    True,
-                    f"Kepatuhan SOP Agent 2 terverifikasi: {len(valid_recs)} rekomendasi gizi & klinis lengkap "
-                    f"(makanan, ASI/suplemen, stimulasi) tersusun dari {chunk_info} pada {page_info}.",
-                )
-        return False, "Output Agent 2 belum memuat struktur panduan gizi, suplemen, dan aktivitas yang lengkap."
-
-    if agent_key == "agent_3":
-        if isinstance(output_obj, dict):
-            status_val = output_obj.get("overall_status")
-            verifs = output_obj.get("verification") or []
-            if status_val in ("KONDISI_BAIK", "PERLU_PERHATIAN", "RISIKO_TINGGI"):
-                if not verifs and status_val == "KONDISI_BAIK":
-                    return (
-                        True,
-                        "Kepatuhan SOP Agent 3 terverifikasi: Single-Pass Integrator mengemas laporan akhir "
-                        "status KONDISI_BAIK secara konsisten.",
-                    )
-                verified_cnt = sum(
-                    1 for v in verifs
-                    if isinstance(v, dict) and v.get("verification_status") in ("VERIFIED", "AUTO_GROUNDED_SECONDARY")
-                )
-                if verifs and verified_cnt == 0:
-                    return (
-                        False,
-                        f"Deviasi SOP Agent 3: dari {len(verifs)} rekomendasi berisiko, 0 rekomendasi terverifikasi terhadap rujukan.",
-                    )
-                return (
-                    True,
-                    f"Kepatuhan SOP Agent 3 terverifikasi: {verified_cnt}/{len(verifs)} butir rekomendasi telah "
-                    f"melalui pemeriksaan keterhubungan rujukan (grounding) dengan status akhir {status_val}.",
-                )
-        return False, "Output Agent 3 tidak memuat status akhir atau rincian verifikasi laporan yang valid."
-
-    return True, "Fungsi agent berjalan sesuai spesifikasi pipeline."
-
-
 def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
     """
     Worker thread independen yang berjalan secara PARALEL (concurrent) di dalam
@@ -133,7 +38,7 @@ def _evaluate_single_agent_worker(task_spec: Dict[str, Any]) -> Dict[str, Any]:
     notes = ""
     eval_token_usage = extract_token_usage(None, prompt_text=instruction, output_text=output_str, is_llm_call=False)
 
-    llm = get_chat_llm(temperature=0.0, max_tokens=300)
+    llm = get_chat_llm(temperature=0.0, max_tokens=1000)
     if llm is not None:
         try:
             from langchain_core.messages import SystemMessage, HumanMessage
